@@ -1,0 +1,23 @@
+{
+  "MercadoBitcoinApi": {
+    "ClientId": "your-real-client-id-here",
+    "ClientSecret": "your-real-client-secret-here",
+    "EnableRealOperations": true,
+    "RequestTimeoutSeconds": 60
+  },
+  "Logging": {
+    "LogLevel": {
+      "Default": "Debug",
+      "MercadoBitcoin.Client": "Trace"
+    }
+  }
+}
+
+// Instruções:
+// 1. Copie este arquivo para 'appsettings.local.json'
+// 2. Substitua os valores pelos seus dados reais
+// 3. O arquivo appsettings.local.json está no .gitignore e não será commitado
+// 4. Alternativamente, use variáveis de ambiente:
+//    - MERCADOBITCOIN_CLIENTID=your-client-id
+//    - MERCADOBITCOIN_CLIENTSECRET=your-client-secret
+//    - MERCADOBITCOIN_ENABLEREALOPERATIONS=true
