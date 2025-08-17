@@ -483,3 +483,4 @@ Esta biblioteca é um projeto independente e não é oficialmente mantida pelo M
 
 [![GitHub stars](https://img.shields.io/github/stars/seu-usuario/MercadoBitcoin.Client?style=social)](https://github.com/seu-usuario/MercadoBitcoin.Client/stargazers)
 [![GitHub forks](https://img.shields.io/github/forks/seu-usuario/MercadoBitcoin.Client?style=social)](https://github.com/seu-usuario/MercadoBitcoin.Client/network/members)
+[![NuGet Version](https://img.shields.io/nuget/v/MercadoBitcoin.Client.svg)](https://www.nuget.org/packages/MercadoBitcoin.Client) [![NuGet Downloads](https://img.shields.io/nuget/dt/MercadoBitcoin.Client.svg)](https://www.nuget.org/packages/MercadoBitcoin.Client)
