@@ -30,7 +30,7 @@ Install-Package MercadoBitcoin.Client
 dotnet add package MercadoBitcoin.Client
 
 # Via PackageReference
-<PackageReference Include="MercadoBitcoin.Client" Version="1.0.0" />
+<PackageReference Include="MercadoBitcoin.Client" Version="1.0.1" />
 ```
 
 ## 🔄 Retry Policies

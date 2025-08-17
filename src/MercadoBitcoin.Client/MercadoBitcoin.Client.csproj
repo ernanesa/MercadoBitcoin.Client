@@ -8,7 +8,7 @@
     
     <!-- NuGet Package Metadata -->
     <PackageId>MercadoBitcoin.Client</PackageId>
-    <Version>1.0.0</Version>
+    <Version>1.0.1</Version>
     <Authors>Ernane Sa</Authors>
     <Company>Open Source</Company>
     <Description>A complete .NET 9 client library for MercadoBitcoin API v4. Provides access to all public and private endpoints including trading, wallet operations, and account management.</Description>
