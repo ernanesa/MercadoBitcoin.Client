@@ -1,0 +1,67 @@
+name: CI - Pack and Publish NuGet
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Package version (optional, overrides csproj)'
+        required: false
+        type: string
+      publish:
+        description: 'Publish to NuGet'
+        required: false
+        default: true
+        type: boolean
+
+jobs:
+  build-test-pack:
+    runs-on: ubuntu-latest
+    env:
+      DOTNET_SKIP_FIRST_TIME_EXPERIENCE: 1
+      DOTNET_NOLOGO: 1
+      SOLUTION: MercadoBitcoin.Client.sln
+      PROJECT: src/MercadoBitcoin.Client/MercadoBitcoin.Client.csproj
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Restore
+        run: dotnet restore $SOLUTION
+
+      - name: Build
+        run: dotnet build $SOLUTION -c Release --no-restore
+
+      - name: Test (exclude WebSocket)
+        run: dotnet test $SOLUTION -c Release --no-build --filter "Category!=WebSocket"
+
+      - name: Determine package version
+        id: get_version
+        shell: bash
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            TAG="${GITHUB_REF_NAME#v}"
+            echo "version=$TAG" >> "$GITHUB_OUTPUT"
+          elif [[ -n "${{ github.event.inputs.version }}" ]]; then
+            echo "version=${{ github.event.inputs.version }}" >> "$GITHUB_OUTPUT"
+          else
+            VER=$(grep -oP '(?<=<Version>).*?(?=</Version>)' $PROJECT | head -n1)
+            echo "version=$VER" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Pack
+        run: dotnet pack $PROJECT -c Release -o artifacts/nuget -p:Version=${{ steps.get_version.outputs.version }} --no-build
+
+      - name: Publish to NuGet
+        if: ${{ github.event_name == 'push' || github.event.inputs.publish == 'true' }}
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+        run: |
+          dotnet nuget push "artifacts/nuget/*.nupkg" --api-key "$NUGET_API_KEY" --source https://api.nuget.org/v3/index.json --skip-duplicate
+          dotnet nuget push "artifacts/nuget/*.snupkg" --api-key "$NUGET_API_KEY" --source https://api.nuget.org/v3/index.json --skip-duplicate
