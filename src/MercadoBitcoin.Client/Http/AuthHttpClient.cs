@@ -11,22 +11,47 @@ namespace MercadoBitcoin.Client
     {
         private string? _accessToken;
         private readonly HttpClient _httpClient;
+        private readonly HttpConfiguration _httpConfig;
 
-        public AuthHttpClient(RetryPolicyConfig? retryConfig = null)
+        public AuthHttpClient(RetryPolicyConfig? retryConfig = null, HttpConfiguration? httpConfig = null)
         {
-
-            // Create the retry handler with logger
-            var retryHandler = new RetryHandler(retryConfig);
+            _httpConfig = httpConfig ?? HttpConfiguration.CreateHttp2Default();
+            
+            // Create the retry handler with HTTP configuration
+            var retryHandler = new RetryHandler(retryConfig, _httpConfig);
             InnerHandler = retryHandler;
 
             // Create HttpClient with this handler
             _httpClient = new HttpClient(this, false);
+            
+            // Aplicar configurações HTTP do HttpConfiguration
+            _httpClient.DefaultRequestVersion = _httpConfig.HttpVersion;
+            _httpClient.DefaultVersionPolicy = _httpConfig.VersionPolicy;
+            _httpClient.Timeout = TimeSpan.FromSeconds(_httpConfig.TimeoutSeconds);
         }
 
-        // Método estático para criar com ILogger<T>
+        // Método estático para criar com configurações padrão
         public static AuthHttpClient Create<T>()
         {
             return new AuthHttpClient();
+        }
+        
+        // Método estático para criar com configurações personalizadas
+        public static AuthHttpClient Create<T>(RetryPolicyConfig? retryConfig, HttpConfiguration? httpConfig = null)
+        {
+            return new AuthHttpClient(retryConfig, httpConfig);
+        }
+        
+        // Método estático para criar com HTTP/2 otimizado
+        public static AuthHttpClient CreateWithHttp2<T>()
+        {
+            return new AuthHttpClient(null, HttpConfiguration.CreateHttp2Default());
+        }
+        
+        // Método estático para criar otimizado para trading
+        public static AuthHttpClient CreateForTrading<T>()
+        {
+            return new AuthHttpClient(null, HttpConfiguration.CreateTradingOptimized());
         }
 
         // Classe interna para converter ILogger<T> em ILogger
@@ -69,7 +94,7 @@ namespace MercadoBitcoin.Client
                 {
                     errorResponse = Newtonsoft.Json.JsonConvert.DeserializeObject<ErrorResponse>(responseContent);
                 }
-                catch (Newtonsoft.Json.JsonException ex)
+                catch (Newtonsoft.Json.JsonException)
                 {
                     // If deserialization fails, create a generic error response
                     errorResponse = new ErrorResponse { Code = "UNKNOWN_ERROR", Message = responseContent };

@@ -1141,8 +1141,8 @@ info:
     ### Endpoint
     All requests is made with `/api/v4` context.
 
-    ### WebSocket API
-    If you are looking for WebSocket API documentation [click here](https://ws.mercadobitcoin.net/docs/v0)
+    ### HTTP/2 API
+    This API now uses HTTP/2 for improved performance and efficiency.
 
     # Rate Limit
     The default rate limit total: 500 requests/min. Considering both private and public information. Each endpoint has its own rate limit, as described in the endpoints section. If you need to increase this number, please contact us via trade.support@mercadobitcoin.com.br.

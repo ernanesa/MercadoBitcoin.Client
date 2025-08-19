@@ -38,8 +38,8 @@ jobs:
       - name: Build
         run: dotnet build $SOLUTION -c Release --no-restore
 
-      - name: Test (exclude WebSocket)
-        run: dotnet test $SOLUTION -c Release --no-build --filter "Category!=WebSocket"
+      - name: Test
+      run: dotnet test $SOLUTION -c Release --no-build
 
       - name: Determine package version
         id: get_version

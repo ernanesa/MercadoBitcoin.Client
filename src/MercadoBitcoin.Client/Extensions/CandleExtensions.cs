@@ -3,7 +3,8 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using MercadoBitcoin.Client.Generated;
-using MercadoBitcoin.Client.WebSocket.Models;
+using MercadoBitcoin.Client.Models;
+
 
 namespace MercadoBitcoin.Client.Extensions
 {
@@ -156,7 +157,7 @@ namespace MercadoBitcoin.Client.Extensions
         /// <summary>
         /// Obtém o valor no índice especificado de uma coleção, ou valor padrão se não existir
         /// </summary>
-        private static T GetValueAtIndex<T>(ICollection<T> collection, int index)
+        private static T? GetValueAtIndex<T>(ICollection<T>? collection, int index)
         {
             if (collection == null || index >= collection.Count)
                 return default(T);
@@ -167,7 +168,7 @@ namespace MercadoBitcoin.Client.Extensions
         /// <summary>
         /// Converte string para decimal de forma segura
         /// </summary>
-        private static decimal ParseDecimal(string value)
+        private static decimal ParseDecimal(string? value)
         {
             if (string.IsNullOrWhiteSpace(value))
                 return 0m;

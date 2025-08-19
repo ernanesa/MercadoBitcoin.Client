@@ -4,7 +4,8 @@ using System.Net.Http.Headers;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 using MercadoBitcoin.Client.Extensions;
-using MercadoBitcoin.Client.WebSocket.Models;
+using MercadoBitcoin.Client.Models;
+
 using System;
 
 namespace MercadoBitcoin.Client
