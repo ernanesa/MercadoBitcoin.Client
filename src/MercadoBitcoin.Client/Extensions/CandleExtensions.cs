@@ -43,7 +43,6 @@ namespace MercadoBitcoin.Client.Extensions
             { "1w", "1w" },
             { "1week", "1w" },
             { "weekly", "1w" },
-            { "1M", "1M" },
             { "1month", "1M" },
             { "monthly", "1M" }
         };

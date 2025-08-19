@@ -28,9 +28,45 @@ namespace MercadoBitcoin.Client
             return _generatedClient.TradesAsync(symbol, tid, since, from, to, limit);
         }
 
+        /// <summary>
+        /// Obtém candles (OHLCV) da API pública, com normalização de entradas e proteção contra janelas invertidas.
+        /// Parâmetros:
+        /// - symbol: par no formato BASE-QUOTE (ex.: BTC-BRL, btcbrl)
+        /// - resolution: timeframe (ex.: 1m, 15m, 1h, 1d)
+        /// - to: unix timestamp (segundos) do limite direito (inclusivo)
+        /// - from: unix timestamp (segundos) do limite esquerdo (opcional)
+        /// - countback: quantidade de candles a partir de "to" (prioritário sobre "from")
+        /// </summary>
         public Task<ListCandlesResponse> GetCandlesAsync(string symbol, string resolution, int to, int? from = null, int? countback = null)
         {
-            return _generatedClient.CandlesAsync(symbol, resolution, from, to, countback);
+            if (to <= 0)
+                throw new ArgumentException("Parameter 'to' must be a valid unix timestamp (seconds).", nameof(to));
+
+            // Normaliza entradas
+            var normalizedSymbol = CandleExtensions.NormalizeSymbol(symbol);
+            var normalizedResolution = CandleExtensions.NormalizeResolution(resolution);
+
+            // Se 'from' for informado e maior que 'to', faz swap para evitar janela invertida
+            if (from.HasValue && from.Value > to)
+            {
+                var tmp = to;
+                to = from.Value;
+                from = tmp;
+            }
+
+            return _generatedClient.CandlesAsync(normalizedSymbol, normalizedResolution, from, to, countback);
+        }
+
+        /// <summary>
+        /// Conveniência: busca os últimos N candles até agora (usa countback e ignora "from").
+        /// </summary>
+        public Task<ListCandlesResponse> GetRecentCandlesAsync(string symbol, string resolution, int countback, int? to = null)
+        {
+            if (countback <= 0) throw new ArgumentOutOfRangeException(nameof(countback));
+            var right = to ?? (int)DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            var normalizedSymbol = CandleExtensions.NormalizeSymbol(symbol);
+            var normalizedResolution = CandleExtensions.NormalizeResolution(resolution);
+            return _generatedClient.CandlesAsync(normalizedSymbol, normalizedResolution, from: null, to: right, countback: countback);
         }
 
         /// <summary>
@@ -49,6 +85,14 @@ namespace MercadoBitcoin.Client
 
             var normalizedSymbol = CandleExtensions.NormalizeSymbol(symbol);
             var normalizedResolution = CandleExtensions.NormalizeResolution(resolution);
+
+            // Protege contra janela invertida
+            if (from.HasValue && from.Value > to)
+            {
+                var tmp = to;
+                to = from.Value;
+                from = tmp;
+            }
 
             // Chama o cliente gerado com parâmetros normalizados
             var response = await _generatedClient.CandlesAsync(normalizedSymbol, normalizedResolution, from, to, countback).ConfigureAwait(false);
