@@ -15,22 +15,44 @@ namespace MercadoBitcoin.Client.Http
     {
         private readonly IAsyncPolicy<HttpResponseMessage> _retryPolicy;
         private readonly RetryPolicyConfig _config;
+        private readonly HttpConfiguration _httpConfig;
 
-        public RetryHandler(RetryPolicyConfig? config = null)
+        public RetryHandler(RetryPolicyConfig? config = null, HttpConfiguration? httpConfig = null)
         {
-            ;
             _config = config ?? new RetryPolicyConfig();
+            _httpConfig = httpConfig ?? HttpConfiguration.CreateHttp2Default();
             _retryPolicy = CreateRetryPolicy();
-            InnerHandler = new HttpClientHandler();
+            
+            // Configurar HttpClientHandler com as configurações HTTP
+            var handler = new HttpClientHandler()
+            {
+                MaxConnectionsPerServer = _httpConfig.MaxConnectionsPerServer
+            };
+            
+            // Configurar compressão se habilitada
+            if (_httpConfig.EnableCompression)
+            {
+                handler.AutomaticDecompression = System.Net.DecompressionMethods.GZip | System.Net.DecompressionMethods.Deflate;
+            }
+            
+            InnerHandler = handler;
         }
 
         protected override async Task<HttpResponseMessage> SendAsync(
             HttpRequestMessage request,
             CancellationToken cancellationToken)
         {
+            // Aplicar configurações HTTP da configuração
+            request.Version = _httpConfig.HttpVersion;
+            request.VersionPolicy = _httpConfig.VersionPolicy;
+            
+            // Configurar timeout se especificado
+            using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(_httpConfig.TimeoutSeconds));
+            using var combinedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token);
+            
             return await _retryPolicy.ExecuteAsync(async () =>
             {
-                var response = await base.SendAsync(request, cancellationToken);
+                var response = await base.SendAsync(request, combinedCts.Token);
 
                 return response;
             });

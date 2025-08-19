@@ -1,6 +1,5 @@
 using MercadoBitcoin.Client.Generated;
-using MercadoBitcoin.Client.WebSocket;
-using MercadoBitcoin.Client.WebSocket.Interfaces;
+
 using System;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -17,15 +16,10 @@ namespace MercadoBitcoin.Client
         private readonly MercadoBitcoin.Client.Generated.Client _generatedClient;
         private readonly AuthHttpClient _httpPipeline;
         private readonly MercadoBitcoin.Client.Generated.OpenClient _openClient;
-        private readonly Lazy<IWebSocketClient> _webSocketClient;
-
-        /// <summary>
-        /// Cliente WebSocket para dados de mercado em tempo real
-        /// </summary>
-        public IWebSocketClient WebSocket => _webSocketClient.Value;
 
 
-        public MercadoBitcoinClient(AuthHttpClient? httpClient = null, IWebSocketConfiguration? webSocketConfig = null)
+
+        public MercadoBitcoinClient(AuthHttpClient? httpClient = null)
         {
             _httpPipeline = httpClient ?? AuthHttpClient.Create<MercadoBitcoinClient>();
 
@@ -33,10 +27,7 @@ namespace MercadoBitcoin.Client
             _generatedClient = new MercadoBitcoin.Client.Generated.Client(_httpPipeline.HttpClient) { BaseUrl = "https://api.mercadobitcoin.net/api/v4" };
             // OpenAPI generated another client (OpenClient) which contains some operations like cancel_all_open_orders
             _openClient = new MercadoBitcoin.Client.Generated.OpenClient(_httpPipeline.HttpClient) { BaseUrl = "https://api.mercadobitcoin.net/api/v4" };
-            
-            // Initialize WebSocket client lazily
-            _webSocketClient = new Lazy<IWebSocketClient>(() => 
-                new MercadoBitcoinWebSocketClient(webSocketConfig ?? WebSocketConfiguration.CreateProduction()));
+
         }
 
         /// <summary>
@@ -114,11 +105,7 @@ namespace MercadoBitcoin.Client
 
         public void Dispose()
         {
-            // Dispose WebSocket client if it was created
-            if (_webSocketClient.IsValueCreated)
-            {
-                _webSocketClient.Value?.Dispose();
-            }
+
             
             _httpPipeline?.Dispose();
             GC.SuppressFinalize(this);

@@ -1,6 +1,5 @@
 using System;
 using MercadoBitcoin.Client.Http;
-using MercadoBitcoin.Client.WebSocket.Interfaces;
 
 namespace MercadoBitcoin.Client.Extensions
 {
@@ -10,27 +9,24 @@ namespace MercadoBitcoin.Client.Extensions
     public static class MercadoBitcoinClientExtensions
     {
         /// <summary>
-        /// Cria uma instância do MercadoBitcoinClient com retry policies configuradas
+        /// Cria uma instância do MercadoBitcoinClient com retry policies configuradas e HTTP/2 habilitado
         /// </summary>
-
         /// <param name="retryConfig">Configuração personalizada de retry (opcional)</param>
-        /// <param name="webSocketConfig">Configuração personalizada do WebSocket (opcional)</param>
-        /// <returns>Instância configurada do MercadoBitcoinClient</returns>
+        /// <returns>Instância configurada do MercadoBitcoinClient com HTTP/2</returns>
         public static MercadoBitcoinClient CreateWithRetryPolicies(
-            RetryPolicyConfig? retryConfig = null,
-            IWebSocketConfiguration? webSocketConfig = null)
+            RetryPolicyConfig? retryConfig = null)
         {
             // Usar configuração padrão se não fornecida
             retryConfig ??= new RetryPolicyConfig();
 
-            // Criar AuthHttpClient que já inclui RetryHandler
+            // Criar AuthHttpClient que já inclui RetryHandler com HTTP/2
             var httpClient = AuthHttpClient.Create<MercadoBitcoinClient>();
 
-            return new MercadoBitcoinClient(httpClient, webSocketConfig);
+            return new MercadoBitcoinClient(httpClient);
         }
 
         /// <summary>
-        /// Cria uma configuração de retry otimizada para trading (mais agressiva)
+        /// Cria uma configuração de retry otimizada para trading (mais agressiva) com HTTP/2
         /// </summary>
         /// <returns>Configuração de retry para operações de trading</returns>
         public static RetryPolicyConfig CreateTradingRetryConfig()
@@ -45,6 +41,36 @@ namespace MercadoBitcoin.Client.Extensions
                 RetryOnRateLimit = true,
                 RetryOnServerErrors = true
             };
+        }
+
+        /// <summary>
+        /// Cria uma instância do MercadoBitcoinClient otimizada para HTTP/2
+        /// </summary>
+        /// <param name="retryConfig">Configuração personalizada de retry (opcional)</param>
+        /// <param name="httpConfig">Configuração HTTP personalizada (opcional)</param>
+        /// <returns>Instância configurada do MercadoBitcoinClient com HTTP/2 otimizado</returns>
+        public static MercadoBitcoinClient CreateWithHttp2(
+            RetryPolicyConfig? retryConfig = null,
+            HttpConfiguration? httpConfig = null)
+        {
+            // Usar configuração padrão otimizada para HTTP/2
+            retryConfig ??= new RetryPolicyConfig
+            {
+                MaxRetryAttempts = 3,
+                BaseDelaySeconds = 0.5, // HTTP/2 permite retry mais rápido
+                BackoffMultiplier = 1.5,
+                MaxDelaySeconds = 15.0,
+                RetryOnTimeout = true,
+                RetryOnRateLimit = true,
+                RetryOnServerErrors = true
+            };
+            
+            httpConfig ??= HttpConfiguration.CreateHttp2Default();
+
+            // Criar AuthHttpClient com configurações HTTP/2
+            var httpClient = AuthHttpClient.Create<MercadoBitcoinClient>(retryConfig, httpConfig);
+
+            return new MercadoBitcoinClient(httpClient);
         }
 
         /// <summary>
@@ -66,63 +92,31 @@ namespace MercadoBitcoin.Client.Extensions
         }
 
         /// <summary>
-        /// Cria uma instância do MercadoBitcoinClient com configuração WebSocket otimizada para trading
+        /// Cria uma instância do MercadoBitcoinClient otimizada para trading com HTTP/2
         /// </summary>
         /// <param name="retryConfig">Configuração personalizada de retry (opcional)</param>
         /// <returns>Instância configurada do MercadoBitcoinClient</returns>
         public static MercadoBitcoinClient CreateForTrading(RetryPolicyConfig? retryConfig = null)
         {
             var tradingRetryConfig = retryConfig ?? CreateTradingRetryConfig();
-            var webSocketConfig = WebSocketConfiguration.CreateProduction();
+            var httpConfig = HttpConfiguration.CreateTradingOptimized();
             
-            // Configurações otimizadas para trading
-            webSocketConfig.EnableAutoReconnect = true;
-            webSocketConfig.ReconnectIntervalSeconds = 1;
-            webSocketConfig.MaxReconnectAttempts = 10;
-            
-            return CreateWithRetryPolicies(tradingRetryConfig, webSocketConfig);
+            return CreateWithHttp2(tradingRetryConfig, httpConfig);
         }
 
         /// <summary>
-        /// Cria uma instância do MercadoBitcoinClient com configuração WebSocket otimizada para desenvolvimento
+        /// Cria uma instância do MercadoBitcoinClient otimizada para desenvolvimento com HTTP/2
         /// </summary>
         /// <param name="retryConfig">Configuração personalizada de retry (opcional)</param>
         /// <returns>Instância configurada do MercadoBitcoinClient</returns>
         public static MercadoBitcoinClient CreateForDevelopment(RetryPolicyConfig? retryConfig = null)
         {
             var publicRetryConfig = retryConfig ?? CreatePublicDataRetryConfig();
-            var webSocketConfig = WebSocketConfiguration.CreateDevelopment();
+            var httpConfig = HttpConfiguration.CreateHttp2Default();
             
-            return CreateWithRetryPolicies(publicRetryConfig, webSocketConfig);
+            return CreateWithHttp2(publicRetryConfig, httpConfig);
         }
 
-        /// <summary>
-        /// Cria uma configuração WebSocket personalizada
-        /// </summary>
-        /// <param name="url">URL do WebSocket (opcional, usa padrão se não fornecida)</param>
-        /// <param name="enableAutoReconnect">Habilitar reconexão automática</param>
-        /// <param name="reconnectInterval">Intervalo entre tentativas de reconexão</param>
-        /// <param name="maxReconnectAttempts">Número máximo de tentativas de reconexão</param>
-        /// <param name="enableDetailedLogging">Habilitar logging detalhado</param>
-        /// <returns>Configuração WebSocket personalizada</returns>
-        public static IWebSocketConfiguration CreateWebSocketConfig(
-            string? url = null,
-            bool enableAutoReconnect = true,
-            TimeSpan? reconnectInterval = null,
-            int maxReconnectAttempts = 5,
-            bool enableDetailedLogging = false)
-        {
-            var config = WebSocketConfiguration.CreateProduction();
-            
-            if (!string.IsNullOrEmpty(url))
-                config.Url = url;
-                
-            config.EnableAutoReconnect = enableAutoReconnect;
-            config.ReconnectIntervalSeconds = (int)(reconnectInterval ?? TimeSpan.FromSeconds(5)).TotalSeconds;
-            config.MaxReconnectAttempts = maxReconnectAttempts;
-            config.EnableVerboseLogging = enableDetailedLogging;
-            
-            return config;
-        }
+
     }
 }
