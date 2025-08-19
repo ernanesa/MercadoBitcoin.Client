@@ -8,11 +8,11 @@
     
     <!-- NuGet Package Metadata -->
     <PackageId>MercadoBitcoin.Client</PackageId>
-    <Version>1.0.1</Version>
+    <Version>1.0.2</Version>
     <Authors>Ernane Sa</Authors>
     <Company>Open Source</Company>
-    <Description>A complete .NET 9 client library for MercadoBitcoin API v4. Provides access to all public and private endpoints including trading, wallet operations, and account management.</Description>
-    <PackageTags>mercadobitcoin;bitcoin;cryptocurrency;trading;api;client;dotnet</PackageTags>
+    <Description>A complete .NET 9 client library for MercadoBitcoin API v4 with native HTTP/2 support. Provides access to all public and private endpoints including trading, wallet operations, and account management. Features HTTP/2 by default for maximum performance, retry policies with Polly, and clean architecture.</Description>
+    <PackageTags>mercadobitcoin;bitcoin;cryptocurrency;trading;api;client;dotnet;http2;performance;polly</PackageTags>
     <PackageProjectUrl>https://github.com/ernanesa/MercadoBitcoin.Client</PackageProjectUrl>
     <RepositoryUrl>https://github.com/ernanesa/MercadoBitcoin.Client</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
