@@ -11,7 +11,6 @@ namespace MercadoBitcoin.Client
     public class AuthHttpClient : DelegatingHandler
     {
         private string? _accessToken;
-        private readonly HttpClient _httpClient;
         private readonly HttpConfiguration _httpConfig;
         
         private static readonly JsonSerializerOptions JsonSerializerOptions = MercadoBitcoinJsonSerializerContext.Default.Options;
@@ -23,56 +22,25 @@ namespace MercadoBitcoin.Client
             // Create the retry handler with HTTP configuration
             var retryHandler = new RetryHandler(retryConfig, _httpConfig);
             InnerHandler = retryHandler;
-
-            // Create HttpClient with this handler
-            _httpClient = new HttpClient(this, false);
-            
-            // Aplicar configurações HTTP do HttpConfiguration
-            _httpClient.DefaultRequestVersion = _httpConfig.HttpVersion;
-            _httpClient.DefaultVersionPolicy = _httpConfig.VersionPolicy;
-            _httpClient.Timeout = TimeSpan.FromSeconds(_httpConfig.TimeoutSeconds);
         }
 
-        // Método estático para criar com configurações padrão
-        public static AuthHttpClient Create<T>()
+        /// <summary>
+        /// Construtor para uso com IHttpClientFactory (DI)
+        /// </summary>
+        public AuthHttpClient() : this(null, null)
         {
-            return new AuthHttpClient();
-        }
-        
-        // Método estático para criar com configurações personalizadas
-        public static AuthHttpClient Create<T>(RetryPolicyConfig? retryConfig, HttpConfiguration? httpConfig = null)
-        {
-            return new AuthHttpClient(retryConfig, httpConfig);
-        }
-        
-        // Método estático para criar com HTTP/2 otimizado
-        public static AuthHttpClient CreateWithHttp2<T>()
-        {
-            return new AuthHttpClient(null, HttpConfiguration.CreateHttp2Default());
-        }
-        
-        // Método estático para criar otimizado para trading
-        public static AuthHttpClient CreateForTrading<T>()
-        {
-            return new AuthHttpClient(null, HttpConfiguration.CreateTradingOptimized());
         }
 
-        // Classe interna para converter ILogger<T> em ILogger
-
-        public HttpClient HttpClient => _httpClient;
-
-        public void SetAccessToken(string accessToken)
+        /// <summary>
+        /// Define o token de acesso para autenticação
+        /// </summary>
+        /// <param name="accessToken">Token de acesso</param>
+        public void SetAccessToken(string? accessToken)
         {
             _accessToken = accessToken;
-            if (string.IsNullOrEmpty(_accessToken))
-            {
-                _httpClient.DefaultRequestHeaders.Authorization = null;
-            }
-            else
-            {
-                _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _accessToken);
-            }
         }
+
+
 
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
@@ -113,10 +81,7 @@ namespace MercadoBitcoin.Client
 
         protected override void Dispose(bool disposing)
         {
-            if (disposing)
-            {
-                _httpClient?.Dispose();
-            }
+            // HttpClient é gerenciado pelo IHttpClientFactory, não precisamos fazer dispose
             base.Dispose(disposing);
         }
     }

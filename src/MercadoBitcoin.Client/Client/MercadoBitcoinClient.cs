@@ -1,4 +1,5 @@
 using MercadoBitcoin.Client.Generated;
+using MercadoBitcoin.Client.Http;
 
 using System;
 using System.Net.Http;
@@ -14,27 +15,54 @@ namespace MercadoBitcoin.Client
     public partial class MercadoBitcoinClient : IDisposable
     {
         private readonly MercadoBitcoin.Client.Generated.Client _generatedClient;
-        private readonly AuthHttpClient _httpPipeline;
+        private readonly AuthHttpClient _authHandler;
         private readonly MercadoBitcoin.Client.Generated.OpenClient _openClient;
+        private readonly HttpClient _httpClient;
 
-
-
-        public MercadoBitcoinClient(AuthHttpClient? httpClient = null)
+        /// <summary>
+        /// Construtor para uso com IHttpClientFactory (DI)
+        /// </summary>
+        /// <param name="httpClient">HttpClient gerenciado pelo IHttpClientFactory</param>
+        /// <param name="authHandler">Handler de autenticação</param>
+        public MercadoBitcoinClient(HttpClient httpClient, AuthHttpClient authHandler)
         {
-            _httpPipeline = httpClient ?? AuthHttpClient.Create<MercadoBitcoinClient>();
+            _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
+            _authHandler = authHandler ?? throw new ArgumentNullException(nameof(authHandler));
 
-            // The generated client will be initialized after we get the access token.
-            _generatedClient = new MercadoBitcoin.Client.Generated.Client(_httpPipeline.HttpClient) { BaseUrl = "https://api.mercadobitcoin.net/api/v4" };
+            // The generated client will be initialized with the injected HttpClient
+            _generatedClient = new MercadoBitcoin.Client.Generated.Client(_httpClient) { BaseUrl = "https://api.mercadobitcoin.net/api/v4" };
             // OpenAPI generated another client (OpenClient) which contains some operations like cancel_all_open_orders
-            _openClient = new MercadoBitcoin.Client.Generated.OpenClient(_httpPipeline.HttpClient) { BaseUrl = "https://api.mercadobitcoin.net/api/v4" };
-
+            _openClient = new MercadoBitcoin.Client.Generated.OpenClient(_httpClient) { BaseUrl = "https://api.mercadobitcoin.net/api/v4" };
         }
 
         /// <summary>
-        /// Construtor para compatibilidade com versões anteriores
+        /// Construtor para compatibilidade com versões anteriores (não recomendado para aplicações ASP.NET Core)
         /// </summary>
-        public MercadoBitcoinClient() : this(null)
+        [Obsolete("Use o construtor com HttpClient e AuthHttpClient para melhor integração com IHttpClientFactory")]
+        public MercadoBitcoinClient() : this(CreateLegacyHttpClient(), new AuthHttpClient())
         {
+        }
+
+        /// <summary>
+        /// Construtor para compatibilidade com versões anteriores (não recomendado para aplicações ASP.NET Core)
+        /// </summary>
+        [Obsolete("Use o construtor com HttpClient e AuthHttpClient para melhor integração com IHttpClientFactory")]
+        public MercadoBitcoinClient(AuthHttpClient? authHandler) : this(CreateLegacyHttpClient(), authHandler ?? new AuthHttpClient())
+        {
+        }
+
+        private static HttpClient CreateLegacyHttpClient()
+        {
+            var handler = new AuthHttpClient();
+            var httpClient = new HttpClient(handler, false);
+            var httpConfig = HttpConfiguration.CreateHttp2Default();
+            
+            httpClient.DefaultRequestVersion = httpConfig.HttpVersion;
+            httpClient.DefaultVersionPolicy = httpConfig.VersionPolicy;
+            httpClient.Timeout = TimeSpan.FromSeconds(httpConfig.TimeoutSeconds);
+            httpClient.BaseAddress = new Uri("https://api.mercadobitcoin.net/api/v4");
+            
+            return httpClient;
         }
 
         public async Task AuthenticateAsync(string login, string password)
@@ -50,7 +78,7 @@ namespace MercadoBitcoin.Client
             try
             {
                 var response = await _generatedClient.AuthorizeAsync(authorizeRequest);
-                _httpPipeline.SetAccessToken(response.Access_token);
+                _authHandler.SetAccessToken(response.Access_token);
 
             }
             catch (Exception)
@@ -105,9 +133,8 @@ namespace MercadoBitcoin.Client
 
         public void Dispose()
         {
-
-            
-            _httpPipeline?.Dispose();
+            // HttpClient é gerenciado pelo IHttpClientFactory, não fazemos dispose
+            // AuthHttpClient também não precisa de dispose explícito quando usado com DI
             GC.SuppressFinalize(this);
         }
     }
