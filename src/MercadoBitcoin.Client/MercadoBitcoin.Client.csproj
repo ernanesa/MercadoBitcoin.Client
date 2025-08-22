@@ -12,8 +12,8 @@
     <Version>2.0.0</Version>
     <Authors>Ernane Sa</Authors>
     <Company>Open Source</Company>
-    <Description>A complete .NET 9 client library for MercadoBitcoin API v4 with native HTTP/2 support. Provides access to all public and private endpoints including trading, wallet operations, and account management. Features HTTP/2 by default for maximum performance, retry policies with Polly, and clean architecture.</Description>
-    <PackageTags>mercadobitcoin;bitcoin;cryptocurrency;trading;api;client;dotnet;http2;performance;polly</PackageTags>
+    <Description>A complete .NET 9 client library for MercadoBitcoin API v4 with native HTTP/2 support and System.Text.Json. Provides access to all public and private endpoints including trading, wallet operations, and account management. Features HTTP/2 by default for maximum performance, retry policies with Polly, comprehensive test suite (59 tests), and clean architecture with AOT compatibility.</Description>
+    <PackageTags>mercadobitcoin;bitcoin;cryptocurrency;trading;api;client;dotnet;http2;performance;polly;systemtextjson;aot;sourcegenerators;net9;csharp13</PackageTags>
     <PackageProjectUrl>https://github.com/ernanesa/MercadoBitcoin.Client</PackageProjectUrl>
     <RepositoryUrl>https://github.com/ernanesa/MercadoBitcoin.Client</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
@@ -23,6 +23,17 @@
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <IsAotCompatible>true</IsAotCompatible>
+    <PackageReleaseNotes>v2.0.0 - BREAKING CHANGES:
+• Migrated from Newtonsoft.Json to System.Text.Json with Source Generators
+• Improved performance up to 2.1x faster serialization
+• Added AOT (Ahead-of-Time) compilation support
+• Comprehensive test suite with 59 tests covering all endpoints
+• Enhanced error handling and authentication management
+• Updated to .NET 9 and C# 13
+• HTTP/2 native support maintained
+• Breaking: JSON serialization behavior may differ from v1.x
+• Breaking: Some property names now use snake_case in JSON
+• Migration guide available in README</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>
