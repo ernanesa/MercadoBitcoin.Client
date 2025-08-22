@@ -9,7 +9,7 @@
     
     <!-- NuGet Package Metadata -->
     <PackageId>MercadoBitcoin.Client</PackageId>
-    <Version>2.0.0</Version>
+    <Version>2.0.1</Version>
     <Authors>Ernane Sa</Authors>
     <Company>Open Source</Company>
     <Description>A complete .NET 9 client library for MercadoBitcoin API v4 with native HTTP/2 support and System.Text.Json. Provides access to all public and private endpoints including trading, wallet operations, and account management. Features HTTP/2 by default for maximum performance, retry policies with Polly, comprehensive test suite (59 tests), and clean architecture with AOT compatibility.</Description>
@@ -25,17 +25,39 @@
     <IsAotCompatible>true</IsAotCompatible>
     <!-- Suppress known safe IL2026 warnings from System.Text.Json source generators -->
     <NoWarn>$(NoWarn);IL2026</NoWarn>
-    <PackageReleaseNotes>v2.0.0 - BREAKING CHANGES:
+    <PackageReleaseNotes>v2.0.1 - PATCH RELEASE:
+• Fixed AuthHttpClient error handling and validation
+• Improved test coverage with comprehensive integration tests
+• Enhanced performance metrics and memory usage optimization
+• Updated documentation with complete integration test guide
+• All 59 tests passing with robust error handling
+
+v2.0.0 - MAJOR RELEASE WITH BREAKING CHANGES:
+⚠️ BREAKING CHANGES - Migration Required:
 • Migrated from Newtonsoft.Json to System.Text.Json with Source Generators
-• Improved performance up to 2.1x faster serialization
-• Added AOT (Ahead-of-Time) compilation support
-• Comprehensive test suite with 59 tests covering all endpoints
-• Enhanced error handling and authentication management
-• Updated to .NET 9 and C# 13
-• HTTP/2 native support maintained
-• Breaking: JSON serialization behavior may differ from v1.x
-• Breaking: Some property names now use snake_case in JSON
-• Migration guide available in README</PackageReleaseNotes>
+• JSON property names now use snake_case format (e.g., 'user_id' instead of 'userId')
+• Serialization behavior changes may affect custom JSON handling
+• Removed legacy AccessToken type - use string tokens directly
+• Updated HttpConfiguration namespace and API surface
+• AuthHttpClient.Create method signature changes
+
+✨ New Features:
+• Performance improved up to 2.1x faster serialization/deserialization
+• Full AOT (Ahead-of-Time) compilation support for native deployments
+• .NET 9 and C# 13 support with latest language features
+• HTTP/2 native support maintained for optimal performance
+• Comprehensive test suite with 59 integration tests
+• Enhanced error handling with detailed API error responses
+• Source Generators for compile-time JSON serialization
+• Memory-efficient operations with reduced allocations
+
+📖 Migration Guide:
+• Update JSON property handling to snake_case format
+• Replace Newtonsoft.Json dependencies with System.Text.Json
+• Update authentication token handling (remove AccessToken wrapper)
+• Review custom serialization logic for compatibility
+• Test thoroughly with new JSON serialization behavior
+• See README.md for detailed migration instructions</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>
