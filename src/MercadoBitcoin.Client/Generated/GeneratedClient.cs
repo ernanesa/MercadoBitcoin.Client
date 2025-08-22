@@ -32,8 +32,8 @@ namespace MercadoBitcoin.Client.Generated
         #pragma warning restore 8618
 
         private System.Net.Http.HttpClient _httpClient;
-        private static System.Lazy<Newtonsoft.Json.JsonSerializerSettings> _settings = new System.Lazy<Newtonsoft.Json.JsonSerializerSettings>(CreateSerializerSettings, true);
-        private Newtonsoft.Json.JsonSerializerSettings _instanceSettings;
+        private static System.Lazy<System.Text.Json.JsonSerializerOptions> _settings = new System.Lazy<System.Text.Json.JsonSerializerOptions>(CreateSerializerSettings, true);
+        private System.Text.Json.JsonSerializerOptions _instanceSettings;
 
     #pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         public Client(System.Net.Http.HttpClient httpClient)
@@ -44,9 +44,9 @@ namespace MercadoBitcoin.Client.Generated
             Initialize();
         }
 
-        private static Newtonsoft.Json.JsonSerializerSettings CreateSerializerSettings()
+        private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new Newtonsoft.Json.JsonSerializerSettings();
+            var settings = new System.Text.Json.JsonSerializerOptions();
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -62,9 +62,9 @@ namespace MercadoBitcoin.Client.Generated
             }
         }
 
-        protected Newtonsoft.Json.JsonSerializerSettings JsonSerializerSettings { get { return _instanceSettings ?? _settings.Value; } }
+        protected System.Text.Json.JsonSerializerOptions JsonSerializerSettings { get { return _instanceSettings ?? _settings.Value; } }
 
-        static partial void UpdateJsonSerializerSettings(Newtonsoft.Json.JsonSerializerSettings settings);
+        static partial void UpdateJsonSerializerSettings(System.Text.Json.JsonSerializerOptions settings);
 
         partial void Initialize();
 
@@ -743,8 +743,8 @@ namespace MercadoBitcoin.Client.Generated
             {
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
-                    var json_ = Newtonsoft.Json.JsonConvert.SerializeObject(payload, JsonSerializerSettings);
-                    var content_ = new System.Net.Http.StringContent(json_);
+                    var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(payload, JsonSerializerSettings);
+                    var content_ = new System.Net.Http.ByteArrayContent(json_);
                     content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json");
                     request_.Content = content_;
                     request_.Method = new System.Net.Http.HttpMethod("POST");
@@ -2030,8 +2030,8 @@ namespace MercadoBitcoin.Client.Generated
             {
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
-                    var json_ = Newtonsoft.Json.JsonConvert.SerializeObject(payload, JsonSerializerSettings);
-                    var content_ = new System.Net.Http.StringContent(json_);
+                    var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(payload, JsonSerializerSettings);
+                    var content_ = new System.Net.Http.ByteArrayContent(json_);
                     content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json");
                     request_.Content = content_;
                     request_.Method = new System.Net.Http.HttpMethod("POST");
@@ -2763,8 +2763,8 @@ namespace MercadoBitcoin.Client.Generated
             {
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
-                    var json_ = Newtonsoft.Json.JsonConvert.SerializeObject(payload, JsonSerializerSettings);
-                    var content_ = new System.Net.Http.StringContent(json_);
+                    var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(payload, JsonSerializerSettings);
+                    var content_ = new System.Net.Http.ByteArrayContent(json_);
                     content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json");
                     request_.Content = content_;
                     request_.Method = new System.Net.Http.HttpMethod("POST");
@@ -3320,10 +3320,10 @@ namespace MercadoBitcoin.Client.Generated
                 var responseText = await ReadAsStringAsync(response.Content, cancellationToken).ConfigureAwait(false);
                 try
                 {
-                    var typedBody = Newtonsoft.Json.JsonConvert.DeserializeObject<T>(responseText, JsonSerializerSettings);
+                    var typedBody = System.Text.Json.JsonSerializer.Deserialize<T>(responseText, JsonSerializerSettings);
                     return new ObjectResponseResult<T>(typedBody, responseText);
                 }
-                catch (Newtonsoft.Json.JsonException exception)
+                catch (System.Text.Json.JsonException exception)
                 {
                     var message = "Could not deserialize the response body string as " + typeof(T).FullName + ".";
                     throw new ApiException(message, (int)response.StatusCode, responseText, headers, exception);
@@ -3334,15 +3334,12 @@ namespace MercadoBitcoin.Client.Generated
                 try
                 {
                     using (var responseStream = await ReadAsStreamAsync(response.Content, cancellationToken).ConfigureAwait(false))
-                    using (var streamReader = new System.IO.StreamReader(responseStream))
-                    using (var jsonTextReader = new Newtonsoft.Json.JsonTextReader(streamReader))
                     {
-                        var serializer = Newtonsoft.Json.JsonSerializer.Create(JsonSerializerSettings);
-                        var typedBody = serializer.Deserialize<T>(jsonTextReader);
+                        var typedBody = await System.Text.Json.JsonSerializer.DeserializeAsync<T>(responseStream, JsonSerializerSettings, cancellationToken).ConfigureAwait(false);
                         return new ObjectResponseResult<T>(typedBody, string.Empty);
                     }
                 }
-                catch (Newtonsoft.Json.JsonException exception)
+                catch (System.Text.Json.JsonException exception)
                 {
                     var message = "Could not deserialize the response body stream as " + typeof(T).FullName + ".";
                     throw new ApiException(message, (int)response.StatusCode, string.Empty, headers, exception);
@@ -3413,8 +3410,8 @@ namespace MercadoBitcoin.Client.Generated
         #pragma warning restore 8618
 
         private System.Net.Http.HttpClient _httpClient;
-        private static System.Lazy<Newtonsoft.Json.JsonSerializerSettings> _settings = new System.Lazy<Newtonsoft.Json.JsonSerializerSettings>(CreateSerializerSettings, true);
-        private Newtonsoft.Json.JsonSerializerSettings _instanceSettings;
+        private static System.Lazy<System.Text.Json.JsonSerializerOptions> _settings = new System.Lazy<System.Text.Json.JsonSerializerOptions>(CreateSerializerSettings, true);
+        private System.Text.Json.JsonSerializerOptions _instanceSettings;
 
     #pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         public OpenClient(System.Net.Http.HttpClient httpClient)
@@ -3425,9 +3422,9 @@ namespace MercadoBitcoin.Client.Generated
             Initialize();
         }
 
-        private static Newtonsoft.Json.JsonSerializerSettings CreateSerializerSettings()
+        private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new Newtonsoft.Json.JsonSerializerSettings();
+            var settings = new System.Text.Json.JsonSerializerOptions();
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -3443,9 +3440,9 @@ namespace MercadoBitcoin.Client.Generated
             }
         }
 
-        protected Newtonsoft.Json.JsonSerializerSettings JsonSerializerSettings { get { return _instanceSettings ?? _settings.Value; } }
+        protected System.Text.Json.JsonSerializerOptions JsonSerializerSettings { get { return _instanceSettings ?? _settings.Value; } }
 
-        static partial void UpdateJsonSerializerSettings(Newtonsoft.Json.JsonSerializerSettings settings);
+        static partial void UpdateJsonSerializerSettings(System.Text.Json.JsonSerializerOptions settings);
 
         partial void Initialize();
 
@@ -3619,10 +3616,10 @@ namespace MercadoBitcoin.Client.Generated
                 var responseText = await ReadAsStringAsync(response.Content, cancellationToken).ConfigureAwait(false);
                 try
                 {
-                    var typedBody = Newtonsoft.Json.JsonConvert.DeserializeObject<T>(responseText, JsonSerializerSettings);
+                    var typedBody = System.Text.Json.JsonSerializer.Deserialize<T>(responseText, JsonSerializerSettings);
                     return new ObjectResponseResult<T>(typedBody, responseText);
                 }
-                catch (Newtonsoft.Json.JsonException exception)
+                catch (System.Text.Json.JsonException exception)
                 {
                     var message = "Could not deserialize the response body string as " + typeof(T).FullName + ".";
                     throw new ApiException(message, (int)response.StatusCode, responseText, headers, exception);
@@ -3633,15 +3630,12 @@ namespace MercadoBitcoin.Client.Generated
                 try
                 {
                     using (var responseStream = await ReadAsStreamAsync(response.Content, cancellationToken).ConfigureAwait(false))
-                    using (var streamReader = new System.IO.StreamReader(responseStream))
-                    using (var jsonTextReader = new Newtonsoft.Json.JsonTextReader(streamReader))
                     {
-                        var serializer = Newtonsoft.Json.JsonSerializer.Create(JsonSerializerSettings);
-                        var typedBody = serializer.Deserialize<T>(jsonTextReader);
+                        var typedBody = await System.Text.Json.JsonSerializer.DeserializeAsync<T>(responseStream, JsonSerializerSettings, cancellationToken).ConfigureAwait(false);
                         return new ObjectResponseResult<T>(typedBody, string.Empty);
                     }
                 }
-                catch (Newtonsoft.Json.JsonException exception)
+                catch (System.Text.Json.JsonException exception)
                 {
                     var message = "Could not deserialize the response body stream as " + typeof(T).FullName + ".";
                     throw new ApiException(message, (int)response.StatusCode, string.Empty, headers, exception);
@@ -3711,31 +3705,31 @@ namespace MercadoBitcoin.Client.Generated
         /// <summary>
         /// Currency of the account.
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("currency", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("currency")]
         public string Currency { get; set; }
 
         /// <summary>
         /// CurrencySign of the account.
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("currencySign", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("currencySign")]
         public string CurrencySign { get; set; }
 
         /// <summary>
         /// Account identifier (accountId)
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("id", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("id")]
         public string Id { get; set; }
 
         /// <summary>
         /// Name of the account.
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("name", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("name")]
         public string Name { get; set; }
 
         /// <summary>
         /// Account type.
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("type", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("type")]
         public string Type { get; set; }
 
     }
@@ -3747,14 +3741,14 @@ namespace MercadoBitcoin.Client.Generated
         /// <summary>
         /// Login of user
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("login", Required = Newtonsoft.Json.Required.Always)]
+        [System.Text.Json.Serialization.JsonPropertyName("login")]
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         public string Login { get; set; }
 
         /// <summary>
         /// Password of user
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("password", Required = Newtonsoft.Json.Required.Always)]
+        [System.Text.Json.Serialization.JsonPropertyName("password")]
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         public string Password { get; set; }
 
@@ -3767,13 +3761,13 @@ namespace MercadoBitcoin.Client.Generated
         /// <summary>
         /// Access token acts as a session ID that the application uses for making requests. This token should be protected as if it were user credentials.
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("access_token", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("access_token")]
         public string Access_token { get; set; }
 
         /// <summary>
         /// The time when the token is expired is represented as the number of seconds since the Unix epoch (00:00:00 UTC on 1 January 1970).
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("expiration", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("expiration")]
         public int? Expiration { get; set; }
 
     }
@@ -3785,19 +3779,19 @@ namespace MercadoBitcoin.Client.Generated
         /// <summary>
         /// Crypto symbol
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("crypto", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("crypto")]
         public string Crypto { get; set; }
 
         /// <summary>
         /// Fiat symbol
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("fiat", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("fiat")]
         public string Fiat { get; set; }
 
         /// <summary>
         /// Unique order identifier
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("order_id", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("order_id")]
         public string Order_id { get; set; }
 
         /// <summary>
@@ -3809,7 +3803,7 @@ namespace MercadoBitcoin.Client.Generated
         /// <br/>stoplimit | stoplimit order
         /// <br/>post-only | post-only order
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("order_type", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("order_type")]
         public string Order_type { get; set; }
 
         /// <summary>
@@ -3820,13 +3814,13 @@ namespace MercadoBitcoin.Client.Generated
         /// <br/>BID | purchase (buy) order
         /// <br/>ASK | sales (sell) order
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("side", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("side")]
         public string Side { get; set; }
 
         /// <summary>
         /// Status of request (not order status)
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("status", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("status")]
         public string Status { get; set; }
 
     }
@@ -3838,7 +3832,7 @@ namespace MercadoBitcoin.Client.Generated
         /// <summary>
         /// It's the tax tier of account
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("tier", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("tier")]
         public string Tier { get; set; }
 
     }
@@ -3850,25 +3844,25 @@ namespace MercadoBitcoin.Client.Generated
         /// <summary>
         /// Base of the market
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("base", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("base")]
         public string Base { get; set; }
 
         /// <summary>
         /// Quote of the market
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("quote", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("quote")]
         public string Quote { get; set; }
 
         /// <summary>
         /// Your maker fee of the market
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("maker_fee", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("maker_fee")]
         public string Maker_fee { get; set; }
 
         /// <summary>
         /// Your taker fee of the market
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("taker_fee", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("taker_fee")]
         public string Taker_fee { get; set; }
 
     }
@@ -3880,25 +3874,25 @@ namespace MercadoBitcoin.Client.Generated
         /// <summary>
         /// Available amount
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("available", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("available")]
         public string Available { get; set; }
 
         /// <summary>
         /// On hold balance related to open orders
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("on_hold", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("on_hold")]
         public string On_hold { get; set; }
 
         /// <summary>
         /// Symbol.
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("symbol", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("symbol")]
         public string Symbol { get; set; }
 
         /// <summary>
         /// Total balance (available + on_hold)
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("total", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("total")]
         public string Total { get; set; }
 
     }
@@ -3910,49 +3904,49 @@ namespace MercadoBitcoin.Client.Generated
         /// <summary>
         /// Executed at timestamp (UTC)
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("executed_at", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("executed_at")]
         public double? Executed_at { get; set; }
 
         /// <summary>
         /// Transaction charged fee (%)
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("fee_rate", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("fee_rate")]
         public string Fee_rate { get; set; }
 
         /// <summary>
         /// Id of transaction
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("id", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("id")]
         public string Id { get; set; }
 
         /// <summary>
         /// Instrument symbol in the form BASE-QUOTE(e.g. BTC-BRL)
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("instrument", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("instrument")]
         public string Instrument { get; set; }
 
         /// <summary>
         /// Executed price
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("price", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("price")]
         public double? Price { get; set; }
 
         /// <summary>
         /// Executed quantity (volume)
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("qty", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("qty")]
         public string Qty { get; set; }
 
         /// <summary>
         /// Executed side
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("side", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("side")]
         public string Side { get; set; }
 
         /// <summary>
         /// Type of execution for the operation. Can be maker or taker
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("liquidity", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("liquidity")]
         public string Liquidity { get; set; }
 
     }
@@ -3964,13 +3958,13 @@ namespace MercadoBitcoin.Client.Generated
         /// <summary>
         /// Fixed fiat value charged in every cashout.
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("fixed_amount", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("fixed_amount")]
         public string Fixed_amount { get; set; }
 
         /// <summary>
         /// Percentual of the total cashout value charged in the withdraw.
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("percentual", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("percentual")]
         public string Percentual { get; set; }
 
     }
@@ -3982,7 +3976,7 @@ namespace MercadoBitcoin.Client.Generated
         /// <summary>
         /// Items. List of orders
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("items", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("items")]
         public System.Collections.Generic.ICollection<Orders> Items { get; set; }
 
     }
@@ -3995,20 +3989,20 @@ namespace MercadoBitcoin.Client.Generated
         /// Array of Array of numbers (OrderbookItem)
         /// <br/>Array of arrays with two string elements - price and volume. It is sorted by price in asc order.
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("asks", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("asks")]
         public System.Collections.Generic.ICollection<System.Collections.Generic.ICollection<string>> Asks { get; set; }
 
         /// <summary>
         /// Array of Array of numbers (OrderbookItem)
         /// <br/>Array of arrays with two string elements - price and volume. It is sorted by price in asc order.
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("bids", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("bids")]
         public System.Collections.Generic.ICollection<System.Collections.Generic.ICollection<string>> Bids { get; set; }
 
         /// <summary>
         /// Timestamp when the orderbook was generated
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("timestamp", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("timestamp")]
         public double? Timestamp { get; set; }
 
     }
@@ -4020,67 +4014,67 @@ namespace MercadoBitcoin.Client.Generated
         /// <summary>
         /// Simple average price. For stoplimit orders with no limit order triggered the displayed value will be `0.00000000`.
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("avgPrice", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("avgPrice")]
         public double? AvgPrice { get; set; }
 
         /// <summary>
         /// Cost used when placing the order (not considering fee application)
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("cost", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("cost")]
         public double? Cost { get; set; }
 
         /// <summary>
         /// Date of order creation timestamp (UTC)
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("created_at", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("created_at")]
         public double? Created_at { get; set; }
 
         /// <summary>
         /// Executed order transactions
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("executions", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("executions")]
         public System.Collections.Generic.ICollection<Execution> Executions { get; set; }
 
         /// <summary>
         /// External Identifier setted by client.
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("externalId", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("externalId")]
         public string ExternalId { get; set; }
 
         /// <summary>
         /// Charged volume by fee application
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("fee", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("fee")]
         public string Fee { get; set; }
 
         /// <summary>
         /// Filled quantity. For stoplimit orders with no limit order triggered the displayed value will be `0.00000000`.
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("filledQty", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("filledQty")]
         public string FilledQty { get; set; }
 
         /// <summary>
         /// Unique order identifier.
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("id", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("id")]
         public string Id { get; set; }
 
         /// <summary>
         /// Instrument symbol in the form BASE-QUOTE(e.g. BTC-BRL)
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("instrument", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("instrument")]
         public string Instrument { get; set; }
 
         /// <summary>
         /// Limit price used when placing the limit order (not considering fee application)
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("limitPrice", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("limitPrice")]
         public double? LimitPrice { get; set; }
 
         /// <summary>
         /// Volume used when placing the order (not considering fee application)
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("qty", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("qty")]
         public string Qty { get; set; }
 
         /// <summary>
@@ -4091,7 +4085,7 @@ namespace MercadoBitcoin.Client.Generated
         /// <br/>buy | purchase order
         /// <br/>sell | sales order
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("side", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("side")]
         public string Side { get; set; }
 
         /// <summary>
@@ -4104,19 +4098,19 @@ namespace MercadoBitcoin.Client.Generated
         /// <br/>cancelled | order is cancelled
         /// <br/>filled | order is fully executed
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("status", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("status")]
         public string Status { get; set; }
 
         /// <summary>
         /// Stop price trigger used when placing the stop limit order
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("stopPrice", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("stopPrice")]
         public double? StopPrice { get; set; }
 
         /// <summary>
         /// Limit order id created when stop price is achieved.
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("triggerOrderId", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("triggerOrderId")]
         public string TriggerOrderId { get; set; }
 
         /// <summary>
@@ -4129,13 +4123,13 @@ namespace MercadoBitcoin.Client.Generated
         /// <br/>stoplimit | stoplimit order
         /// <br/>post-only | post-only order
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("type", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("type")]
         public string Type { get; set; }
 
         /// <summary>
         /// Date of last order update timestamp (UTC)
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("updated_at", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("updated_at")]
         public double? Updated_at { get; set; }
 
     }
@@ -4147,37 +4141,37 @@ namespace MercadoBitcoin.Client.Generated
         /// <summary>
         /// Date of order creation timestamp (UTC)
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("created_at", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("created_at")]
         public double? Created_at { get; set; }
 
         /// <summary>
         /// Filled Quantity. For stoplimit orders with no limit order triggered the displayed value will be `0.00000000`.
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("filledQty", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("filledQty")]
         public string FilledQty { get; set; }
 
         /// <summary>
         /// Unique order identifier.
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("id", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("id")]
         public string Id { get; set; }
 
         /// <summary>
         /// Instrument symbol in the form BASE-QUOTE(e.g. BTC-BRL)
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("instrument", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("instrument")]
         public string Instrument { get; set; }
 
         /// <summary>
         /// Limit price used when placing the limit order (not considering fee application)
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("limitPrice", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("limitPrice")]
         public double? LimitPrice { get; set; }
 
         /// <summary>
         /// Volume used when placing the order (not considering fee application)
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("qty", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("qty")]
         public string Qty { get; set; }
 
         /// <summary>
@@ -4188,7 +4182,7 @@ namespace MercadoBitcoin.Client.Generated
         /// <br/>buy | purchase order
         /// <br/>sell | sales order
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("side", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("side")]
         public string Side { get; set; }
 
         /// <summary>
@@ -4201,19 +4195,19 @@ namespace MercadoBitcoin.Client.Generated
         /// <br/>cancelled | order is cancelled
         /// <br/>filled | order is fully executed
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("status", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("status")]
         public string Status { get; set; }
 
         /// <summary>
         /// Stop price trigger used when placing the stop limit order
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("stopPrice", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("stopPrice")]
         public double? StopPrice { get; set; }
 
         /// <summary>
         /// Limit order id created when stop price is achieved.
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("triggerOrderId", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("triggerOrderId")]
         public string TriggerOrderId { get; set; }
 
         /// <summary>
@@ -4226,19 +4220,19 @@ namespace MercadoBitcoin.Client.Generated
         /// <br/>stoplimit | stoplimit order
         /// <br/>post-only | post-only order
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("type", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("type")]
         public string Type { get; set; }
 
         /// <summary>
         /// Date of last order update timestamp (UTC)
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("updated_at", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("updated_at")]
         public double? Updated_at { get; set; }
 
         /// <summary>
         /// External customized order Id
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("external_id", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("external_id")]
         public string External_id { get; set; }
 
     }
@@ -4251,31 +4245,31 @@ namespace MercadoBitcoin.Client.Generated
         /// Create an order asynchronously (default `false`)
         /// <br/>If `true` the order status response can be `created`
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("async", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("async")]
         public bool? Async { get; set; }
 
         /// <summary>
         /// Quote currency amount to be spent (used only for orders with type `market` and side `buy`)
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("cost", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("cost")]
         public double? Cost { get; set; }
 
         /// <summary>
         /// External customized order Id
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("externalId", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("externalId")]
         public string ExternalId { get; set; }
 
         /// <summary>
         /// Limit price per base currency (used only for orders with type `limit`, `post-only` or `stoplimit`)
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("limitPrice", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("limitPrice")]
         public double? LimitPrice { get; set; }
 
         /// <summary>
         /// Order quantity (volume). Required only if cost is not set
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("qty", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("qty")]
         public string Qty { get; set; }
 
         /// <summary>
@@ -4286,13 +4280,13 @@ namespace MercadoBitcoin.Client.Generated
         /// <br/>buy | purchase order
         /// <br/>sell | sales order
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("side", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("side")]
         public string Side { get; set; }
 
         /// <summary>
         /// Price that triggers a limit order creation (used only for orders with type `stoplimit`)
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("stopPrice", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("stopPrice")]
         public double? StopPrice { get; set; }
 
         /// <summary>
@@ -4305,7 +4299,7 @@ namespace MercadoBitcoin.Client.Generated
         /// <br/>stoplimit | stoplimit order
         /// <br/>post-only | post-only order
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("type", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("type")]
         public string Type { get; set; }
 
     }
@@ -4317,7 +4311,7 @@ namespace MercadoBitcoin.Client.Generated
         /// <summary>
         /// Unique alphanumeric order identifier
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("orderId", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("orderId")]
         public string OrderId { get; set; }
 
     }
@@ -4329,7 +4323,7 @@ namespace MercadoBitcoin.Client.Generated
         /// <summary>
         /// If the option `async` was set to `true` you order may or may not be canceled. If not, you will receive the following message.
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("status", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("status")]
         public string Status { get; set; }
 
     }
@@ -4341,7 +4335,7 @@ namespace MercadoBitcoin.Client.Generated
         /// <summary>
         /// Simple average price of position trades.
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("avgPrice", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("avgPrice")]
         public double? AvgPrice { get; set; }
 
         /// <summary>
@@ -4352,25 +4346,25 @@ namespace MercadoBitcoin.Client.Generated
         /// <br/>post-only | post only order
         /// <br/>stoplimit | stoplimit order
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("category", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("category")]
         public string Category { get; set; }
 
         /// <summary>
         /// Unique order identifier (orderId)
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("id", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("id")]
         public string Id { get; set; }
 
         /// <summary>
         /// Instrument symbol in the form BASE-QUOTE (e.g. "BTC-BRL").
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("instrument", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("instrument")]
         public string Instrument { get; set; }
 
         /// <summary>
         /// Order quantity (volume)
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("qty", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("qty")]
         public string Qty { get; set; }
 
         /// <summary>
@@ -4380,7 +4374,7 @@ namespace MercadoBitcoin.Client.Generated
         /// <br/>buy | purchase order
         /// <br/>sell | sales order
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("side", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("side")]
         public string Side { get; set; }
 
     }
@@ -4392,55 +4386,55 @@ namespace MercadoBitcoin.Client.Generated
         /// <summary>
         /// The last buy price.
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("buy", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("buy")]
         public string Buy { get; set; }
 
         /// <summary>
         /// Last update date in nanoseconds.
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("date", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("date")]
         public int? Date { get; set; }
 
         /// <summary>
         /// The highest price
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("high", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("high")]
         public string High { get; set; }
 
         /// <summary>
         /// The last price.
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("last", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("last")]
         public string Last { get; set; }
 
         /// <summary>
         /// The lowest price.
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("low", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("low")]
         public string Low { get; set; }
 
         /// <summary>
         /// The first price.
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("open", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("open")]
         public string Open { get; set; }
 
         /// <summary>
         /// Pair name. It is equal to the requested one.
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("pair", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("pair")]
         public string Pair { get; set; }
 
         /// <summary>
         /// The last sell price.
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("sell", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("sell")]
         public string Sell { get; set; }
 
         /// <summary>
         /// The total volume.
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("vol", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("vol")]
         public string Vol { get; set; }
 
     }
@@ -4452,31 +4446,31 @@ namespace MercadoBitcoin.Client.Generated
         /// <summary>
         /// Amount of crypt transacted
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("amount", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("amount")]
         public string Amount { get; set; }
 
         /// <summary>
         /// Trade creation date
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("date", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("date")]
         public int? Date { get; set; }
 
         /// <summary>
         /// Price of trade
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("price", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("price")]
         public string Price { get; set; }
 
         /// <summary>
         /// Trade id
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("tid", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("tid")]
         public int? Tid { get; set; }
 
         /// <summary>
         /// Type of trade(buy or sell)
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("type", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("type")]
         public string Type { get; set; }
 
     }
@@ -4488,67 +4482,67 @@ namespace MercadoBitcoin.Client.Generated
         /// <summary>
         /// Account of withdraw (if coin is fiat).
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("account", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("account")]
         public string Account { get; set; }
 
         /// <summary>
         /// Address of withdraw (if coin is crypto).
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("address", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("address")]
         public string Address { get; set; }
 
         /// <summary>
         /// Cryptocurrency or fiat, ex BTC, BRL, ETH.
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("coin", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("coin")]
         public string Coin { get; set; }
 
         /// <summary>
         /// CreatedAt time of transaction
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("created_at", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("created_at")]
         public string Created_at { get; set; }
 
         /// <summary>
         /// Description of withdraw.
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("description", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("description")]
         public string Description { get; set; }
 
         /// <summary>
         /// Destination of withdraw
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("destination_tag", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("destination_tag")]
         public string Destination_tag { get; set; }
 
         /// <summary>
         /// Fee of withdrawal
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("fee", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("fee")]
         public string Fee { get; set; }
 
         /// <summary>
         /// Id of withdrawal transaction
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("id", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("id")]
         public double? Id { get; set; }
 
         /// <summary>
         /// NetQuantity for withdraw.
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("net_quantity", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("net_quantity")]
         public string Net_quantity { get; set; }
 
         /// <summary>
         /// Network of withdraw
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("network", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("network")]
         public string Network { get; set; }
 
         /// <summary>
         /// Quantity for withdraw.
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("quantity", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("quantity")]
         public string Quantity { get; set; }
 
         /// <summary>
@@ -4559,19 +4553,19 @@ namespace MercadoBitcoin.Client.Generated
         /// <br/>2 | done
         /// <br/>3 | canceled
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("status", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("status")]
         public int? Status { get; set; }
 
         /// <summary>
         /// Tx of coin
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("tx", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("tx")]
         public string Tx { get; set; }
 
         /// <summary>
         /// UpdatedAt time of transaction
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("updated_at", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("updated_at")]
         public string Updated_at { get; set; }
 
     }
@@ -4583,28 +4577,28 @@ namespace MercadoBitcoin.Client.Generated
         /// <summary>
         /// Minimum cashout value.
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("limit_min", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("limit_min")]
         public string Limit_min { get; set; }
 
         /// <summary>
         /// Maximum cashout value of bank account type saving.
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("saving_limit_max", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("saving_limit_max")]
         public string Saving_limit_max { get; set; }
 
         /// <summary>
         /// 24 hours limit for fiat cashout.
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("total_limit", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("total_limit")]
         public string Total_limit { get; set; }
 
         /// <summary>
         /// 24 hours limit for fiat cashout used.
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("used_limit", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("used_limit")]
         public string Used_limit { get; set; }
 
-        [Newtonsoft.Json.JsonProperty("fees", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("fees")]
         public Fees Fees { get; set; }
 
     }
@@ -4616,43 +4610,43 @@ namespace MercadoBitcoin.Client.Generated
         /// <summary>
         /// If your withdraw is fiat, inform id of bank account.
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("account_ref", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("account_ref")]
         public int? Account_ref { get; set; }
 
         /// <summary>
         /// If your withdraw is crypto, inform crypto wallet address.
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("address", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("address")]
         public string Address { get; set; }
 
         /// <summary>
         /// Description withdraw. (Maximum 30 characters)
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("description", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("description")]
         public string Description { get; set; }
 
         /// <summary>
         /// Destination address tag or MEMO if it is required
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("destination_tag", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("destination_tag")]
         public string Destination_tag { get; set; }
 
         /// <summary>
         /// Network withdraw. This parameter is required for crypto with multiple networks, otherwise must be empty. Check [here](https://api.mercadobitcoin.net/api/v4/docs#tag/Public-Data/paths/~1{asset}~1networks/get) for available networks for a specific crypto.
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("network", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("network")]
         public string Network { get; set; }
 
         /// <summary>
         /// Quantity for withdraw.
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("quantity", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("quantity")]
         public string Quantity { get; set; }
 
         /// <summary>
         /// If your withdraw is crypto, inform fee for pay. Check [here](https://api.mercadobitcoin.net/api/v4/docs#tag/Public-Data/paths/~1symbols/get) for correct values.
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("tx_fee", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("tx_fee")]
         public string Tx_fee { get; set; }
 
     }
@@ -4664,61 +4658,61 @@ namespace MercadoBitcoin.Client.Generated
         /// <summary>
         /// Bank account id informed for fiat withdrawal.
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("account_ref", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("account_ref")]
         public int? Account_ref { get; set; }
 
         /// <summary>
         /// Bank code/number.
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("bank_code", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("bank_code")]
         public string Bank_code { get; set; }
 
         /// <summary>
         /// Bank name.
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("bank_name", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("bank_name")]
         public string Bank_name { get; set; }
 
         /// <summary>
         /// Name of the withdrawal recipient entity.
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("recipient_name", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("recipient_name")]
         public string Recipient_name { get; set; }
 
         /// <summary>
         /// Tax id of the withdrawal recipient entity.
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("recipient_tax_id", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("recipient_tax_id")]
         public string Recipient_tax_id { get; set; }
 
         /// <summary>
         /// Bank account branch.
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("account_branch", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("account_branch")]
         public string Account_branch { get; set; }
 
         /// <summary>
         /// Account number.
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("account_number", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("account_number")]
         public string Account_number { get; set; }
 
         /// <summary>
         /// Account type. It can be CHECKING or SAVING
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("account_type", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("account_type")]
         public string Account_type { get; set; }
 
         /// <summary>
         /// Joint account holder.
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("account_holder", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("account_holder")]
         public string Account_holder { get; set; }
 
         /// <summary>
         /// Indicates if it is a joint account
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("joint_account", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("joint_account")]
         public bool? Joint_account { get; set; }
 
     }
@@ -4730,13 +4724,13 @@ namespace MercadoBitcoin.Client.Generated
         /// <summary>
         /// Selected instrument asset (equal to the requested one)
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("asset", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("asset")]
         public string Asset { get; set; }
 
         /// <summary>
         /// Crypto wallet address.
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("address", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("address")]
         public string Address { get; set; }
 
     }
@@ -4748,37 +4742,37 @@ namespace MercadoBitcoin.Client.Generated
         /// <summary>
         /// Closing price (last trade) in the bucket interval
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("c", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("c")]
         public System.Collections.Generic.ICollection<string> C { get; set; }
 
         /// <summary>
         /// Highest price during the bucket interval
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("h", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("h")]
         public System.Collections.Generic.ICollection<string> H { get; set; }
 
         /// <summary>
         /// Lowest price during the bucket interval
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("l", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("l")]
         public System.Collections.Generic.ICollection<string> L { get; set; }
 
         /// <summary>
         /// Opening price (first trade) in the bucket interval
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("o", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("o")]
         public System.Collections.Generic.ICollection<string> O { get; set; }
 
         /// <summary>
         /// Bucket start time (UTC)
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("t", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("t")]
         public System.Collections.Generic.ICollection<int> T { get; set; }
 
         /// <summary>
         /// Volume of trading activity during the bucket interval
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("v", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("v")]
         public System.Collections.Generic.ICollection<string> V { get; set; }
 
     }
@@ -4790,122 +4784,122 @@ namespace MercadoBitcoin.Client.Generated
         /// <summary>
         /// Base of symbol
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("base-currency", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("base-currency")]
         public System.Collections.Generic.ICollection<string> BaseCurrency { get; set; }
 
         /// <summary>
         /// Quote of symbol
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("currency", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("currency")]
         public System.Collections.Generic.ICollection<string> Currency { get; set; }
 
         /// <summary>
         /// Minimum value for deposit
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("deposit-minimum", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("deposit-minimum")]
         public System.Collections.Generic.ICollection<string> DepositMinimum { get; set; }
 
         /// <summary>
         /// Description of a symbol. Will be displayed in the chart legend for this symbol.
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("description", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("description")]
         public System.Collections.Generic.ICollection<string> Description { get; set; }
 
         /// <summary>
         /// If is exchange listed
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("exchange-listed", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("exchange-listed")]
         public System.Collections.Generic.ICollection<bool> ExchangeListed { get; set; }
 
         /// <summary>
         /// This symbol is able to trade
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("exchange-traded", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("exchange-traded")]
         public System.Collections.Generic.ICollection<bool> ExchangeTraded { get; set; }
 
         /// <summary>
         /// Minimum price difference between two consecutive orders on the orderbook
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("minmovement", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("minmovement")]
         public System.Collections.Generic.ICollection<string> Minmovement { get; set; }
 
         /// <summary>
         /// Number of decimal digits allowed for the symbol price. It's presented in the form of a scale. Example: `1000` means 3 decimal digits
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("pricescale", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("pricescale")]
         public System.Collections.Generic.ICollection<double> Pricescale { get; set; }
 
         /// <summary>
         /// Session that you can trade this symbol
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("session-regular", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("session-regular")]
         public System.Collections.Generic.ICollection<string> SessionRegular { get; set; }
 
         /// <summary>
         /// This is the name of the symbol. (Base - Quote)
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("symbol", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("symbol")]
         public System.Collections.Generic.ICollection<string> Symbol { get; set; }
 
         /// <summary>
         /// Timezone where symbol is trading
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("timezone", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("timezone")]
         public System.Collections.Generic.ICollection<string> Timezone { get; set; }
 
         /// <summary>
         /// Type of symbol
         /// <br/>Enum: `CRYPTO` `FAN_TOKEN` `DIGITAL_ASSET` `UTILITY_TOKEN` `DEFI`
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("type", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("type")]
         public System.Collections.Generic.ICollection<string> Type { get; set; }
 
         /// <summary>
         /// Minimum value for withdrawal
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("withdraw-minimum", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("withdraw-minimum")]
         public System.Collections.Generic.ICollection<string> WithdrawMinimum { get; set; }
 
         /// <summary>
         /// Withdrawal fee in mercado bitcoin
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("withdrawal-fee", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("withdrawal-fee")]
         public System.Collections.Generic.ICollection<string> WithdrawalFee { get; set; }
 
         /// <summary>
         /// Minimum price to place order
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("min-price", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("min-price")]
         public System.Collections.Generic.ICollection<string> MinPrice { get; set; }
 
         /// <summary>
         /// Maximum price to place order
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("max-price", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("max-price")]
         public System.Collections.Generic.ICollection<string> MaxPrice { get; set; }
 
         /// <summary>
         /// Minimum volume to place order
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("min-volume", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("min-volume")]
         public System.Collections.Generic.ICollection<string> MinVolume { get; set; }
 
         /// <summary>
         /// Maximum volume to place order
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("max-volume", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("max-volume")]
         public System.Collections.Generic.ICollection<string> MaxVolume { get; set; }
 
         /// <summary>
         /// Minimum cost to place order
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("min-cost", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("min-cost")]
         public System.Collections.Generic.ICollection<string> MinCost { get; set; }
 
         /// <summary>
         /// Maximum cost to place order
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("max-cost", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("max-cost")]
         public System.Collections.Generic.ICollection<string> MaxCost { get; set; }
 
     }
@@ -4917,37 +4911,37 @@ namespace MercadoBitcoin.Client.Generated
         /// <summary>
         /// Selected instrument asset (equal to the requested one)
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("asset", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("asset")]
         public string Asset { get; set; }
 
         /// <summary>
         /// Network of withdrawal
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("network", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("network")]
         public string Network { get; set; }
 
         /// <summary>
         /// Minimum asset quantity for deposit
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("deposit_minimum", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("deposit_minimum")]
         public string Deposit_minimum { get; set; }
 
         /// <summary>
         /// Network confirmations required for confirm deposit
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("deposit_confirmations_required", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("deposit_confirmations_required")]
         public string Deposit_confirmations_required { get; set; }
 
         /// <summary>
         /// Minimum asset quantity for withdrawal
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("withdraw_minimum", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("withdraw_minimum")]
         public string Withdraw_minimum { get; set; }
 
         /// <summary>
         /// Fee value to cover the transaction costs (matching value with the field "tx_fee" of the [POST/withdrawCoin endpoint](https://api.mercadobitcoin.net/api/v4/docs#tag/Wallet/paths/~1accounts~1{accountId}~1wallet~1{symbol}~1withdraw/post))
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("withdrawal_fee", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("withdrawal_fee")]
         public string Withdrawal_fee { get; set; }
 
     }
@@ -4959,67 +4953,67 @@ namespace MercadoBitcoin.Client.Generated
         /// <summary>
         /// Address of deposit
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("address", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("address")]
         public string Address { get; set; }
 
         /// <summary>
         /// Secondary address identifier for coins like XRP.
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("address_tag", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("address_tag")]
         public string Address_tag { get; set; }
 
         /// <summary>
         /// Amount of deposit
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("amount", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("amount")]
         public string Amount { get; set; }
 
         /// <summary>
         /// Coin of deposit
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("coin", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("coin")]
         public string Coin { get; set; }
 
         /// <summary>
         /// Confirmations for deposit X / Y, X = Current, Y = Required ( For this coins: "BRL", "BTC", "LTC", "BCH", "XRP", "ETH", the current is not showed )
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("confirmTimes", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("confirmTimes")]
         public string ConfirmTimes { get; set; }
 
         /// <summary>
         /// CreatedAt time of deposit
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("createdAt", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("createdAt")]
         public double? CreatedAt { get; set; }
 
         /// <summary>
         /// Network of deposit
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("network", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("network")]
         public string Network { get; set; }
 
         /// <summary>
         /// List of sender addresses
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("origin", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("origin")]
         public System.Collections.Generic.ICollection<string> Origin { get; set; }
 
         /// <summary>
         /// Status of deposit
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("status", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("status")]
         public string Status { get; set; }
 
         /// <summary>
         /// TransactionId of operation on blockchain
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("transaction_id", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("transaction_id")]
         public string Transaction_id { get; set; }
 
         /// <summary>
         /// Type of transfer, internal or external
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("transferType", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("transferType")]
         public string TransferType { get; set; }
 
     }
@@ -5031,13 +5025,13 @@ namespace MercadoBitcoin.Client.Generated
         /// <summary>
         /// Cryptocurrency ex BTC, XLM, ETH.
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("coin", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("coin")]
         public string Coin { get; set; }
 
         /// <summary>
         /// Network of withdrawal
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("network", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("network")]
         public string Network1 { get; set; }
 
     }
@@ -5049,37 +5043,37 @@ namespace MercadoBitcoin.Client.Generated
         /// <summary>
         /// Fiat deposit identifier.
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("id", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("id")]
         public int? Id { get; set; }
 
         /// <summary>
         /// Amount of deposit
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("amount", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("amount")]
         public string Amount { get; set; }
 
         /// <summary>
         /// Coin of deposit
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("coin", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("coin")]
         public string Coin { get; set; }
 
         /// <summary>
         /// Status of deposit
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("status", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("status")]
         public string Status { get; set; }
 
         /// <summary>
         /// Type of transfer. (e.g. pix)
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("transferType", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("transferType")]
         public string TransferType { get; set; }
 
         /// <summary>
         /// Information from source of fiat deposit
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("source", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("source")]
         public Source Source { get; set; }
 
     }
@@ -5091,13 +5085,13 @@ namespace MercadoBitcoin.Client.Generated
         /// <summary>
         /// Asset extra deposit config
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("config", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("config")]
         public Config Config { get; set; }
 
         /// <summary>
         /// Array of addresses
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("addresses", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("addresses")]
         public System.Collections.Generic.ICollection<Addresses> Addresses { get; set; }
 
     }
@@ -5109,19 +5103,19 @@ namespace MercadoBitcoin.Client.Generated
         /// <summary>
         /// Deposit address in the selected network
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("hash", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("hash")]
         public string Hash { get; set; }
 
         /// <summary>
         /// Asset extra information such as tag and/or memo
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("extra", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("extra")]
         public Extra Extra { get; set; }
 
         /// <summary>
         /// QR code of address in base64 and its format
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("qrcode", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("qrcode")]
         public Qrcode Qrcode { get; set; }
 
     }
@@ -5148,10 +5142,10 @@ namespace MercadoBitcoin.Client.Generated
         /// <summary>
         /// Keys in the form of symbols and values in the form of quantity
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("symbol", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("symbol")]
         public string Symbol { get; set; }
 
-        [Newtonsoft.Json.JsonProperty("example", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("example")]
         public object Example { get; set; }
 
     }
@@ -5163,37 +5157,37 @@ namespace MercadoBitcoin.Client.Generated
         /// <summary>
         /// Bank code/number.
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("bank_code", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("bank_code")]
         public string Bank_code { get; set; }
 
         /// <summary>
         /// Bank name.
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("bank_name", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("bank_name")]
         public string Bank_name { get; set; }
 
         /// <summary>
         /// Bank account branch.
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("account_branch", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("account_branch")]
         public string Account_branch { get; set; }
 
         /// <summary>
         /// Account number.
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("account_number", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("account_number")]
         public string Account_number { get; set; }
 
         /// <summary>
         /// Creation unix timestamp
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("created_at", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("created_at")]
         public double? Created_at { get; set; }
 
         /// <summary>
         /// Last update unix timestamp
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("updated_at", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("updated_at")]
         public double? Updated_at { get; set; }
 
     }
@@ -5205,7 +5199,7 @@ namespace MercadoBitcoin.Client.Generated
         /// <summary>
         /// Contract address of instrument in the selected network (if any)
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("contract_address", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("contract_address")]
         public string Contract_address { get; set; }
 
     }
@@ -5217,7 +5211,7 @@ namespace MercadoBitcoin.Client.Generated
         /// <summary>
         /// Address tag and/or memo for deposit
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("address_tag", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("address_tag")]
         public string Address_tag { get; set; }
 
     }
@@ -5229,13 +5223,13 @@ namespace MercadoBitcoin.Client.Generated
         /// <summary>
         /// Deposit address of instrument in base64 encoded format
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("base64", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("base64")]
         public string Base64 { get; set; }
 
         /// <summary>
         /// Image format after base64 decoding
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("format", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonPropertyName("format")]
         public string Format { get; set; }
 
     }
