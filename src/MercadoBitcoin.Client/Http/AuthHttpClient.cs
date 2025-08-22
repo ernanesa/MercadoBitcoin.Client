@@ -3,6 +3,7 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Text.Json;
 using MercadoBitcoin.Client.Http;
 
 namespace MercadoBitcoin.Client
@@ -12,6 +13,8 @@ namespace MercadoBitcoin.Client
         private string? _accessToken;
         private readonly HttpClient _httpClient;
         private readonly HttpConfiguration _httpConfig;
+        
+        private static readonly JsonSerializerOptions JsonSerializerOptions = MercadoBitcoinJsonSerializerContext.Default.Options;
 
         public AuthHttpClient(RetryPolicyConfig? retryConfig = null, HttpConfiguration? httpConfig = null)
         {
@@ -92,9 +95,9 @@ namespace MercadoBitcoin.Client
                 ErrorResponse? errorResponse = null;
                 try
                 {
-                    errorResponse = Newtonsoft.Json.JsonConvert.DeserializeObject<ErrorResponse>(responseContent);
+                   errorResponse = JsonSerializer.Deserialize(responseContent, MercadoBitcoinJsonSerializerContext.Default.ErrorResponse);
                 }
-                catch (Newtonsoft.Json.JsonException)
+                catch (System.Text.Json.JsonException)
                 {
                     // If deserialization fails, create a generic error response
                     errorResponse = new ErrorResponse { Code = "UNKNOWN_ERROR", Message = responseContent };

@@ -2,13 +2,14 @@
 
   <PropertyGroup>
     <TargetFramework>net9.0</TargetFramework>
+    <LangVersion>13.0</LangVersion>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <IsPackable>true</IsPackable>
     
     <!-- NuGet Package Metadata -->
     <PackageId>MercadoBitcoin.Client</PackageId>
-    <Version>1.0.2</Version>
+    <Version>2.0.0</Version>
     <Authors>Ernane Sa</Authors>
     <Company>Open Source</Company>
     <Description>A complete .NET 9 client library for MercadoBitcoin API v4 with native HTTP/2 support. Provides access to all public and private endpoints including trading, wallet operations, and account management. Features HTTP/2 by default for maximum performance, retry policies with Polly, and clean architecture.</Description>
@@ -21,10 +22,11 @@
     <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <IsAotCompatible>true</IsAotCompatible>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+
     <PackageReference Include="Polly" Version="8.2.0" />
     <PackageReference Include="Polly.Extensions.Http" Version="3.0.0" />
 
@@ -41,7 +43,7 @@
 
   <Target Name="NSwag" BeforeTargets="PrepareForBuild">
     <Message Text="Executing NSwag..." Importance="high" />
-    <Exec Command="dotnet $(NuGetPackageRoot)nswag.msbuild\14.5.0\tools\Net90\dotnet-nswag.dll openapi2csclient /input:$(MSBuildProjectDirectory)\..\..\openapi\swagger.yaml /output:Generated\GeneratedClient.cs /namespace:MercadoBitcoin.Client.Generated" />
+    <Exec Command="dotnet $(NuGetPackageRoot)nswag.msbuild\14.5.0\tools\Net90\dotnet-nswag.dll openapi2csclient /input:$(MSBuildProjectDirectory)\..\..\openapi\swagger.yaml /output:Generated\GeneratedClient.cs /namespace:MercadoBitcoin.Client.Generated /JsonLibrary:SystemTextJson" />
   </Target>
 
 </Project>
