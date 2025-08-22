@@ -23,6 +23,8 @@
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <IsAotCompatible>true</IsAotCompatible>
+    <!-- Suppress known safe IL2026 warnings from System.Text.Json source generators -->
+    <NoWarn>$(NoWarn);IL2026</NoWarn>
     <PackageReleaseNotes>v2.0.0 - BREAKING CHANGES:
 • Migrated from Newtonsoft.Json to System.Text.Json with Source Generators
 • Improved performance up to 2.1x faster serialization
@@ -37,7 +39,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="9.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Options" Version="9.0.0" />
     <PackageReference Include="Polly" Version="8.2.0" />
     <PackageReference Include="Polly.Extensions.Http" Version="3.0.0" />
 

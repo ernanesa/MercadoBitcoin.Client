@@ -1,5 +1,11 @@
 using System;
+using MercadoBitcoin.Client.Configuration;
 using MercadoBitcoin.Client.Http;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
+using Polly;
+using Polly.Extensions.Http;
+using System.Net.Http;
 
 namespace MercadoBitcoin.Client.Extensions
 {
@@ -18,11 +24,12 @@ namespace MercadoBitcoin.Client.Extensions
         {
             // Usar configuração padrão se não fornecida
             retryConfig ??= new RetryPolicyConfig();
+            var httpConfig = HttpConfiguration.CreateHttp2Default();
 
             // Criar AuthHttpClient que já inclui RetryHandler com HTTP/2
-            var httpClient = AuthHttpClient.Create<MercadoBitcoinClient>();
+            var authHttpClient = new AuthHttpClient(retryConfig, httpConfig);
 
-            return new MercadoBitcoinClient(httpClient);
+            return new MercadoBitcoinClient(authHttpClient);
         }
 
         /// <summary>
@@ -68,9 +75,9 @@ namespace MercadoBitcoin.Client.Extensions
             httpConfig ??= HttpConfiguration.CreateHttp2Default();
 
             // Criar AuthHttpClient com configurações HTTP/2
-            var httpClient = AuthHttpClient.Create<MercadoBitcoinClient>(retryConfig, httpConfig);
+            var authHttpClient = new AuthHttpClient(retryConfig, httpConfig);
 
-            return new MercadoBitcoinClient(httpClient);
+            return new MercadoBitcoinClient(authHttpClient);
         }
 
         /// <summary>
@@ -117,6 +124,41 @@ namespace MercadoBitcoin.Client.Extensions
             return CreateWithHttp2(publicRetryConfig, httpConfig);
         }
 
+        /// <summary>
+        /// Registra o MercadoBitcoinClient no contêiner de DI com integração ao IHttpClientFactory
+        /// </summary>
+        /// <param name="services">Coleção de serviços</param>
+        /// <param name="configureOptions">Configuração das opções do cliente</param>
+        /// <returns>IServiceCollection para encadeamento</returns>
+        public static IServiceCollection AddMercadoBitcoinClient(
+            this IServiceCollection services,
+            Action<MercadoBitcoinClientOptions> configureOptions)
+        {
+            if (services == null)
+                throw new ArgumentNullException(nameof(services));
+            if (configureOptions == null)
+                throw new ArgumentNullException(nameof(configureOptions));
 
+            // Registra as opções
+            services.Configure(configureOptions);
+
+            // Registra o AuthHttpClient com ciclo de vida escopado para isolamento por requisição
+            services.AddScoped<AuthHttpClient>();
+
+            // Registra o MercadoBitcoinClient usando AddHttpClient para integração com IHttpClientFactory
+            services.AddHttpClient<MercadoBitcoinClient>((serviceProvider, httpClient) =>
+            {
+                var options = serviceProvider.GetRequiredService<IOptions<MercadoBitcoinClientOptions>>().Value;
+                
+                // Configura o HttpClient baseado nas opções
+                httpClient.BaseAddress = new Uri(options.BaseUrl);
+                httpClient.Timeout = TimeSpan.FromSeconds(options.HttpConfiguration.TimeoutSeconds);
+                httpClient.DefaultRequestVersion = options.HttpConfiguration.HttpVersion;
+                httpClient.DefaultVersionPolicy = options.HttpConfiguration.VersionPolicy;
+            })
+            .AddHttpMessageHandler<AuthHttpClient>(); // Adiciona o AuthHttpClient ao pipeline
+
+            return services;
+        }
     }
 }
