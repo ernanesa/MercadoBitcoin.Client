@@ -13,7 +13,7 @@ namespace MercadoBitcoin.Client.Http
     /// </summary>
     public class RetryHandler : DelegatingHandler
     {
-        private readonly IAsyncPolicy<HttpResponseMessage> _retryPolicy;
+        private readonly IAsyncPolicy<HttpResponseMessage> _resiliencePolicy;
         private readonly RetryPolicyConfig _config;
         private readonly HttpConfiguration _httpConfig;
 
@@ -21,20 +21,20 @@ namespace MercadoBitcoin.Client.Http
         {
             _config = config ?? new RetryPolicyConfig();
             _httpConfig = httpConfig ?? HttpConfiguration.CreateHttp2Default();
-            _retryPolicy = CreateRetryPolicy();
-            
+            _resiliencePolicy = CreateResiliencePolicy();
+
             // Configurar HttpClientHandler com as configurações HTTP
             var handler = new HttpClientHandler()
             {
                 MaxConnectionsPerServer = _httpConfig.MaxConnectionsPerServer
             };
-            
+
             // Configurar compressão se habilitada
             if (_httpConfig.EnableCompression)
             {
                 handler.AutomaticDecompression = System.Net.DecompressionMethods.GZip | System.Net.DecompressionMethods.Deflate;
             }
-            
+
             InnerHandler = handler;
         }
 
@@ -45,12 +45,12 @@ namespace MercadoBitcoin.Client.Http
             // Aplicar configurações HTTP da configuração
             request.Version = _httpConfig.HttpVersion;
             request.VersionPolicy = _httpConfig.VersionPolicy;
-            
+
             // Configurar timeout se especificado
             using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(_httpConfig.TimeoutSeconds));
             using var combinedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token);
-            
-            return await _retryPolicy.ExecuteAsync(async () =>
+
+            return await _resiliencePolicy.ExecuteAsync(async () =>
             {
                 var response = await base.SendAsync(request, combinedCts.Token);
 
@@ -58,7 +58,7 @@ namespace MercadoBitcoin.Client.Http
             });
         }
 
-        private IAsyncPolicy<HttpResponseMessage> CreateRetryPolicy()
+        private IAsyncPolicy<HttpResponseMessage> CreateResiliencePolicy()
         {
             var policyBuilder = Policy
                 .Handle<HttpRequestException>()
@@ -67,12 +67,31 @@ namespace MercadoBitcoin.Client.Http
 
             return policyBuilder.WaitAndRetryAsync(
                 retryCount: _config.MaxRetryAttempts,
-                sleepDurationProvider: retryAttempt => _config.CalculateDelay(retryAttempt),
-                onRetry: (outcome, timespan, retryCount, context) =>
+                sleepDurationProvider: attempt => _config.CalculateDelay(attempt),
+                onRetryAsync: async (outcome, timespan, attempt, context) =>
                 {
-
+                    TimeSpan? overrideDelay = null;
+                    int? statusCode = null;
+                    if (outcome.Result != null)
+                    {
+                        statusCode = (int)outcome.Result.StatusCode;
+                        if (_config.RespectRetryAfterHeader && outcome.Result.StatusCode == HttpStatusCode.TooManyRequests &&
+                            outcome.Result.Headers.TryGetValues("Retry-After", out var values))
+                        {
+                            var raw = System.Linq.Enumerable.FirstOrDefault(values);
+                            if (int.TryParse(raw, out var seconds) && seconds >= 0)
+                            {
+                                overrideDelay = TimeSpan.FromSeconds(seconds);
+                                await Task.Delay(overrideDelay.Value);
+                                _config.OnRetryEvent?.Invoke(new RetryEvent(attempt, timespan, overrideDelay, statusCode, false));
+                                return; // evita delay duplo
+                            }
+                        }
+                    }
+                    _config.OnRetryEvent?.Invoke(new RetryEvent(attempt, timespan, overrideDelay, statusCode, false));
                 });
         }
+
 
         private bool ShouldRetry(HttpResponseMessage response)
         {

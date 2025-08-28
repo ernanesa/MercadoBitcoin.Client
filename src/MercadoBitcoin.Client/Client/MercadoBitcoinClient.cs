@@ -56,19 +56,19 @@ namespace MercadoBitcoin.Client
             var handler = new AuthHttpClient();
             var httpClient = new HttpClient(handler, false);
             var httpConfig = HttpConfiguration.CreateHttp2Default();
-            
+
             httpClient.DefaultRequestVersion = httpConfig.HttpVersion;
             httpClient.DefaultVersionPolicy = httpConfig.VersionPolicy;
             httpClient.Timeout = TimeSpan.FromSeconds(httpConfig.TimeoutSeconds);
             httpClient.BaseAddress = new Uri("https://api.mercadobitcoin.net/api/v4");
-            
+
             return httpClient;
         }
 
         public async Task AuthenticateAsync(string login, string password)
         {
 
-            
+
             var authorizeRequest = new AuthorizeRequest
             {
                 Login = login,
@@ -79,18 +79,23 @@ namespace MercadoBitcoin.Client
             {
                 var response = await _generatedClient.AuthorizeAsync(authorizeRequest);
                 _authHandler.SetAccessToken(response.Access_token);
+                // valida formato básico
+                if (string.IsNullOrWhiteSpace(response.Access_token))
+                {
+                    throw new MercadoBitcoinApiException("Token de acesso vazio retornado pela API", new ErrorResponse { Code = "AUTHORIZE|EMPTY_TOKEN", Message = "Access token vazio" });
+                }
 
             }
             catch (Exception)
             {
- 
+
                 throw;
             }
         }
 
         // We will expose the public and private methods here
 
-        private string? ConvertToString(object? value, System.Globalization.CultureInfo cultureInfo)
+    private string? ConvertToString(object? value, System.Globalization.CultureInfo cultureInfo)
         {
             if (value == null)
             {
@@ -99,20 +104,8 @@ namespace MercadoBitcoin.Client
 
             if (value is System.Enum)
             {
-                string? name = System.Enum.GetName(value.GetType(), value);
-                if (name != null)
-                {
-                    var enumAttribute = System.Reflection.IntrospectionExtensions.GetTypeInfo(value.GetType()).GetMembers(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.DeclaredOnly).OfType<System.Reflection.FieldInfo>().Where(f => f.Name == name).FirstOrDefault();
-                    if (enumAttribute != null)
-                    {
-                        var attribute = System.Reflection.CustomAttributeExtensions.GetCustomAttribute(enumAttribute, typeof(System.Runtime.Serialization.EnumMemberAttribute))
-                            as System.Runtime.Serialization.EnumMemberAttribute;
-                        if (attribute != null)
-                        {
-                            return attribute.Value ?? name;
-                        }
-                    }
-                }
+                // Evita reflexão pesada para compatibilidade AOT: retorna nome simples do enum.
+                return value.ToString();
             }
             else if (value is bool)
             {
@@ -137,5 +130,10 @@ namespace MercadoBitcoin.Client
             // AuthHttpClient também não precisa de dispose explícito quando usado com DI
             GC.SuppressFinalize(this);
         }
+
+        /// <summary>
+        /// Retorna o token de acesso atual (apenas para diagnóstico / debug).
+        /// </summary>
+        public string? GetAccessToken() => _authHandler.GetAccessToken();
     }
 }
