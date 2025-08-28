@@ -36,7 +36,8 @@ namespace MercadoBitcoin.Client.Extensions
             // (or numeric values). We therefore serialize the raw object back to JSON and inspect nodes.
             try
             {
-                var json = JsonSerializer.Serialize(raw, _jsonOptions);
+                // Usa contexto gerado para evitar reflection AOT; Response já está incluído no contexto
+                var json = JsonSerializer.Serialize<Response>(raw, MercadoBitcoinJsonSerializerContext.Default.Response);
                 var node = JsonNode.Parse(json);
                 if (node is not JsonObject obj)
                     return new Dictionary<string, decimal>();
@@ -49,7 +50,7 @@ namespace MercadoBitcoin.Client.Extensions
                         string.Equals(kv.Key, "example", StringComparison.OrdinalIgnoreCase))
                         continue;
 
-                    if (kv.Value == null)
+                    if (kv.Value is null)
                         continue;
 
                     if (TryConvertToDecimal(kv.Value, out var val))
@@ -72,11 +73,9 @@ namespace MercadoBitcoin.Client.Extensions
                 case JsonValue jsonValue:
                     if (jsonValue.TryGetValue(out decimal dec)) { value = dec; return true; }
                     if (jsonValue.TryGetValue(out double dbl)) { value = (decimal)dbl; return true; }
-                    if (jsonValue.TryGetValue(out string str))
-                    {
-                        if (decimal.TryParse(str, NumberStyles.Any, CultureInfo.InvariantCulture, out dec))
-                        { value = dec; return true; }
-                    }
+                    if (jsonValue.TryGetValue(out string? str) && str != null &&
+                        decimal.TryParse(str, NumberStyles.Any, CultureInfo.InvariantCulture, out dec))
+                    { value = dec; return true; }
                     break;
             }
             value = default;

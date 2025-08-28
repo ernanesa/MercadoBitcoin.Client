@@ -15,7 +15,8 @@ namespace MercadoBitcoin.Client
 
         public Task<ICollection<CryptoBalanceResponse>> GetBalancesAsync(string accountId)
         {
-            return _generatedClient.BalancesAsync(accountId);
+            if (string.IsNullOrWhiteSpace(accountId)) throw new ArgumentException("accountId inválido", nameof(accountId));
+            return _generatedClient.BalancesAsync(accountId.Trim());
         }
 
         public Task<ICollection<GetTierResponse>> GetTierAsync(string accountId)

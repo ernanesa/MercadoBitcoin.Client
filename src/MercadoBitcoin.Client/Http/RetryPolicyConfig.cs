@@ -43,6 +43,36 @@ namespace MercadoBitcoin.Client.Http
         public bool RetryOnServerErrors { get; set; } = true;
 
         /// <summary>
+        /// Se deve tentar respeitar o header Retry-After quando presente em respostas 429 (padrão: true)
+        /// </summary>
+        public bool RespectRetryAfterHeader { get; set; } = true;
+
+        /// <summary>
+        /// Habilita o uso de Circuit Breaker para evitar tempestade de falhas (padrão: true)
+        /// </summary>
+        public bool EnableCircuitBreaker { get; set; } = true;
+
+        /// <summary>
+        /// Número de falhas (consecutivas) antes de abrir o circuito (padrão: 8)
+        /// </summary>
+        public int CircuitBreakerFailuresBeforeBreaking { get; set; } = 8;
+
+        /// <summary>
+        /// Janela de tempo (em segundos) que o circuito permanecerá aberto antes de meia-abertura (padrão: 30)
+        /// </summary>
+        public int CircuitBreakerDurationSeconds { get; set; } = 30;
+
+        /// <summary>
+        /// Expõe callback opcional para eventos de retry (tentativa, atraso, código HTTP) - útil para métricas
+        /// </summary>
+        public Action<RetryEvent>? OnRetryEvent { get; set; }
+
+        /// <summary>
+        /// Expõe callback opcional para eventos de circuit breaker (estado abre / meia-abre / fecha)
+        /// </summary>
+        public Action<CircuitBreakerEvent>? OnCircuitBreakerEvent { get; set; }
+
+        /// <summary>
         /// Calcula o delay para uma tentativa específica usando exponential backoff
         /// </summary>
         /// <param name="retryAttempt">Número da tentativa (1, 2, 3...)</param>
@@ -53,10 +83,30 @@ namespace MercadoBitcoin.Client.Http
             var baseDelay = Math.Max(0, BaseDelaySeconds);
             var multiplier = BackoffMultiplier;
             var maxDelay = Math.Max(0, MaxDelaySeconds);
-            
+
             var delay = baseDelay * Math.Pow(multiplier, retryAttempt - 1);
             delay = Math.Min(delay, maxDelay);
             return TimeSpan.FromSeconds(Math.Max(0, delay));
         }
     }
+
+    /// <summary>
+    /// Dados enviados em cada evento de retry
+    /// </summary>
+    public readonly record struct RetryEvent(int Attempt, TimeSpan PlannedDelay, TimeSpan? OverrideDelay, int? StatusCode, bool FromCircuitBreaker);
+
+    /// <summary>
+    /// Estados notificados do circuit breaker
+    /// </summary>
+    public enum CircuitBreakerState
+    {
+        Open,
+        HalfOpen,
+        Closed
+    }
+
+    /// <summary>
+    /// Evento emitido pelo circuit breaker
+    /// </summary>
+    public readonly record struct CircuitBreakerEvent(CircuitBreakerState State, string Reason, int Failures, TimeSpan Duration);
 }
