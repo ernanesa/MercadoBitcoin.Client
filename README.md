@@ -415,9 +415,14 @@ foreach (var withdrawal in withdrawals)
 var withdrawalDetail = await authenticatedClient.GetWithdrawalAsync(accountId, "BTC", withdraw.Id.ToString());
 Console.WriteLine($"Status: {withdrawalDetail.Status} | TX: {withdrawalDetail.Tx}");
 
-// Obter limites de saque
-var limits = await authenticatedClient.GetWithdrawLimitsAsync(accountId, symbols: "BTC,ETH,BRL");
-Console.WriteLine("Limites de saque disponíveis obtidos");
+// Obter limites de saque (modelo fraco original)
+var rawLimits = await authenticatedClient.GetWithdrawLimitsAsync(accountId, symbols: "BTC,ETH,BRL");
+// Converter para dicionário tipado usando extensão
+var limitsDict = rawLimits.ToWithdrawLimitsDictionary();
+foreach (var kv in limitsDict)
+{
+    Console.WriteLine($"Limite de saque {kv.Key}: {kv.Value}");
+}
 
 // Obter configurações de saque BRL
 var brlConfig = await authenticatedClient.GetBrlWithdrawConfigAsync(accountId);
@@ -1006,7 +1011,18 @@ A biblioteca utiliza **System.Text.Json** com **Source Generators** para máxima
 
 **Desenvolvido com ❤️ para a comunidade .NET brasileira**
 
-*Última atualização: Janeiro 2025 - Versão 2.0.0 com Testes Abrangentes*
+## 📘 Documentação para Agentes de IA
+
+Para consumo automatizado (LLMs / agentes), utilize os guias especializados contendo contratos, fluxos operacionais, prompts e heurísticas de segurança:
+
+- Guia IA (Português): [`docs/AI_USAGE_GUIDE.md`](docs/AI_USAGE_GUIDE.md)
+- AI Usage Guide (English): [`docs/AI_USAGE_GUIDE_EN.md`](docs/AI_USAGE_GUIDE_EN.md)
+
+Esses documentos são autocontidos e otimizados para interpretação programática (estruturas, tabelas de decisão, estratégias de retry e validação de parâmetros).
+
+---
+
+*Última atualização: Agosto 2025 - Versão 2.0.0 com Testes Abrangentes e Guia para IA*
 
 [![GitHub stars](https://img.shields.io/github/stars/seu-usuario/MercadoBitcoin.Client?style=social)](https://github.com/seu-usuario/MercadoBitcoin.Client/stargazers)
 [![GitHub forks](https://img.shields.io/github/forks/seu-usuario/MercadoBitcoin.Client?style=social)](https://github.com/seu-usuario/MercadoBitcoin.Client/network/members)
