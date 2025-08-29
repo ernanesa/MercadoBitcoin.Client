@@ -13,6 +13,13 @@ This document is self-contained and crafted so that **autonomous AI agents / LLM
 - Auth: `AuthenticateAsync(login, password)` issues Bearer token
 - Public endpoints require no token; private endpoints require Bearer
 - Resilience: Retry via `RetryHandler` + Polly controlled by `RetryPolicyConfig`
+ - Circuit Breaker: Manual lightweight breaker (consecutive failure threshold + half-open probe)
+ - Jitter: Enabled by default to de-sync concurrent clients
+ - Metrics: Native `System.Diagnostics.Metrics` counters + latency histogram (opt-out via `EnableMetrics`)
+ - Cancellation: Every public and private endpoint exposes `CancellationToken`
+ - User-Agent Override: Env var `MB_USER_AGENT` (observability / traffic segregation)
+ - Test Suite: 64 scenarios (public, private, serialization, performance, resilience)
+ - Version: 2.1.0 (Resilience & Observability expansion)
 
 ---
 ## 2. Logical Structure
@@ -38,6 +45,110 @@ MercadoBitcoinClient
 6. For trading, optionally store `ExternalId` for logical idempotency.
 7. Catch `MercadoBitcoinApiException` and branch by `ErrorResponse.Code` for recovery decisions.
 8. Respect soft rate limit pacing (≥1s between public bursts if uncertain).
+9. Prefer graceful cancellation (propagate upstream token) instead of force abort if adjusting strategy mid-flight.
+10. Observe metrics (retry rate spikes, circuit transitions, latency p95 growth) to adapt behavior (dynamic backoff tuning).
+
+---
+## 3.1 Resilience Components (Deep Dive)
+| Component | Purpose | Key Tunables | AI Considerations |
+|-----------|---------|--------------|-------------------|
+| Retry (Polly WaitAndRetryAsync) | Recover transient/network/server faults | `MaxRetryAttempts`, `BaseDelaySeconds`, `BackoffMultiplier`, `MaxDelaySeconds`, `EnableJitter`, `JitterMillisecondsMax`, flags for `RetryOnTimeout` / `RetryOnRateLimit` / `RetryOnServerErrors` | Back off earlier if latency baseline worsens; disable server-error retry if performing idempotent analysis only. |
+| Manual Circuit Breaker | Fast-fail after N consecutive retry-eligible failures | `EnableCircuitBreaker`, `CircuitBreakerFailuresBeforeBreaking`, `CircuitBreakerDurationSeconds` | When breaker opens, treat system as degraded; reduce request frequency; schedule health probe after open duration. |
+| Retry-After Honor | Align with server throttling | `RespectRetryAfterHeader` | If header delay > computed backoff, override to avoid double delay. |
+| Metrics | Feedback loop & observability | `EnableMetrics` | Use histogram outcome distribution to decide tuning. |
+
+### RetryPolicyConfig Field Reference
+| Property | Type | Default | Description | AI Adaptive Guidance |
+|----------|------|---------|-------------|----------------------|
+| MaxRetryAttempts | int | 3 | Attempts after initial call (total tries = attempts) | Increase to 5 only if success probability improves and latency SLO not violated |
+| BaseDelaySeconds | double | 1.0 | First backoff slice | Lower (0.3–0.5) for ultra low-lat public price fetch bursts |
+| BackoffMultiplier | double | 2.0 | Exponential growth factor | Consider 1.5 if traffic constant & jitter adequate |
+| MaxDelaySeconds | double | 30 | Ceiling per attempt | Cap ≤ 10 for latency sensitive UX flows |
+| RetryOnTimeout | bool | true | Includes 408/TaskCanceled (timeout) | Disable if upstream already aggressively times out |
+| RetryOnRateLimit | bool | true | Retries 429 with optional Retry-After | Keep true; rely on header respect |
+| RetryOnServerErrors | bool | true | Retries 5xx (recoverable) | For non-idempotent operations ensure server semantics safe |
+| RespectRetryAfterHeader | bool | true | Honor server pacing hint | ALWAYS for fairness |
+| EnableCircuitBreaker | bool | true | Enables consecutive-failure breaker | Disable only in test harness fuzzing |
+| CircuitBreakerFailuresBeforeBreaking | int | 8 | Threshold to open | Lower (5) under severe systemic outage detection |
+| CircuitBreakerDurationSeconds | int | 30 | Open window before half-open probe | Extend (60) if repeated flapping observed |
+| EnableJitter | bool | true | Randomize delays (0..JitterMax) | Keep true unless deterministic benchmarking |
+| JitterMillisecondsMax | int | 250 | Max jitter added | Increase (500+) in high concurrency clusters |
+| EnableMetrics | bool | true | Expose instruments | Essential for autonomous tuning |
+| OnRetryEvent | Action<RetryEvent>? | null | Callback for each retry decision | Use to push structured logs |
+| OnCircuitBreakerEvent | Action<CircuitBreakerEvent>? | null | Breaker state change hook | Trigger adaptive throttling tasks |
+
+### Circuit Breaker States
+| State | Trigger | Behavior | AI Response |
+|-------|---------|----------|-------------|
+| Closed | Normal ops | Count failures; success resets | Normal pacing |
+| Open | Threshold reached | Immediate fail-fast | Switch to health ping mode only |
+| HalfOpen | Open duration elapsed & single probe in-flight | First success closes, failure re-opens | Send ONE probe; gate parallel calls |
+
+### Metrics Instruments
+Meter Name: `MercadoBitcoin.Client` VersionTag: `2.1.0`
+
+| Name | Type | Unit | Tags | Description |
+|------|------|------|------|-------------|
+| mb_client_http_retries | Counter<long> | retries | status_code | Increment per retry attempt executed |
+| mb_client_circuit_opened | Counter<long> | - | - | Circuit opened transitions |
+| mb_client_circuit_half_open | Counter<long> | - | - | Half-open probes initiated |
+| mb_client_circuit_closed | Counter<long> | - | - | Circuit closed after success |
+| mb_client_http_request_duration | Histogram<double> | ms | method, outcome, status_code | End-to-end duration including retries |
+
+Outcome Classification (histogram tag `outcome`): success, client_error, server_error, transient_exhausted, circuit_open_fast_fail, timeout_or_canceled, canceled, exception, other, unknown.
+
+Latency Budgeting: Monitor p95 & p99; if p95 > (baseline * 1.5) adjust `BackoffMultiplier` downward or reduce `MaxRetryAttempts`.
+
+### Environment Variables
+| Variable | Purpose | Example |
+|----------|---------|---------|
+| MB_USER_AGENT | Override User-Agent value (suffix or replace) | `MyBot/1.0 (+team)` |
+| MB_API_KEY / MB_API_SECRET (if used) | Credential provisioning (if alternative auth flows) | (secret) |
+| ENABLE_PERFORMANCE_TESTS | Enable perf tests in test suite | true |
+| ENABLE_TRADING_TESTS | Allow trading mutations | false |
+
+### Cancellation Strategy
+- Always pass a single root `CancellationToken` through stacked operations.
+- For time-bounded workflows, compose: `using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));`
+- Avoid arbitrary `Thread.Abort` equivalents—rely on cooperative cancellation to keep metrics consistent.
+
+### Adaptive Heuristics (AI Control Loop)
+| Signal | Condition | Adjustment |
+|--------|-----------|------------|
+| Retry Rate Spike | retries/sec > historical p95 * 1.3 | Lower MaxRetryAttempts or widen base delay |
+| Circuit Opens | > 2 opens in 5 min | Enter degraded mode: widen delays, reduce request fan-out |
+| Latency Degradation | p95 > 1.5 × baseline & outcome=success stable | Reduce concurrency or enable symbol batching |
+| Transient Exhausted Rise | outcome=transient_exhausted proportion > 10% | Investigate upstream; temporarily raise delay/backoff |
+| Timeout Or Canceled > Normal | >10% of histogram samples | Shorten client timeout or detect network saturation |
+
+### AOT Considerations for Agents
+- JSON Source Generation reduces reflection, but generated REST client still emits some dynamic patterns; prefer using provided DTOs only.
+- Avoid runtime type emission / dynamic proxies when hosting in AOT constrained environments.
+- If trimming, keep reference to `MercadoBitcoinJsonSerializerContext` alive (static field or direct usage) so linker does not remove metadata.
+
+### Safe Trading Guidelines (Expanded)
+| Check | Rationale | Enforcement |
+|-------|-----------|------------|
+| Spread Threshold | Avoid unfavorable fills | Abort or adjust limit price |
+| Recent Volatility | Detect spike regime | Shrink order size |
+| Balance Sufficiency | Prevent rejects | Pre-calc cost vs available |
+| Retry Bound | Avoid cascaded duplication | Ensure idempotent `ExternalId` where applicable |
+| Circuit State | System instability | Pause non-essential trading when open |
+
+### Telemetry-Driven Dynamic Config Pseudocode
+```csharp
+void Adapt(RetryPolicyConfig cfg, MetricsSnapshot snap)
+{
+  if (snap.RetryRatePerSecond > snap.BaselineRetryRate * 1.3)
+    cfg.BackoffMultiplier = Math.Min(3.0, cfg.BackoffMultiplier + 0.2);
+  if (snap.CircuitOpensLast5Min > 2)
+    cfg.CircuitBreakerDurationSeconds = Math.Min(120, cfg.CircuitBreakerDurationSeconds + 15);
+  if (snap.P95LatencyMs > snap.BaselineP95LatencyMs * 1.5)
+    cfg.MaxRetryAttempts = Math.Max(2, cfg.MaxRetryAttempts - 1);
+}
+```
+
+---
 
 ---
 ## 4. Method Contract Table
@@ -198,10 +309,14 @@ async Task<string> SafeLimitBuyAsync(MercadoBitcoinClient c, string symbol, deci
 
 ---
 ## 14. Evolution Suggestions
-1. Add strong dictionary wrapper for withdraw limits.
-2. Parse `Retry-After` for improved 429 handling.
-3. Expose latency metrics for adaptive throttling.
-4. Validate extra resolutions by discovery probe.
+1. Strongly typed withdraw limits wrapper (Dictionary adapter or generated model).
+2. Automated adaptive retry tuner (close loop using metrics histogram + counters).
+3. Replace dynamic JSON calls in generated client with explicit SourceGen context to eliminate AOT warnings.
+4. Pluggable rate-limit strategy (token bucket / leaky bucket abstraction) on top of current passive respect.
+5. Smart batching for high-frequency symbol queries.
+6. Optional WebSocket streaming (future) to reduce polling load.
+7. ML-based anomaly detection on latency & outcome classification trends.
+8. Exponential moving average volatility gating for order size scaling.
 
 ---
 ## 15. Reference Output Schema
@@ -220,4 +335,4 @@ async Task<string> SafeLimitBuyAsync(MercadoBitcoinClient c, string symbol, deci
 ## 16. Conclusion
 This guide supplies operational context, prompt patterns, method contracts, and safety heuristics enabling an autonomous AI agent to leverage the MercadoBitcoin API via this library. Extend or refine as new endpoints or policies emerge.
 
-> END – Self-contained document for intelligent agent consumption.
+> END – Self-contained document for intelligent agent consumption (v2.1.0 augmented: resilience + observability + adaptive heuristics).
