@@ -26,7 +26,7 @@ public class TradingEndpointsTests : TestBase
             var ticker = await Client.GetTickersAsync(TestSymbol);
             var currentPrice = ticker.First().Last;
             var testPrice = decimal.Parse(currentPrice) * 0.1m; // 90% below market price
-            
+
             var orderRequest = new PlaceOrderRequest
             {
                 Side = "buy",
@@ -48,7 +48,7 @@ public class TradingEndpointsTests : TestBase
             // Assert
             Assert.NotNull(result);
             Assert.NotNull(result.OrderId);
-            
+
             // Clean up - Cancel the order immediately
             try
             {
@@ -59,7 +59,7 @@ public class TradingEndpointsTests : TestBase
             {
                 LogTestResult("PlaceOrder_Cleanup", false, $"Cleanup failed: {cleanupEx.Message}");
             }
-            
+
             LogTestResult("PlaceOrder_DryRun", true, $"Order placed and cancelled: {result.OrderId}");
         }
         catch (Exception ex)
@@ -70,7 +70,7 @@ public class TradingEndpointsTests : TestBase
                 throw;
             }
         }
-        
+
         await DelayAsync();
     }
 
@@ -104,7 +104,7 @@ public class TradingEndpointsTests : TestBase
                 throw;
             }
         }
-        
+
         await DelayAsync();
     }
 
@@ -115,18 +115,18 @@ public class TradingEndpointsTests : TestBase
         {
             // Act - Try to cancel a non-existent order
             var fakeOrderId = "fake-order-id-12345";
-            
+
             if (!_runTradingTests)
             {
                 LogTestResult("CancelOrder_InvalidId", true, "Skipped - Trading tests disabled");
                 return;
             }
 
-            await Assert.ThrowsAsync<Exception>(async () => 
+            await Assert.ThrowsAsync<Exception>(async () =>
             {
                 await Client.CancelOrderAsync(TestAccountId, TestSymbol, fakeOrderId);
             });
-            
+
             LogTestResult("CancelOrder_InvalidId", true, "Correctly threw exception for invalid order ID");
         }
         catch (Exception ex)
@@ -137,7 +137,7 @@ public class TradingEndpointsTests : TestBase
                 throw;
             }
         }
-        
+
         await DelayAsync();
     }
 
@@ -148,18 +148,18 @@ public class TradingEndpointsTests : TestBase
         {
             // Act - Try to get a non-existent order
             var fakeOrderId = "fake-order-id-12345";
-            
+
             if (!_runTradingTests)
             {
                 LogTestResult("GetOrderById_InvalidId", true, "Skipped - Trading tests disabled");
                 return;
             }
 
-            await Assert.ThrowsAsync<Exception>(async () => 
+            await Assert.ThrowsAsync<Exception>(async () =>
             {
                 await Client.GetOrderAsync(TestAccountId, TestSymbol, fakeOrderId);
             });
-            
+
             LogTestResult("GetOrderById_InvalidId", true, "Correctly threw exception for invalid order ID");
         }
         catch (Exception ex)
@@ -170,7 +170,7 @@ public class TradingEndpointsTests : TestBase
                 throw;
             }
         }
-        
+
         await DelayAsync();
     }
 
@@ -205,7 +205,7 @@ public class TradingEndpointsTests : TestBase
                 {
                     LogTestResult($"ValidateOrderParameters_{testCase.Name}", true, "Correctly rejected invalid order");
                 }
-                
+
                 await DelayAsync();
             }
         }
@@ -235,7 +235,7 @@ public class TradingEndpointsTests : TestBase
             var ticker = await Client.GetTickersAsync(TestSymbol);
             var currentPrice = ticker.First().Last;
             var testPrice = decimal.Parse(currentPrice) * 0.5m; // 50% below market price
-            
+
             // Step 2: Place a limit order
             var orderRequest = new PlaceOrderRequest
             {
@@ -244,36 +244,36 @@ public class TradingEndpointsTests : TestBase
                 Qty = "0.001",
                 LimitPrice = (double)testPrice
             };
-            
+
             var placedOrder = await Client.PlaceOrderAsync(TestSymbol, TestAccountId, orderRequest);
             orderId = placedOrder.OrderId;
             LogApiCall("POST /orders", orderRequest, placedOrder);
-            
+
             Assert.NotNull(placedOrder);
             Assert.NotNull(orderId);
-            
+
             await DelayAsync();
-            
+
             // Step 3: Verify order exists
             var retrievedOrder = await Client.GetOrderAsync(TestAccountId, TestSymbol, orderId);
             LogApiCall($"GET /orders/{orderId}", response: retrievedOrder);
-            
+
             Assert.NotNull(retrievedOrder);
             Assert.Equal(orderId, retrievedOrder.Id);
             Assert.Equal(TestSymbol, retrievedOrder.Instrument);
-            
+
             await DelayAsync();
-            
+
             // Step 4: Cancel the order
             var cancelResult = await Client.CancelOrderAsync(TestAccountId, TestSymbol, orderId);
             LogApiCall($"DELETE /orders/{orderId}", response: cancelResult);
-            
+
             await DelayAsync();
-            
+
             // Step 5: Verify order is cancelled
             var cancelledOrder = await Client.GetOrderAsync(TestAccountId, TestSymbol, orderId);
             Assert.Contains(cancelledOrder.Status, new[] { "cancelled", "canceled" });
-            
+
             LogTestResult("PlaceAndCancelOrder_FullWorkflow", true, $"Successfully completed full workflow for order {orderId}");
             orderId = null; // Mark as handled
         }
@@ -307,18 +307,18 @@ public class TradingEndpointsTests : TestBase
         {
             // This test validates that the API supports expected order types
             // by checking the response structure of a sample order
-            
+
             var orders = await Client.ListOrdersAsync(TestSymbol, TestAccountId);
-            
+
             if (orders.Any())
             {
                 var sampleOrder = orders.First();
                 var supportedTypes = new[] { "limit", "market", "stop_limit", "stop_market" };
                 var supportedSides = new[] { "buy", "sell" };
-                
+
                 Assert.Contains(sampleOrder.Type, supportedTypes);
                 Assert.Contains(sampleOrder.Side, supportedSides);
-                
+
                 LogTestResult("GetOrderTypes", true, $"Confirmed support for type: {sampleOrder.Type}, side: {sampleOrder.Side}");
             }
             else
@@ -336,7 +336,7 @@ public class TradingEndpointsTests : TestBase
             LogTestResult("GetOrderTypes", false, ex.Message);
             throw;
         }
-        
+
         await DelayAsync();
     }
 }

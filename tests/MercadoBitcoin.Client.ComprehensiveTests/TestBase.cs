@@ -14,7 +14,7 @@ public abstract class TestBase : IDisposable
     protected string TestAccountId;
     protected readonly int DelayBetweenRequests;
     protected readonly int MaxRetries;
-    
+
     protected TestBase()
     {
         Configuration = new ConfigurationBuilder()
@@ -31,7 +31,7 @@ public abstract class TestBase : IDisposable
         // Create client with retry policies using extension method
         Client = MercadoBitcoinClientExtensions.CreateWithRetryPolicies();
         TestSymbol = Configuration["TestSettings:TestSymbol"] ?? "BTC-BRL";
-    TestAccountId = Configuration["TestSettings:TestAccountId"] ?? "test-account-id";
+        TestAccountId = Configuration["TestSettings:TestAccountId"] ?? "test-account-id";
         DelayBetweenRequests = int.Parse(Configuration["TestSettings:DelayBetweenRequests"] ?? "1000");
         MaxRetries = int.Parse(Configuration["TestSettings:MaxRetries"] ?? "3");
 
