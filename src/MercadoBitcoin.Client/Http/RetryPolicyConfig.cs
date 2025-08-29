@@ -114,6 +114,11 @@ namespace MercadoBitcoin.Client.Http
         /// Jitter máximo em milissegundos adicionado ao delay calculado (padrão: 250ms)
         /// </summary>
         public int JitterMillisecondsMax { get; set; } = 250;
+
+        /// <summary>
+        /// Habilita emissão de métricas (System.Diagnostics.Metrics) para observabilidade (padrão: true)
+        /// </summary>
+        public bool EnableMetrics { get; set; } = true;
     }
 
     /// <summary>
