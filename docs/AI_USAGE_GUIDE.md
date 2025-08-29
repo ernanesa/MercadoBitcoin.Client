@@ -12,7 +12,14 @@ Este documento é autocontido e foi elaborado para que **outros agentes de IA** 
 - Serialização: `System.Text.Json` com Source Generators (contexto `MercadoBitcoinJsonSerializerContext`).
 - Estratégia de autenticação: `AuthenticateAsync(login, password)` gera e injeta token Bearer.
 - Requisições públicas não exigem token; privadas exigem.
-- Retry e resiliência: Implementadas via `AuthHttpClient` + `RetryHandler` com Polly (expondo configurações em `RetryPolicyConfig`).
+- Retry e resiliência: `RetryHandler` com Polly + backoff exponencial, jitter e circuit breaker manual.
+- Jitter: habilitado por padrão para evitar sincronização entre clientes concorrentes.
+- Circuit Breaker: abre após falhas consecutivas configuráveis, half-open com probe único.
+- Métricas: counters (retries, estados de circuito) + histogram de latência (`mb_client_http_request_duration`).
+- Cancelamento: todos os endpoints aceitam `CancellationToken` (propagar para operações longas).
+- User-Agent customizável: variável de ambiente `MB_USER_AGENT`.
+- Suite de Testes: 64 cenários cobrindo públicos, privados, performance, serialização e resiliência.
+- Versão atual documentada: 2.1.0 (Resiliência & Observabilidade).
 
 ---
 ## 2. Estrutura Lógica (Mapa Mental)
@@ -37,7 +44,73 @@ MercadoBitcoinClient
 5. Implementar fallback de janelas de candles: se `from > to`, o método já faz swap — não duplicar lógica.
 6. Em trading, registrar `externalId` (se fornecido) para idempotência lógica.
 7. Tratar erros via captura de `MercadoBitcoinApiException` e mapear `ErrorResponse.Code` para estratégia de correção.
-8. Evitar spam de chamadas sequenciais: respeitar rate limits (usar um delay mínimo de 1000 ms em endpoints públicos se incerteza).
+8. Evitar spam de chamadas sequenciais: respeitar rate limits (delay mínimo de ~1000 ms se incerteza sobre limites dinâmicos).
+9. Propagar `CancellationToken` para permitir que fluxos de decisão reajam rápido a nova estratégia.
+10. Usar métricas (taxa de retries, opens de circuito, p95 de latência) como sinais para tuning adaptativo.
+
+---
+### 3.1 Componentes de Resiliência
+| Componente | Propósito | Principais Campos | Consideração IA |
+|------------|----------|-------------------|-----------------|
+| Retry (Polly) | Recuperar falhas transitórias | `MaxRetryAttempts`, `BaseDelaySeconds`, `BackoffMultiplier`, `MaxDelaySeconds`, `EnableJitter` | Reduzir tentativas se p95 aumentar muito |
+| Circuit Breaker | Fail-fast após falhas consecutivas | `CircuitBreakerFailuresBeforeBreaking`, `CircuitBreakerDurationSeconds` | Quando aberto: suspender operações não críticas |
+| Jitter | Desincronizar bursts | `JitterMillisecondsMax` | Aumentar em ambientes de alta concorrência |
+| Respeito Retry-After | Evitar penalização | `RespectRetryAfterHeader` | Priorizar header sobre cálculo local |
+| Métricas | Observabilidade & tuning | `EnableMetrics` | Necessário para laço adaptativo |
+
+### Campos de `RetryPolicyConfig`
+| Campo | Tipo | Default | Descrição |
+|-------|------|---------|----------|
+| MaxRetryAttempts | int | 3 | Número de tentativas extras |
+| BaseDelaySeconds | double | 1.0 | Atraso inicial |
+| BackoffMultiplier | double | 2.0 | Fator exponencial |
+| MaxDelaySeconds | double | 30 | Teto de atraso |
+| RetryOnTimeout | bool | true | Incluir timeouts |
+| RetryOnRateLimit | bool | true | Incluir 429 |
+| RetryOnServerErrors | bool | true | Incluir 5xx |
+| RespectRetryAfterHeader | bool | true | Honra cabeçalho 429 |
+| EnableCircuitBreaker | bool | true | Habilita breaker |
+| CircuitBreakerFailuresBeforeBreaking | int | 8 | Falhas antes de abrir |
+| CircuitBreakerDurationSeconds | int | 30 | Janela aberto |
+| EnableJitter | bool | true | Ativa jitter |
+| JitterMillisecondsMax | int | 250 | Jitter máximo |
+| EnableMetrics | bool | true | Emite métricas |
+| OnRetryEvent | Action<RetryEvent>? | null | Callback retry |
+| OnCircuitBreakerEvent | Action<CircuitBreakerEvent>? | null | Callback breaker |
+
+### Métricas Disponíveis
+| Nome | Tipo | Tags | Descrição |
+|------|------|------|-----------|
+| mb_client_http_retries | Counter<long> | status_code | Contagem de retries |
+| mb_client_circuit_opened | Counter<long> | (sem) | Aberturas de circuito |
+| mb_client_circuit_half_open | Counter<long> | (sem) | Transições half-open |
+| mb_client_circuit_closed | Counter<long> | (sem) | Fechamentos pós-sucesso |
+| mb_client_http_request_duration | Histogram<double> | method, outcome, status_code | Latência total (incluindo retries) |
+
+Valores de `outcome` (histogram): success, client_error, server_error, transient_exhausted, circuit_open_fast_fail, timeout_or_canceled, canceled, exception, other, unknown.
+
+### Heurísticas Adaptativas (Sinais → Ação)
+| Sinal | Condição | Ajuste Sugerido |
+|-------|----------|----------------|
+| Pico de retries | retries/s > baseline*1.3 | Reduzir `MaxRetryAttempts` ou aumentar base delay |
+| Muitos circuit opens | >2 em 5min | Aumentar `CircuitBreakerDurationSeconds` e diminuir fan-out |
+| Latência p95 alta | p95 > 1.5x baseline | Reduzir concorrência, otimizar lotes |
+| Transient exhausted alto | >10% outcomes | Aumentar backoff ou investigar upstream |
+
+### Cancelamento
+Propagar tokens para: abortar buscas de candles longas, cessar intensificação de retry e liberar recursos antecipadamente.
+
+### Variáveis de Ambiente
+| Variável | Uso |
+|---------|-----|
+| MB_USER_AGENT | Customização de User-Agent |
+| ENABLE_PERFORMANCE_TESTS | Ativa testes de performance |
+| ENABLE_TRADING_TESTS | Libera testes que mutam estado (cuidado) |
+
+### Considerações AOT
+- Manter referência ao contexto `MercadoBitcoinJsonSerializerContext`.
+- Evitar reflexão dinâmica customizada adicional.
+- Futuro: substituir trechos gerados que ainda emitem warnings IL.
 
 ---
 ## 4. Tabela de Métodos Principais (Contrato Sintético)
@@ -220,11 +293,14 @@ async Task<string> SafeLimitBuyAsync(MercadoBitcoinClient c, string symbol, deci
 
 ---
 ## 14. Estratégia de Evolução (Sugestões à IA)
-Se precisar estender:
-1. Introduzir wrapper forte para `GetWithdrawLimits` (Dictionary<string,string>).
-2. Adicionar suporte opcional a parsing de `Retry-After` para 429.
-3. Incluir métricas internas (latência média sliding window) para decisões adaptativas.
-4. Validar resoluções extras antes de liberar para uso geral.
+1. Wrapper tipado para limites de saque.
+2. Tuner automático de retry baseado em métricas (closed loop).
+3. Eliminar warnings AOT substituindo chamadas genéricas de serialização.
+4. Estratégia ativa de rate limiting (token bucket configurável).
+5. Batching inteligente para múltiplos símbolos.
+6. Streaming/WebSocket (reduzir polling).
+7. Detecção de anomalia em padrões de outcome/latência.
+8. Escalonamento de tamanho de ordem por volatilidade EMA.
 
 ---
 ## 15. Saída de Referência (Formato JSON Recomendado)
@@ -249,4 +325,4 @@ Exemplo consolidado de resposta que a IA pode produzir ao compor múltiplos dado
 ## 16. Conclusão
 Este guia provê contexto operacional, padrões de prompts, contratos de métodos e heurísticas de segurança para que uma outra IA possa integrar-se eficientemente ao ecossistema MercadoBitcoin via esta biblioteca. Expandir ou adaptar conforme surgirem novos endpoints ou mudanças de política.
 
-> FIM – Documento autocontido para consumo automatizado por agentes inteligentes.
+> FIM – Documento autocontido (v2.1.0: resiliência + observabilidade + heurísticas adaptativas) para consumo automatizado por agentes inteligentes.
