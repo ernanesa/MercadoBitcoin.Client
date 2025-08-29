@@ -42,7 +42,7 @@ public class TradingEndpointsTests : TestBase
             }
 
             // Act - Only run if trading tests are enabled
-            var result = await Client.PlaceOrderAsync(TestSymbol, "test-account", orderRequest);
+            var result = await Client.PlaceOrderAsync(TestSymbol, TestAccountId, orderRequest);
             LogApiCall("POST /orders", orderRequest, result);
 
             // Assert
@@ -52,7 +52,7 @@ public class TradingEndpointsTests : TestBase
             // Clean up - Cancel the order immediately
             try
             {
-                await Client.CancelOrderAsync("test-account", TestSymbol, result.OrderId);
+                await Client.CancelOrderAsync(TestAccountId, TestSymbol, result.OrderId);
                 LogTestResult("PlaceOrder_Cleanup", true, "Order cancelled successfully");
             }
             catch (Exception cleanupEx)
@@ -124,7 +124,7 @@ public class TradingEndpointsTests : TestBase
 
             await Assert.ThrowsAsync<Exception>(async () => 
             {
-                await Client.CancelOrderAsync("test-account", TestSymbol, fakeOrderId);
+                await Client.CancelOrderAsync(TestAccountId, TestSymbol, fakeOrderId);
             });
             
             LogTestResult("CancelOrder_InvalidId", true, "Correctly threw exception for invalid order ID");
@@ -157,7 +157,7 @@ public class TradingEndpointsTests : TestBase
 
             await Assert.ThrowsAsync<Exception>(async () => 
             {
-                await Client.GetOrderAsync("test-account", TestSymbol, fakeOrderId);
+                await Client.GetOrderAsync(TestAccountId, TestSymbol, fakeOrderId);
             });
             
             LogTestResult("GetOrderById_InvalidId", true, "Correctly threw exception for invalid order ID");
@@ -198,7 +198,7 @@ public class TradingEndpointsTests : TestBase
             {
                 try
                 {
-                    await Client.PlaceOrderAsync(TestSymbol, "test-account", testCase.Request);
+                    await Client.PlaceOrderAsync(TestSymbol, TestAccountId, testCase.Request);
                     LogTestResult($"ValidateOrderParameters_{testCase.Name}", false, "Should have thrown exception");
                 }
                 catch (Exception)
@@ -245,7 +245,7 @@ public class TradingEndpointsTests : TestBase
                 LimitPrice = (double)testPrice
             };
             
-            var placedOrder = await Client.PlaceOrderAsync(TestSymbol, "test-account", orderRequest);
+            var placedOrder = await Client.PlaceOrderAsync(TestSymbol, TestAccountId, orderRequest);
             orderId = placedOrder.OrderId;
             LogApiCall("POST /orders", orderRequest, placedOrder);
             
@@ -255,7 +255,7 @@ public class TradingEndpointsTests : TestBase
             await DelayAsync();
             
             // Step 3: Verify order exists
-            var retrievedOrder = await Client.GetOrderAsync("test-account", TestSymbol, orderId);
+            var retrievedOrder = await Client.GetOrderAsync(TestAccountId, TestSymbol, orderId);
             LogApiCall($"GET /orders/{orderId}", response: retrievedOrder);
             
             Assert.NotNull(retrievedOrder);
@@ -265,13 +265,13 @@ public class TradingEndpointsTests : TestBase
             await DelayAsync();
             
             // Step 4: Cancel the order
-            var cancelResult = await Client.CancelOrderAsync("test-account", TestSymbol, orderId);
+            var cancelResult = await Client.CancelOrderAsync(TestAccountId, TestSymbol, orderId);
             LogApiCall($"DELETE /orders/{orderId}", response: cancelResult);
             
             await DelayAsync();
             
             // Step 5: Verify order is cancelled
-            var cancelledOrder = await Client.GetOrderAsync("test-account", TestSymbol, orderId);
+            var cancelledOrder = await Client.GetOrderAsync(TestAccountId, TestSymbol, orderId);
             Assert.Contains(cancelledOrder.Status, new[] { "cancelled", "canceled" });
             
             LogTestResult("PlaceAndCancelOrder_FullWorkflow", true, $"Successfully completed full workflow for order {orderId}");
@@ -289,7 +289,7 @@ public class TradingEndpointsTests : TestBase
             {
                 try
                 {
-                    await Client.CancelOrderAsync("test-account", TestSymbol, orderId);
+                    await Client.CancelOrderAsync(TestAccountId, TestSymbol, orderId);
                     LogTestResult("PlaceAndCancelOrder_Cleanup", true, "Emergency cleanup completed");
                 }
                 catch (Exception cleanupEx)
@@ -308,7 +308,7 @@ public class TradingEndpointsTests : TestBase
             // This test validates that the API supports expected order types
             // by checking the response structure of a sample order
             
-            var orders = await Client.ListOrdersAsync(TestSymbol, "test-account");
+            var orders = await Client.ListOrdersAsync(TestSymbol, TestAccountId);
             
             if (orders.Any())
             {

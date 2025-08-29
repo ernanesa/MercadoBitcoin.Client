@@ -11,7 +11,7 @@ public abstract class TestBase : IDisposable
     protected readonly IConfiguration Configuration;
     protected readonly MercadoBitcoinClient Client;
     protected readonly string TestSymbol;
-    protected readonly string TestAccountId;
+    protected string TestAccountId;
     protected readonly int DelayBetweenRequests;
     protected readonly int MaxRetries;
     
@@ -31,9 +31,56 @@ public abstract class TestBase : IDisposable
         // Create client with retry policies using extension method
         Client = MercadoBitcoinClientExtensions.CreateWithRetryPolicies();
         TestSymbol = Configuration["TestSettings:TestSymbol"] ?? "BTC-BRL";
-        TestAccountId = Configuration["TestSettings:TestAccountId"] ?? "test-account-id";
+    TestAccountId = Configuration["TestSettings:TestAccountId"] ?? "test-account-id";
         DelayBetweenRequests = int.Parse(Configuration["TestSettings:DelayBetweenRequests"] ?? "1000");
         MaxRetries = int.Parse(Configuration["TestSettings:MaxRetries"] ?? "3");
+
+        // Autenticação automática se variáveis de ambiente estiverem presentes
+        try
+        {
+            var loginEnv = Environment.GetEnvironmentVariable("MB_LOGIN");
+            var passwordEnv = Environment.GetEnvironmentVariable("MB_PASSWORD");
+            if (!string.IsNullOrWhiteSpace(loginEnv) && !string.IsNullOrWhiteSpace(passwordEnv))
+            {
+                Console.WriteLine("[AUTH] Tentando autenticar com MB_LOGIN/MB_PASSWORD...");
+                // Uso síncrono controlado no construtor (não há contexto async aqui)
+                Client.AuthenticateAsync(loginEnv!, passwordEnv!).GetAwaiter().GetResult();
+                var token = Client.GetAccessToken();
+                Console.WriteLine($"[AUTH] Autenticado. Token length={token?.Length}");
+
+                // Ajustar automaticamente TestAccountId se estiver usando placeholder
+                var placeholder = string.IsNullOrWhiteSpace(TestAccountId) || TestAccountId.Contains("test-account", StringComparison.OrdinalIgnoreCase) || TestAccountId.Length < 10;
+                if (placeholder)
+                {
+                    try
+                    {
+                        var accounts = Client.GetAccountsAsync().GetAwaiter().GetResult();
+                        var first = accounts.FirstOrDefault();
+                        if (first?.Id != null)
+                        {
+                            TestAccountId = first.Id;
+                            Console.WriteLine($"[AUTH] TestAccountId atualizado para id real: {TestAccountId}");
+                        }
+                        else
+                        {
+                            Console.WriteLine("[AUTH][WARN] Nenhuma conta retornada para atualizar TestAccountId.");
+                        }
+                    }
+                    catch (Exception exAcc)
+                    {
+                        Console.WriteLine($"[AUTH][WARN] Falha ao obter contas para definir TestAccountId: {exAcc.Message}");
+                    }
+                }
+            }
+            else
+            {
+                Console.WriteLine("[AUTH] Variáveis MB_LOGIN/MB_PASSWORD ausentes. Endpoints privados podem ser pulados.");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[AUTH][WARN] Falha ao autenticar automaticamente: {ex.Message}");
+        }
     }
 
     protected async Task DelayAsync()
