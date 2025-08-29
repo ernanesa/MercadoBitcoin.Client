@@ -22,10 +22,13 @@ Uma biblioteca .NET 9 completa e moderna para integração com a **API v4 do Mer
 - ✅ **OpenAPI Integration**: Cliente gerado automaticamente via NSwag
 - ✅ **Clean Architecture**: Código organizado e maintível
 - ✅ **Error Handling**: Sistema robusto de tratamento de erros
-- ✅ **Retry Policies**: Políticas de retry com Polly para maior robustez
-- ✅ **Rate Limit Compliant**: Respeita os limites da API
+- ✅ **Retry Policies**: Exponential backoff + jitter configurável
+- ✅ **Circuit Breaker Manual**: Proteção contra cascata de falhas (configurável)
+- ✅ **Rate Limit Aware**: Respeita limites e cabeçalho Retry-After
+- ✅ **CancellationToken em Todos os Endpoints**: Cancelamento cooperativo completo
+- ✅ **User-Agent Personalizado**: Override via env `MB_USER_AGENT` para observabilidade
 - ✅ **Production Ready**: Pronto para uso em produção
-- ✅ **Testes Abrangentes**: 59 testes cobrindo todos os cenários
+- ✅ **Testes Abrangentes**: 60 testes cobrindo todos os cenários
 - ✅ **Performance Validada**: Benchmarks comprovam melhorias de 2x+
 - ✅ **Tratamento Robusto**: Skip gracioso para cenários sem credenciais
 - ✅ **CI/CD Ready**: Configuração otimizada para integração contínua
@@ -40,10 +43,12 @@ Install-Package MercadoBitcoin.Client
 dotnet add package MercadoBitcoin.Client
 
 # Via PackageReference
-<PackageReference Include="MercadoBitcoin.Client" Version="2.0.0" />
+<PackageReference Include="MercadoBitcoin.Client" Version="2.1.0" />
 ```
 
-> **Nova versão 2.0**: **Testes abrangentes** com 59 testes validando todos os endpoints, **performance comprovada** com benchmarks reais, e **tratamento robusto de erros**. Qualidade e confiabilidade garantidas!
+> **Nova versão 2.1.0**: +1 teste (total 60), jitter configurável, circuit breaker manual, CancellationToken em 100% dos endpoints e User-Agent customizável.
+>
+> **Versão 2.0**: **Testes abrangentes** com 59 testes (agora 60 na 2.1.0) validando todos os endpoints, **performance comprovada** com benchmarks reais, e **tratamento robusto de erros**. Qualidade e confiabilidade garantidas!
 
 > **Versão 2.0**: Migração completa para **System.Text.Json** com **Source Generators** e compatibilidade **AOT**. Performance até 2x superior!
 
@@ -581,7 +586,7 @@ dotnet publish -c Release -r win-x64 --self-contained
 A biblioteca passou por rigorosos testes de qualidade que garantem:
 
 #### ✅ **Cobertura Completa**
-- **59 testes** cobrindo todos os endpoints da API
+- **60 testes** cobrindo todos os endpoints da API
 - **100% dos endpoints públicos** testados e validados
 - **Endpoints privados** com tratamento gracioso de autenticação
 - **Cenários de erro** completamente mapeados e testados
@@ -607,7 +612,7 @@ A biblioteca passou por rigorosos testes de qualidade que garantem:
 ### 📊 Métricas de Qualidade
 
 ```
-✅ 59/59 testes passando (100%)
+✅ 60/60 testes passando (100%)
 ⚡ Performance 2.1x superior (validada)
 🛡️ 0 falhas de autenticação não tratadas
 🔄 100% dos cenários de retry testados
@@ -626,10 +631,33 @@ A biblioteca passou por rigorosos testes de qualidade que garantem:
 
 ## 📋 Changelog
 
+### v2.1.0 - Resiliência Expandida, Jitter, Circuit Breaker Manual, Cancelamento Total
+
+#### ✨ Novidades
+- Jitter configurável nos delays de retry (habilitado por padrão)
+- Circuit breaker manual (abre após falhas consecutivas; half-open controlado)
+- CancellationToken exposto em todos os endpoints
+- User-Agent customizável via variável `MB_USER_AGENT`
+- Suíte de testes ampliada de 59 para 60 cenários
+
+#### 🛡️ Robustez
+- Fail-fast enquanto o breaker está aberto
+- Callbacks de eventos: `OnRetryEvent` e `OnCircuitBreakerEvent`
+- Respeito ao header Retry-After sem duplicar delays
+
+#### 🔧 Configuração
+Novos campos em `RetryPolicyConfig`:
+`EnableJitter`, `JitterMillisecondsMax`, `EnableCircuitBreaker`, `CircuitBreakerFailuresBeforeBreaking`, `CircuitBreakerDurationSeconds`, `OnRetryEvent`, `OnCircuitBreakerEvent`.
+
+#### 🔎 AOT
+Otimizações de serialização mantidas (Source Generators). Avisos IL remanescentes em trechos do cliente gerado serão tratados em futuras versões.
+
+---
+
 ### v2.0.0 - System.Text.Json Migration e Testes Abrangentes
 
 #### ✨ Novidades
-- **Suíte de Testes Completa**: 59 testes cobrindo todos os endpoints
+- **Suíte de Testes Completa**: 60 testes cobrindo todos os endpoints
 - **Testes de Performance**: Benchmarks detalhados de serialização e HTTP/2
 - **Validação de Serialização**: Round-trip testing com dados reais da API
 - **Tratamento Robusto de Erros**: Skip gracioso para testes sem credenciais
@@ -730,7 +758,7 @@ catch (TaskCanceledException ex)
 A biblioteca inclui uma **suíte de testes abrangente** que valida todas as funcionalidades:
 
 ```bash
-# Executar todos os testes (59 testes)
+# Executar todos os testes (60 testes)
 dotnet test
 
 # Executar testes com cobertura
@@ -780,7 +808,7 @@ dotnet test --filter "Category=Performance"
 ### 🎯 Resultados dos Testes
 
 ```
-✅ Todos os 59 testes passando
+✅ Todos os 60 testes passando
 ⏱️ Tempo de execução: ~17 segundos
 🔍 Cobertura: Todos os endpoints principais
 🛡️ Tratamento robusto de erros
@@ -1022,7 +1050,7 @@ Esses documentos são autocontidos e otimizados para interpretação programáti
 
 ---
 
-*Última atualização: Agosto 2025 - Versão 2.0.0 com Testes Abrangentes e Guia para IA*
+*Última atualização: Agosto 2025 - Versão 2.1.0 (Resiliência expandida, jitter, breaker, cancelamento total)*
 
 [![GitHub stars](https://img.shields.io/github/stars/seu-usuario/MercadoBitcoin.Client?style=social)](https://github.com/seu-usuario/MercadoBitcoin.Client/stargazers)
 [![GitHub forks](https://img.shields.io/github/forks/seu-usuario/MercadoBitcoin.Client?style=social)](https://github.com/seu-usuario/MercadoBitcoin.Client/network/members)

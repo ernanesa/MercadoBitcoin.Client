@@ -9,10 +9,10 @@
     
     <!-- NuGet Package Metadata -->
     <PackageId>MercadoBitcoin.Client</PackageId>
-    <Version>2.0.1</Version>
+  <Version>2.1.0</Version>
     <Authors>Ernane Sa</Authors>
     <Company>Open Source</Company>
-    <Description>A complete .NET 9 client library for MercadoBitcoin API v4 with native HTTP/2 support and System.Text.Json. Provides access to all public and private endpoints including trading, wallet operations, and account management. Features HTTP/2 by default for maximum performance, retry policies with Polly, comprehensive test suite (59 tests), and clean architecture with AOT compatibility.</Description>
+  <Description>A complete .NET 9 client library for MercadoBitcoin API v4 with native HTTP/2 support and System.Text.Json. Provides access to all public and private endpoints including trading, wallet operations, and account management. Features HTTP/2 by default, resilient retry (jitter + backoff + optional circuit breaker), cancellation tokens, custom User-Agent, comprehensive test suite (60 tests), and clean architecture with AOT compatibility.</Description>
     <PackageTags>mercadobitcoin;bitcoin;cryptocurrency;trading;api;client;dotnet;http2;performance;polly;systemtextjson;aot;sourcegenerators;net9;csharp13</PackageTags>
     <PackageProjectUrl>https://github.com/ernanesa/MercadoBitcoin.Client</PackageProjectUrl>
     <RepositoryUrl>https://github.com/ernanesa/MercadoBitcoin.Client</RepositoryUrl>
@@ -25,7 +25,14 @@
     <IsAotCompatible>true</IsAotCompatible>
     <!-- Suppress known safe IL2026 warnings from System.Text.Json source generators -->
     <NoWarn>$(NoWarn);IL2026</NoWarn>
-    <PackageReleaseNotes>v2.0.1 - PATCH RELEASE:
+  <PackageReleaseNotes>v2.1.0 - MINOR RELEASE:
+• Added jitter to retry backoff to mitigate thundering herd
+• Added CancellationToken overloads for public data methods
+• Added configurable User-Agent header via MB_USER_AGENT env var
+• Improved package metadata and resilience description
+• Updated docs to reflect 60 tests and new resilience features
+
+v2.0.1 - PATCH RELEASE:
 • Fixed AuthHttpClient error handling and validation
 • Improved test coverage with comprehensive integration tests
 • Enhanced performance metrics and memory usage optimization

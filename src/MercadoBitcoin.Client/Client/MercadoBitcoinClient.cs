@@ -33,6 +33,13 @@ namespace MercadoBitcoin.Client
             _generatedClient = new MercadoBitcoin.Client.Generated.Client(_httpClient) { BaseUrl = "https://api.mercadobitcoin.net/api/v4" };
             // OpenAPI generated another client (OpenClient) which contains some operations like cancel_all_open_orders
             _openClient = new MercadoBitcoin.Client.Generated.OpenClient(_httpClient) { BaseUrl = "https://api.mercadobitcoin.net/api/v4" };
+
+            // Define User-Agent customizado para observabilidade (pode ser sobrescrito externamente)
+            if (!_httpClient.DefaultRequestHeaders.UserAgent.TryParseAdd(Environment.GetEnvironmentVariable("MB_USER_AGENT")
+                ?? $"MercadoBitcoin.Client/{GetLibraryVersion()} (.NET {Environment.Version.Major}.{Environment.Version.Minor})"))
+            {
+                // fallback silencioso
+            }
         }
 
         /// <summary>
@@ -135,5 +142,17 @@ namespace MercadoBitcoin.Client
         /// Retorna o token de acesso atual (apenas para diagnóstico / debug).
         /// </summary>
         public string? GetAccessToken() => _authHandler.GetAccessToken();
+
+        private static string GetLibraryVersion()
+        {
+            try
+            {
+                return typeof(MercadoBitcoinClient).Assembly.GetName().Version?.ToString() ?? "unknown";
+            }
+            catch
+            {
+                return "unknown";
+            }
+        }
     }
 }
