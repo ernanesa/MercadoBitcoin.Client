@@ -129,7 +129,7 @@ public class SerializationValidationTests : TestBase
                 Assert.Equal(originalBid.Last(), deserializedBid.Last()); // Quantity
             }
 
-            LogTestResult("ValidateOrderbookSerialization", true, 
+            LogTestResult("ValidateOrderbookSerialization", true,
                 $"Successfully serialized/deserialized orderbook with {orderbook.Asks.Count()} asks and {orderbook.Bids.Count()} bids");
         }
         catch (Exception ex)
@@ -254,7 +254,7 @@ public class SerializationValidationTests : TestBase
         try
         {
             var orders = await Client.ListOrdersAsync(TestSymbol, TestAccountId);
-            
+
             var json = JsonSerializer.Serialize(orders);
             Assert.NotNull(json);
 
@@ -299,7 +299,7 @@ public class SerializationValidationTests : TestBase
         try
         {
             var positions = await Client.GetPositionsAsync(TestAccountId);
-            
+
             var json = JsonSerializer.Serialize(positions);
             Assert.NotNull(json);
             Assert.NotEmpty(json);
@@ -341,7 +341,7 @@ public class SerializationValidationTests : TestBase
         try
         {
             var myTrades = await Client.GetTradesAsync(TestSymbol);
-            
+
             var json = JsonSerializer.Serialize(myTrades);
             Assert.NotNull(json);
             Assert.NotEmpty(json);
@@ -353,13 +353,13 @@ public class SerializationValidationTests : TestBase
             if (myTrades.Any())
             {
                 var originalFirst = myTrades.First();
-            var deserializedFirst = deserialized.First();
+                var deserializedFirst = deserialized.First();
 
-            Assert.Equal(originalFirst.Tid, deserializedFirst.Tid);
-            Assert.Equal(originalFirst.Date, deserializedFirst.Date);
-            Assert.Equal(originalFirst.Type, deserializedFirst.Type);
-            Assert.Equal(originalFirst.Price, deserializedFirst.Price);
-            Assert.Equal(originalFirst.Amount, deserializedFirst.Amount);
+                Assert.Equal(originalFirst.Tid, deserializedFirst.Tid);
+                Assert.Equal(originalFirst.Date, deserializedFirst.Date);
+                Assert.Equal(originalFirst.Type, deserializedFirst.Type);
+                Assert.Equal(originalFirst.Price, deserializedFirst.Price);
+                Assert.Equal(originalFirst.Amount, deserializedFirst.Amount);
             }
 
             LogTestResult("ValidateMyTradeSerialization", true, $"Successfully serialized/deserialized {myTrades.Count()} my trades");
@@ -419,14 +419,14 @@ public class SerializationValidationTests : TestBase
             var options = context.Options;
 
             Assert.NotNull(options.PropertyNamingPolicy);
-            
+
             // Test that the naming policy converts to snake_case
             var testName = "TestPropertyName";
             var convertedName = options.PropertyNamingPolicy.ConvertName(testName);
-            
+
             // Should be snake_case (test_property_name) or similar
             Assert.NotEqual(testName, convertedName);
-            Assert.True(convertedName.Contains('_') || convertedName.ToLower() == convertedName, 
+            Assert.True(convertedName.Contains('_') || convertedName.ToLower() == convertedName,
                 $"Property naming policy should convert '{testName}' to snake_case or lowercase, got '{convertedName}'");
 
             LogTestResult("ValidateJsonNamingPolicy", true, $"Property naming policy correctly converts '{testName}' to '{convertedName}'");
@@ -449,7 +449,7 @@ public class SerializationValidationTests : TestBase
             // Verify important settings
             Assert.True(options.PropertyNameCaseInsensitive);
             Assert.NotNull(options.PropertyNamingPolicy);
-            
+
             // Should handle numbers as strings if needed
             Assert.True(options.NumberHandling.HasFlag(System.Text.Json.Serialization.JsonNumberHandling.AllowReadingFromString) ||
                        options.NumberHandling == System.Text.Json.Serialization.JsonNumberHandling.Strict);

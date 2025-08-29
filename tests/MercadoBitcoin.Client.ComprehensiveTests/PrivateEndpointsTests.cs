@@ -25,7 +25,7 @@ public class PrivateEndpointsTests : TestBase
             // Assert
             Assert.NotNull(result);
             Assert.NotEmpty(result);
-            
+
             foreach (var account in result)
             {
                 Assert.NotNull(account.Currency);
@@ -33,7 +33,7 @@ public class PrivateEndpointsTests : TestBase
                 Assert.NotNull(account.Name);
                 Assert.NotNull(account.Type);
             }
-            
+
             LogTestResult("GetAccounts", true, $"Returned {result.Count()} accounts");
         }
         catch (MercadoBitcoinApiException ex) when (ex.Message.Contains("You need to be authenticated"))
@@ -46,7 +46,7 @@ public class PrivateEndpointsTests : TestBase
             LogTestResult("GetAccounts", false, ex.Message);
             throw;
         }
-        
+
         await DelayAsync();
     }
 
@@ -61,7 +61,7 @@ public class PrivateEndpointsTests : TestBase
 
             // Assert
             Assert.NotNull(result);
-            
+
             // Check if we have BRL balance (should always exist)
             var brlBalance = result.FirstOrDefault(b => b.Symbol == "BRL");
             if (brlBalance != null)
@@ -70,7 +70,7 @@ public class PrivateEndpointsTests : TestBase
                 Assert.True(decimal.Parse(brlBalance.Total) >= 0);
                 Assert.True(decimal.Parse(brlBalance.Total) >= decimal.Parse(brlBalance.Available));
             }
-            
+
             LogTestResult("GetBalance", true, $"Returned balances for {result.Count()} currencies");
         }
         catch (MercadoBitcoinApiException ex) when (ex.Message.Contains("You need to be authenticated"))
@@ -83,7 +83,7 @@ public class PrivateEndpointsTests : TestBase
             LogTestResult("GetBalance", false, ex.Message);
             throw;
         }
-        
+
         await DelayAsync();
     }
 
@@ -99,7 +99,7 @@ public class PrivateEndpointsTests : TestBase
             // Assert
             Assert.NotNull(result);
             // Note: Result might be empty if no orders exist
-            
+
             foreach (var order in result)
             {
                 Assert.NotNull(order.Id);
@@ -110,7 +110,7 @@ public class PrivateEndpointsTests : TestBase
                 Assert.Contains(order.Type, new[] { "limit", "market", "stop_limit" });
                 Assert.Contains(order.Status, new[] { "pending", "open", "cancelled", "filled", "partially_filled" });
             }
-            
+
             LogTestResult("GetOrders", true, $"Returned {result.Count()} orders");
         }
         catch (MercadoBitcoinApiException ex) when (ex.Message.Contains("You need to be authenticated"))
@@ -123,7 +123,7 @@ public class PrivateEndpointsTests : TestBase
             LogTestResult("GetOrders", false, ex.Message);
             throw;
         }
-        
+
         await DelayAsync();
     }
 
@@ -138,12 +138,12 @@ public class PrivateEndpointsTests : TestBase
 
             // Assert
             Assert.NotNull(result);
-            
+
             foreach (var order in result)
             {
                 Assert.Equal("open", order.Status);
             }
-            
+
             LogTestResult("GetOrdersWithStatus", true, $"Returned {result.Count()} open orders");
         }
         catch (MercadoBitcoinApiException ex) when (ex.Message.Contains("You need to be authenticated"))
@@ -156,7 +156,7 @@ public class PrivateEndpointsTests : TestBase
             LogTestResult("GetOrdersWithStatus", false, ex.Message);
             throw;
         }
-        
+
         await DelayAsync();
     }
 
@@ -176,13 +176,13 @@ public class PrivateEndpointsTests : TestBase
 
             // Assert
             Assert.NotNull(result);
-            
+
             foreach (var order in result)
             {
                 Assert.True(order.Created_at >= from.ToUnixTimeSeconds());
                 Assert.True(order.Created_at <= to.ToUnixTimeSeconds());
             }
-            
+
             LogTestResult("GetOrdersWithDateRange", true, $"Returned {result.Count()} orders from last 30 days");
         }
         catch (MercadoBitcoinApiException ex) when (ex.Message.Contains("Invalid request parameters", StringComparison.OrdinalIgnoreCase))
@@ -201,7 +201,7 @@ public class PrivateEndpointsTests : TestBase
             LogTestResult("GetOrdersWithDateRange", false, ex.Message);
             throw;
         }
-        
+
         await DelayAsync();
     }
 
@@ -217,14 +217,14 @@ public class PrivateEndpointsTests : TestBase
             // Assert
             Assert.NotNull(result);
             // Note: Result might be empty if no positions exist
-            
+
             foreach (var position in result)
             {
                 Assert.NotNull(position.Instrument);
                 Assert.NotNull(position.Qty);
                 Assert.True(decimal.Parse(position.Qty) != 0); // Positions should have non-zero quantity
             }
-            
+
             LogTestResult("GetPositions", true, $"Returned {result.Count()} positions");
         }
         catch (MercadoBitcoinApiException ex) when (ex.Message.Contains("You need to be authenticated"))
@@ -237,7 +237,7 @@ public class PrivateEndpointsTests : TestBase
             LogTestResult("GetPositions", false, ex.Message);
             throw;
         }
-        
+
         await DelayAsync();
     }
 
@@ -253,7 +253,7 @@ public class PrivateEndpointsTests : TestBase
             // Assert
             Assert.NotNull(result);
             // Note: Result might be empty if no trades exist
-            
+
             foreach (var trade in result)
             {
                 Assert.True(trade.Tid > 0);
@@ -263,7 +263,7 @@ public class PrivateEndpointsTests : TestBase
                 Assert.True(tradeAmount > 0);
                 Assert.Contains(trade.Type, new[] { "buy", "sell" });
             }
-            
+
             LogTestResult("GetMyTrades", true, $"Returned {result.Count()} user trades");
         }
         catch (MercadoBitcoinApiException ex) when (ex.Message.Contains("You need to be authenticated"))
@@ -276,7 +276,7 @@ public class PrivateEndpointsTests : TestBase
             LogTestResult("GetMyTrades", false, ex.Message);
             throw;
         }
-        
+
         await DelayAsync();
     }
 
@@ -292,13 +292,13 @@ public class PrivateEndpointsTests : TestBase
             // Assert
             Assert.NotNull(result);
             Assert.NotEmpty(result);
-            
+
             var firstAccount = result.First();
             Assert.NotNull(firstAccount.Currency);
             Assert.NotNull(firstAccount.Id);
             Assert.NotNull(firstAccount.Name);
             Assert.NotNull(firstAccount.Type);
-            
+
             LogTestResult("GetAccountInfo", true, $"Accounts: {result.Count()}, First: {firstAccount.Currency}");
         }
         catch (MercadoBitcoinApiException ex) when (ex.Message.Contains("You need to be authenticated"))
@@ -311,7 +311,7 @@ public class PrivateEndpointsTests : TestBase
             LogTestResult("GetAccountInfo", false, ex.Message);
             throw;
         }
-        
+
         await DelayAsync();
     }
 
@@ -327,7 +327,7 @@ public class PrivateEndpointsTests : TestBase
             // Assert
             Assert.NotNull(result);
             // Note: Result might be empty if no withdrawals exist
-            
+
             foreach (var withdrawal in result)
             {
                 Assert.NotNull(withdrawal.Id);
@@ -335,7 +335,7 @@ public class PrivateEndpointsTests : TestBase
                 Assert.True(decimal.Parse(withdrawal.Quantity ?? "0") > 0);
                 Assert.True(withdrawal.Status == 1 || withdrawal.Status == 2 || withdrawal.Status == 3); // 1=open, 2=done, 3=canceled
             }
-            
+
             LogTestResult("GetWithdrawals", true, $"Returned {result.Count()} withdrawals");
         }
         catch (MercadoBitcoinApiException ex) when (ex.Message.Contains("You need to be authenticated"))
@@ -348,7 +348,7 @@ public class PrivateEndpointsTests : TestBase
             LogTestResult("GetWithdrawals", false, ex.Message);
             throw;
         }
-        
+
         await DelayAsync();
     }
 
@@ -364,7 +364,7 @@ public class PrivateEndpointsTests : TestBase
             // Assert
             Assert.NotNull(result);
             // Note: Result might be empty if no deposits exist
-            
+
             foreach (var deposit in result)
             {
                 Assert.NotNull(deposit.Transaction_id);
@@ -372,7 +372,7 @@ public class PrivateEndpointsTests : TestBase
                 Assert.True(decimal.Parse(deposit.Amount ?? "0") > 0);
                 Assert.NotNull(deposit.Status); // Status is a string in Deposit class
             }
-            
+
             LogTestResult("GetDeposits", true, $"Returned {result.Count()} deposits");
         }
         catch (MercadoBitcoinApiException ex) when (ex.Message.Contains("You need to be authenticated"))
@@ -385,7 +385,7 @@ public class PrivateEndpointsTests : TestBase
             LogTestResult("GetDeposits", false, ex.Message);
             throw;
         }
-        
+
         await DelayAsync();
     }
 }
