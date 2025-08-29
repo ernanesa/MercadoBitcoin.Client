@@ -5,6 +5,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using Polly;
 using Polly.Extensions.Http;
+using System.Diagnostics.Metrics; // added
+using System.Diagnostics; // stopwatch para latência
 
 namespace MercadoBitcoin.Client.Http
 {
@@ -20,32 +22,55 @@ namespace MercadoBitcoin.Client.Http
         private bool _halfOpenProbe;
         private readonly RetryPolicyConfig _config;
         private readonly HttpConfiguration _httpConfig;
+        // Métricas
+        private static readonly Meter _meter = new("MercadoBitcoin.Client", "2.1.0");
+        private static readonly Counter<long> _retryCounter = _meter.CreateCounter<long>("mb_client_http_retries", "retries", "Número de tentativas de retry");
+        private static readonly Counter<long> _circuitOpenCounter = _meter.CreateCounter<long>("mb_client_circuit_opened", description: "Quantidade de vezes que o circuito abriu");
+        private static readonly Counter<long> _circuitHalfOpenCounter = _meter.CreateCounter<long>("mb_client_circuit_half_open", description: "Quantidade de vezes que entrou em half-open");
+        private static readonly Counter<long> _circuitClosedCounter = _meter.CreateCounter<long>("mb_client_circuit_closed", description: "Quantidade de vezes que o circuito fechou após sucesso");
+        private static readonly Histogram<double> _requestDurationHistogram = _meter.CreateHistogram<double>(
+            "mb_client_http_request_duration",
+            unit: "ms",
+            description: "Duração (em ms) das requisições HTTP incluindo retries");
 
         public RetryHandler(RetryPolicyConfig? config = null, HttpConfiguration? httpConfig = null)
+            : this(CreateDefaultInnerHandler(httpConfig ?? HttpConfiguration.CreateHttp2Default()), config, httpConfig)
         {
+        }
+
+        /// <summary>
+        /// Construtor adicional que permite injetar um handler interno customizado (útil para testes / mocks).
+        /// </summary>
+        /// <param name="innerHandler">Handler que efetivamente executará a requisição (ex: mock). Não pode ser null.</param>
+        /// <param name="config">Configuração de retry/circuit breaker.</param>
+        /// <param name="httpConfig">Configuração HTTP (timeout, version, etc).</param>
+        public RetryHandler(HttpMessageHandler innerHandler, RetryPolicyConfig? config = null, HttpConfiguration? httpConfig = null)
+        {
+            if (innerHandler == null) throw new ArgumentNullException(nameof(innerHandler));
             _config = config ?? new RetryPolicyConfig();
             _httpConfig = httpConfig ?? HttpConfiguration.CreateHttp2Default();
             _resiliencePolicy = CreateResiliencePolicy();
+            InnerHandler = innerHandler;
+        }
 
-            // Configurar HttpClientHandler com as configurações HTTP
-            var handler = new HttpClientHandler()
+        private static HttpMessageHandler CreateDefaultInnerHandler(HttpConfiguration httpConfig)
+        {
+            var handler = new HttpClientHandler
             {
-                MaxConnectionsPerServer = _httpConfig.MaxConnectionsPerServer
+                MaxConnectionsPerServer = httpConfig.MaxConnectionsPerServer
             };
-
-            // Configurar compressão se habilitada
-            if (_httpConfig.EnableCompression)
+            if (httpConfig.EnableCompression)
             {
-                handler.AutomaticDecompression = System.Net.DecompressionMethods.GZip | System.Net.DecompressionMethods.Deflate;
+                handler.AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate;
             }
-
-            InnerHandler = handler;
+            return handler;
         }
 
         protected override async Task<HttpResponseMessage> SendAsync(
             HttpRequestMessage request,
             CancellationToken cancellationToken)
         {
+            var startTimestamp = Stopwatch.GetTimestamp();
             // Aplicar configurações HTTP da configuração
             request.Version = _httpConfig.HttpVersion;
             request.VersionPolicy = _httpConfig.VersionPolicy;
@@ -57,12 +82,24 @@ namespace MercadoBitcoin.Client.Http
             // Circuit Breaker manual: verifica se circuito está aberto
             if (_config.EnableCircuitBreaker && IsCircuitOpen())
             {
+                var elapsedMsFastFail = ElapsedMilliseconds(startTimestamp);
+                if (_config.EnableMetrics)
+                {
+                    _requestDurationHistogram.Record(elapsedMsFastFail, new KeyValuePair<string, object?>[]
+                    {
+                        new("method", request.Method.Method),
+                        new("outcome", "circuit_open_fast_fail"),
+                        new("status_code", null)
+                    });
+                }
                 throw new HttpRequestException("Circuit breaker open - fast fail");
             }
 
+            HttpResponseMessage? finalResponse = null;
+            Exception? finalException = null;
             try
             {
-                var result = await _resiliencePolicy.ExecuteAsync(async () =>
+                finalResponse = await _resiliencePolicy.ExecuteAsync(async () =>
                 {
                     var response = await base.SendAsync(request, combinedCts.Token);
                     return response;
@@ -70,9 +107,9 @@ namespace MercadoBitcoin.Client.Http
 
                 if (_config.EnableCircuitBreaker)
                 {
-                    if (ShouldRetry(result))
+                    if (ShouldRetry(finalResponse))
                     {
-                        RegisterFailure(new HttpRequestException($"HTTP {(int)result.StatusCode}"));
+                        RegisterFailure(new HttpRequestException($"HTTP {(int)finalResponse.StatusCode}"));
                     }
                     else
                     {
@@ -80,18 +117,70 @@ namespace MercadoBitcoin.Client.Http
                     }
                 }
 
-                return result;
+                return finalResponse;
             }
-            catch (Exception ex) when (_config.EnableCircuitBreaker)
+            catch (Exception ex)
             {
-                RegisterFailure(ex);
+                finalException = ex;
+                if (_config.EnableCircuitBreaker)
+                {
+                    RegisterFailure(ex);
+                }
                 throw;
             }
+            finally
+            {
+                if (_config.EnableMetrics)
+                {
+                    var elapsedMs = ElapsedMilliseconds(startTimestamp);
+                    var outcome = ClassifyOutcome(finalResponse, finalException, combinedCts);
+                    object? statusCodeObj = finalResponse != null ? (int)finalResponse.StatusCode : null;
+                    _requestDurationHistogram.Record(elapsedMs, new KeyValuePair<string, object?>[]
+                    {
+                        new("method", request.Method.Method),
+                        new("outcome", outcome),
+                        new("status_code", statusCodeObj)
+                    });
+                }
+            }
+        }
+
+        private static double ElapsedMilliseconds(long startTimestamp)
+        {
+            var elapsedTicks = Stopwatch.GetTimestamp() - startTimestamp;
+            return (double)elapsedTicks * 1000 / Stopwatch.Frequency;
+        }
+
+        private string ClassifyOutcome(HttpResponseMessage? response, Exception? exception, CancellationTokenSource combinedCts)
+        {
+            if (exception != null)
+            {
+                if (exception is HttpRequestException hre && hre.Message.Contains("Circuit breaker open"))
+                    return "circuit_open_fast_fail";
+                if (combinedCts.IsCancellationRequested)
+                    return "canceled";
+                if (exception is TaskCanceledException)
+                    return "timeout_or_canceled";
+                return "exception";
+            }
+            if (response == null)
+                return "unknown";
+
+            var code = (int)response.StatusCode;
+            if (code >= 200 && code < 400)
+                return "success";
+            if (ShouldRetry(response))
+                return "transient_exhausted"; // chegamos aqui mesmo após retries exaustos
+            if (code >= 400 && code < 500)
+                return "client_error";
+            if (code >= 500)
+                return "server_error";
+            return "other";
         }
 
         private IAsyncPolicy<HttpResponseMessage> CreateResiliencePolicy()
         {
-            var retryPolicy = Policy
+            return Policy
                 .Handle<HttpRequestException>()
                 .Or<TaskCanceledException>(ex => _config.RetryOnTimeout)
                 .OrResult<HttpResponseMessage>(r => ShouldRetry(r))
@@ -114,14 +203,20 @@ namespace MercadoBitcoin.Client.Http
                                     overrideDelay = TimeSpan.FromSeconds(seconds);
                                     await Task.Delay(overrideDelay.Value);
                                     _config.OnRetryEvent?.Invoke(new RetryEvent(attempt, timespan, overrideDelay, statusCode, false));
+                                    if (_config.EnableMetrics)
+                                    {
+                                        _retryCounter.Add(1, new KeyValuePair<string, object?>("status_code", statusCode));
+                                    }
                                     return; // evita delay duplo
                                 }
                             }
                         }
                         _config.OnRetryEvent?.Invoke(new RetryEvent(attempt, timespan, overrideDelay, statusCode, false));
+                        if (_config.EnableMetrics)
+                        {
+                            _retryCounter.Add(1, new KeyValuePair<string, object?>("status_code", statusCode));
+                        }
                     });
-
-            return retryPolicy; // circuit breaker manual aplicado em SendAsync
         }
 
         private bool IsCircuitOpen()
@@ -138,6 +233,10 @@ namespace MercadoBitcoin.Client.Http
                 {
                     _halfOpenProbe = true;
                     _config.OnCircuitBreakerEvent?.Invoke(new CircuitBreakerEvent(CircuitBreakerState.HalfOpen, "Probe", _consecutiveFailures, openDuration - elapsed));
+                    if (_config.EnableMetrics)
+                    {
+                        _circuitHalfOpenCounter.Add(1);
+                    }
                     return false; // deixa passar
                 }
                 return false;
@@ -152,6 +251,10 @@ namespace MercadoBitcoin.Client.Http
             {
                 _circuitOpenedUtc = DateTime.UtcNow;
                 _config.OnCircuitBreakerEvent?.Invoke(new CircuitBreakerEvent(CircuitBreakerState.Open, ex.GetType().Name, _consecutiveFailures, TimeSpan.FromSeconds(_config.CircuitBreakerDurationSeconds)));
+                if (_config.EnableMetrics)
+                {
+                    _circuitOpenCounter.Add(1);
+                }
             }
         }
 
@@ -160,6 +263,10 @@ namespace MercadoBitcoin.Client.Http
             if (_consecutiveFailures > 0)
             {
                 _config.OnCircuitBreakerEvent?.Invoke(new CircuitBreakerEvent(CircuitBreakerState.Closed, "Success", _consecutiveFailures, TimeSpan.Zero));
+                if (_config.EnableMetrics)
+                {
+                    _circuitClosedCounter.Add(1);
+                }
             }
             _consecutiveFailures = 0;
             _halfOpenProbe = false;

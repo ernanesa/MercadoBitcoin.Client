@@ -28,7 +28,7 @@ Uma biblioteca .NET 9 completa e moderna para integração com a **API v4 do Mer
 - ✅ **CancellationToken em Todos os Endpoints**: Cancelamento cooperativo completo
 - ✅ **User-Agent Personalizado**: Override via env `MB_USER_AGENT` para observabilidade
 - ✅ **Production Ready**: Pronto para uso em produção
-- ✅ **Testes Abrangentes**: 60 testes cobrindo todos os cenários
+- ✅ **Testes Abrangentes**: 64 testes cobrindo todos os cenários
 - ✅ **Performance Validada**: Benchmarks comprovam melhorias de 2x+
 - ✅ **Tratamento Robusto**: Skip gracioso para cenários sem credenciais
 - ✅ **CI/CD Ready**: Configuração otimizada para integração contínua
@@ -46,7 +46,7 @@ dotnet add package MercadoBitcoin.Client
 <PackageReference Include="MercadoBitcoin.Client" Version="2.1.0" />
 ```
 
-> **Nova versão 2.1.0**: +1 teste (total 60), jitter configurável, circuit breaker manual, CancellationToken em 100% dos endpoints e User-Agent customizável.
+> **Nova versão 2.1.0**: +5 testes (total 64), jitter configurável, circuit breaker manual, métricas (counters + histogram), CancellationToken em 100% dos endpoints e User-Agent customizável.
 >
 > **Versão 2.0**: **Testes abrangentes** com 59 testes (agora 60 na 2.1.0) validando todos os endpoints, **performance comprovada** com benchmarks reais, e **tratamento robusto de erros**. Qualidade e confiabilidade garantidas!
 
@@ -586,7 +586,7 @@ dotnet publish -c Release -r win-x64 --self-contained
 A biblioteca passou por rigorosos testes de qualidade que garantem:
 
 #### ✅ **Cobertura Completa**
-- **60 testes** cobrindo todos os endpoints da API
+- **64 testes** cobrindo todos os endpoints da API
 - **100% dos endpoints públicos** testados e validados
 - **Endpoints privados** com tratamento gracioso de autenticação
 - **Cenários de erro** completamente mapeados e testados
@@ -612,7 +612,7 @@ A biblioteca passou por rigorosos testes de qualidade que garantem:
 ### 📊 Métricas de Qualidade
 
 ```
-✅ 60/60 testes passando (100%)
+✅ 64/64 testes passando (100%)
 ⚡ Performance 2.1x superior (validada)
 🛡️ 0 falhas de autenticação não tratadas
 🔄 100% dos cenários de retry testados
@@ -630,6 +630,85 @@ A biblioteca passou por rigorosos testes de qualidade que garantem:
 - **Segurança**: Tratamento seguro de credenciais e dados sensíveis
 
 ## 📋 Changelog
+
+## 📈 Observabilidade e Métricas
+
+A biblioteca expõe métricas via `System.Diagnostics.Metrics` (Instrumentação .NET) que podem ser coletadas por OpenTelemetry, Prometheus (via exporter) ou Application Insights.
+
+### 🔢 Counters
+
+| Instrumento | Nome | Tipo | Descrição | Tags |
+|-------------|------|------|-----------|------|
+| `_retryCounter` | `mb_client_http_retries` | Counter<long> | Número de tentativas de retry executadas | `status_code` |
+| `_circuitOpenCounter` | `mb_client_circuit_opened` | Counter<long> | Quantidade de vezes que o circuito abriu | *(sem tag)* |
+| `_circuitHalfOpenCounter` | `mb_client_circuit_half_open` | Counter<long> | Quantidade de transições para half-open | *(sem tag)* |
+| `_circuitClosedCounter` | `mb_client_circuit_closed` | Counter<long> | Quantidade de vezes que o circuito fechou após sucesso | *(sem tag)* |
+
+### ⏱️ Histogram
+
+| Instrumento | Nome | Tipo | Unidade | Descrição | Tags |
+|-------------|------|------|--------|-----------|------|
+| `_requestDurationHistogram` | `mb_client_http_request_duration` | Histogram<double> | ms | Duração das requisições HTTP (incluindo retries) | `method`, `outcome`, `status_code` |
+
+### 🏷️ Outcomes do Histogram
+
+| Valor `outcome` | Significado |
+|-----------------|-------------|
+| `success` | Resposta 2xx/3xx sem necessidade de retry final |
+| `client_error` | Resposta 4xx não classificada como retry |
+| `server_error` | Resposta 5xx final sem retry pendente |
+| `transient_exhausted` | Resposta que acionaria retry mas limite foi atingido |
+| `circuit_open_fast_fail` | Requisição abortada imediatamente porque o circuito estava aberto |
+| `timeout_or_canceled` | Operação cancelada/timeout (TaskCanceled) dentro da pipeline |
+| `canceled` | Cancelada externamente via CancellationToken antes da resposta |
+| `exception` | Exceção não HTTP lançada pelo pipeline |
+| `other` | Qualquer outro cenário residual |
+| `unknown` | Nenhuma resposta / estado indeterminado |
+
+### ⚙️ Habilitando/Desabilitando Métricas
+
+Métricas são habilitadas por padrão (`RetryPolicyConfig.EnableMetrics = true`). Para desabilitar:
+
+```csharp
+var client = MercadoBitcoinClient.CreateWithRetryPolicy(o =>
+{
+    o.EnableMetrics = false; // desabilita emissão
+});
+```
+
+### 🧩 Integração com OpenTelemetry
+
+```csharp
+using OpenTelemetry;
+using OpenTelemetry.Metrics;
+
+var meterProvider = Sdk.CreateMeterProviderBuilder()
+    .AddMeter("MercadoBitcoin.Client")
+    .AddRuntimeInstrumentation()
+    .AddProcessInstrumentation()
+    .AddPrometheusExporter() // ou .AddOtlpExporter()
+    .Build();
+```
+
+Exemplo de scraping Prometheus (porta padrão 9464):
+
+```csharp
+app.MapPrometheusScrapingEndpoint();
+```
+
+### 📊 Dashboard Sugerido
+
+KPIs relevantes:
+1. Taxa de retries por segundo (`sum(rate(mb_client_http_retries[5m]))`)
+2. Latência p95/p99 por método (`histogram_quantile(0.95, sum(rate(mb_client_http_request_duration_bucket[5m])) by (le, method))`)
+3. Transições de circuito (`increase(mb_client_circuit_opened[1h])`, etc.)
+4. Percentual de outcomes `transient_exhausted` (indicador de tuning de retry)
+
+### 🔍 Uso em Logs Correlacionados
+
+Combine as métricas com um `Activity` (OpenTelemetry Tracing) para rastreamento distribuído. A pipeline de HTTP já emite atividades padrão (`HttpClient`). As métricas aqui complementam com contagem de retries e estados de breaker.
+
+---
 
 ### v2.1.0 - Resiliência Expandida, Jitter, Circuit Breaker Manual, Cancelamento Total
 
@@ -758,7 +837,7 @@ catch (TaskCanceledException ex)
 A biblioteca inclui uma **suíte de testes abrangente** que valida todas as funcionalidades:
 
 ```bash
-# Executar todos os testes (60 testes)
+# Executar todos os testes (64 testes)
 dotnet test
 
 # Executar testes com cobertura
@@ -808,7 +887,7 @@ dotnet test --filter "Category=Performance"
 ### 🎯 Resultados dos Testes
 
 ```
-✅ Todos os 60 testes passando
+✅ Todos os 64 testes passando
 ⏱️ Tempo de execução: ~17 segundos
 🔍 Cobertura: Todos os endpoints principais
 🛡️ Tratamento robusto de erros
