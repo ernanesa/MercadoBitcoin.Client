@@ -86,8 +86,34 @@ namespace MercadoBitcoin.Client.Http
 
             var delay = baseDelay * Math.Pow(multiplier, retryAttempt - 1);
             delay = Math.Min(delay, maxDelay);
-            return TimeSpan.FromSeconds(Math.Max(0, delay));
+            var final = TimeSpan.FromSeconds(Math.Max(0, delay));
+
+            // Aplica jitter opcional para evitar sincronização de bursts entre múltiplos clientes
+            if (EnableJitter && JitterMillisecondsMax > 0)
+            {
+                // Random.Shared é thread-safe a partir do .NET 6+
+                var jitterMs = Random.Shared.Next(0, JitterMillisecondsMax + 1);
+                var jitter = TimeSpan.FromMilliseconds(jitterMs);
+                var candidate = final + jitter;
+                if (candidate.TotalSeconds > maxDelay)
+                {
+                    // Mantém limite superior absoluto
+                    candidate = TimeSpan.FromSeconds(maxDelay);
+                }
+                final = candidate;
+            }
+            return final;
         }
+
+        /// <summary>
+        /// Habilita jitter (aleatoriedade) adicional ao backoff para reduzir thundering herd (padrão: true)
+        /// </summary>
+        public bool EnableJitter { get; set; } = true;
+
+        /// <summary>
+        /// Jitter máximo em milissegundos adicionado ao delay calculado (padrão: 250ms)
+        /// </summary>
+        public int JitterMillisecondsMax { get; set; } = 250;
     }
 
     /// <summary>
