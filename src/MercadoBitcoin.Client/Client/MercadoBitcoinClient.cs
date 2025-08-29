@@ -95,7 +95,7 @@ namespace MercadoBitcoin.Client
 
         // We will expose the public and private methods here
 
-    private string? ConvertToString(object? value, System.Globalization.CultureInfo cultureInfo)
+        private string? ConvertToString(object? value, System.Globalization.CultureInfo cultureInfo)
         {
             if (value == null)
             {

@@ -253,7 +253,7 @@ public class SerializationValidationTests : TestBase
     {
         try
         {
-            var orders = await Client.ListOrdersAsync(TestSymbol, "test-account");
+            var orders = await Client.ListOrdersAsync(TestSymbol, TestAccountId);
             
             var json = JsonSerializer.Serialize(orders);
             Assert.NotNull(json);
@@ -298,7 +298,7 @@ public class SerializationValidationTests : TestBase
     {
         try
         {
-            var positions = await Client.GetPositionsAsync("test-account");
+            var positions = await Client.GetPositionsAsync(TestAccountId);
             
             var json = JsonSerializer.Serialize(positions);
             Assert.NotNull(json);

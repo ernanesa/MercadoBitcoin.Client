@@ -41,6 +41,11 @@ namespace MercadoBitcoin.Client;
 [JsonSerializable(typeof(Config))]
 [JsonSerializable(typeof(Extra))]
 [JsonSerializable(typeof(Qrcode))]
+[JsonSerializable(typeof(Withdraw))]
+[JsonSerializable(typeof(WithdrawCoinRequest))]
+[JsonSerializable(typeof(BankAccount))]
+[JsonSerializable(typeof(Fees))]
+[JsonSerializable(typeof(BRLWithdrawConfig))]
 [JsonSerializable(typeof(ApiException))]
 [JsonSerializable(typeof(ApiException<object>))]
 public partial class MercadoBitcoinJsonSerializerContext : JsonSerializerContext
