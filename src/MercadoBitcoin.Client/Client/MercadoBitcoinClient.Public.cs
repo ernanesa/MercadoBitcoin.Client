@@ -1,7 +1,4 @@
 using MercadoBitcoin.Client.Generated;
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
 using MercadoBitcoin.Client.Extensions;
 using MercadoBitcoin.Client.Models;
 
