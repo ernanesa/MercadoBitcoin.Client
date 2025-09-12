@@ -10,8 +10,13 @@ namespace MercadoBitcoin.Client.Generated
     {
         static partial void UpdateJsonSerializerSettings(JsonSerializerOptions settings)
         {
-            // Copia configurações do contexto gerado
             var ctx = MercadoBitcoinJsonSerializerContext.Default;
+
+            // CORREÇÃO: Atribui o resolvedor de tipos do contexto gerado.
+            // Esta é a linha crucial para a compatibilidade com AOT.
+            settings.TypeInfoResolver = ctx;
+
+            // As linhas abaixo são mantidas para garantir consistência, embora o TypeInfoResolver já encapsule estas opções.
             settings.PropertyNamingPolicy = ctx.Options.PropertyNamingPolicy;
             settings.DefaultIgnoreCondition = ctx.Options.DefaultIgnoreCondition;
             settings.PropertyNameCaseInsensitive = ctx.Options.PropertyNameCaseInsensitive;
@@ -24,6 +29,10 @@ namespace MercadoBitcoin.Client.Generated
         static partial void UpdateJsonSerializerSettings(JsonSerializerOptions settings)
         {
             var ctx = MercadoBitcoinJsonSerializerContext.Default;
+
+            // CORREÇÃO: Atribui o resolvedor de tipos também para o OpenClient.
+            settings.TypeInfoResolver = ctx;
+
             settings.PropertyNamingPolicy = ctx.Options.PropertyNamingPolicy;
             settings.DefaultIgnoreCondition = ctx.Options.DefaultIgnoreCondition;
             settings.PropertyNameCaseInsensitive = ctx.Options.PropertyNameCaseInsensitive;
