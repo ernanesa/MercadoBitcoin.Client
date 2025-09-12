@@ -7,7 +7,7 @@ Este documento é autocontido e foi elaborado para que **outros agentes de IA** 
 ---
 ## 1. Visão Geral Concisa
 - Namespace raiz: `MercadoBitcoin.Client`
-- Cliente principal: `MercadoBitcoinClient`
+- Cliente principal: `MercadoBitcoinClient` (**instanciado apenas via métodos de extensão ou DI a partir da v3.0.0**)
 - Comunicação: HTTPS sobre HTTP/2 (default), JSON, REST.
 - Serialização: `System.Text.Json` com Source Generators (contexto `MercadoBitcoinJsonSerializerContext`).
 - Estratégia de autenticação: `AuthenticateAsync(login, password)` gera e injeta token Bearer.
@@ -19,12 +19,12 @@ Este documento é autocontido e foi elaborado para que **outros agentes de IA** 
 - Cancelamento: todos os endpoints aceitam `CancellationToken` (propagar para operações longas).
 - User-Agent customizável: variável de ambiente `MB_USER_AGENT`.
 - Suite de Testes: 64 cenários cobrindo públicos, privados, performance, serialização e resiliência.
-- Versão atual documentada: 2.1.0 (Resiliência & Observabilidade).
+- Versão atual documentada: 3.0.0 (Remoção de construtores públicos, métodos de extensão/DI obrigatórios).
 
 ---
 ## 2. Estrutura Lógica (Mapa Mental)
 ```
-MercadoBitcoinClient
+MercadoBitcoinClient (instanciado via métodos de extensão ou DI)
  ├── Autenticação: AuthenticateAsync
  ├── Dados Públicos: (GetSymbols, GetTickers, GetOrderBook, GetTrades, GetCandles*, GetAssetFees, GetAssetNetworks)
  ├── Contas: GetAccounts, GetBalances, GetTier, GetTradingFees, GetPositions
