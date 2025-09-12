@@ -20,6 +20,27 @@ namespace MercadoBitcoin.Client
         private readonly HttpClient _httpClient;
 
         /// <summary>
+        /// Construtor para uso com DI, permitindo injeção real de opções de configuração.
+        /// </summary>
+        /// <param name="httpClient">HttpClient gerenciado pelo IHttpClientFactory</param>
+        /// <param name="authHandler">Handler de autenticação</param>
+        /// <param name="options">Opções de configuração injetadas</param>
+        public MercadoBitcoinClient(HttpClient httpClient, AuthHttpClient authHandler, Microsoft.Extensions.Options.IOptions<Configuration.MercadoBitcoinClientOptions> options)
+        {
+            _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
+            _authHandler = authHandler ?? throw new ArgumentNullException(nameof(authHandler));
+            var opts = options?.Value ?? new Configuration.MercadoBitcoinClientOptions();
+            _rateLimiter = new Internal.AsyncRateLimiter(opts.RequestsPerSecond);
+            _generatedClient = new MercadoBitcoin.Client.Generated.Client(_httpClient) { BaseUrl = opts.BaseUrl };
+            _openClient = new MercadoBitcoin.Client.Generated.OpenClient(_httpClient) { BaseUrl = opts.BaseUrl };
+            if (!_httpClient.DefaultRequestHeaders.UserAgent.TryParseAdd(Environment.GetEnvironmentVariable("MB_USER_AGENT")
+                ?? $"MercadoBitcoin.Client/{GetLibraryVersion()} (.NET {Environment.Version.Major}.{Environment.Version.Minor})"))
+            {
+                // fallback silencioso
+            }
+        }
+
+        /// <summary>
         /// Mapeia ApiException do client gerado para exceções ricas MercadoBitcoin.
         /// </summary>
         private static Exception MapApiException(Exception ex)
@@ -57,16 +78,13 @@ namespace MercadoBitcoin.Client
             _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
             _authHandler = authHandler ?? throw new ArgumentNullException(nameof(authHandler));
 
-            // TODO: Permitir injeção de opções/configuração
-            var requestsPerSecond = 5; // valor padrão, pode ser lido de opções futuramente
-            _rateLimiter = new Internal.AsyncRateLimiter(requestsPerSecond);
 
-            // The generated client will be initialized with the injected HttpClient
-            _generatedClient = new MercadoBitcoin.Client.Generated.Client(_httpClient) { BaseUrl = "https://api.mercadobitcoin.net/api/v4" };
-            // OpenAPI generated another client (OpenClient) which contains some operations like cancel_all_open_orders
-            _openClient = new MercadoBitcoin.Client.Generated.OpenClient(_httpClient) { BaseUrl = "https://api.mercadobitcoin.net/api/v4" };
+            // Usa sempre as opções padrão (pode ser expandido para DI no futuro)
+            var options = new Configuration.MercadoBitcoinClientOptions();
+            _rateLimiter = new Internal.AsyncRateLimiter(options.RequestsPerSecond);
+            _generatedClient = new MercadoBitcoin.Client.Generated.Client(_httpClient) { BaseUrl = options.BaseUrl };
+            _openClient = new MercadoBitcoin.Client.Generated.OpenClient(_httpClient) { BaseUrl = options.BaseUrl };
 
-            // Define User-Agent customizado para observabilidade (pode ser sobrescrito externamente)
             if (!_httpClient.DefaultRequestHeaders.UserAgent.TryParseAdd(Environment.GetEnvironmentVariable("MB_USER_AGENT")
                 ?? $"MercadoBitcoin.Client/{GetLibraryVersion()} (.NET {Environment.Version.Major}.{Environment.Version.Minor})"))
             {
@@ -114,7 +132,6 @@ namespace MercadoBitcoin.Client
 
             if (value is System.Enum)
             {
-                // Evita reflexão pesada para compatibilidade AOT: retorna nome simples do enum.
                 return value.ToString();
             }
             else if (value is bool)
@@ -136,8 +153,6 @@ namespace MercadoBitcoin.Client
 
         public void Dispose()
         {
-            // HttpClient é gerenciado pelo IHttpClientFactory, não fazemos dispose
-            // AuthHttpClient também não precisa de dispose explícito quando usado com DI
             GC.SuppressFinalize(this);
         }
 
