@@ -14,6 +14,7 @@ namespace MercadoBitcoin.Client
     {
         /// <summary>
         /// Itera de forma assíncrona sobre todos os depósitos cripto de um usuário, paginando automaticamente.
+        /// <para>**Requer autenticação**</para>
         /// </summary>
         /// <param name="accountId">ID da conta</param>
         /// <param name="symbol">Símbolo do ativo (ex: BTC)</param>
@@ -89,6 +90,7 @@ namespace MercadoBitcoin.Client
 
         /// <summary>
         /// Obtém candles (OHLCV) da API pública, com normalização de entradas e proteção contra janelas invertidas.
+        /// <para>**Não requer autenticação**</para>
         /// Parâmetros:
         /// - symbol: par no formato BASE-QUOTE (ex.: BTC-BRL, btcbrl)
         /// - resolution: timeframe (ex.: 1m, 15m, 1h, 1d)
@@ -125,6 +127,7 @@ namespace MercadoBitcoin.Client
 
         /// <summary>
         /// Conveniência: busca os últimos N candles até agora (usa countback e ignora "from").
+        /// <para>**Não requer autenticação**</para>
         /// </summary>
         public Task<ListCandlesResponse> GetRecentCandlesAsync(string symbol, string resolution, int countback, int? to = null, CancellationToken cancellationToken = default)
         {
@@ -144,6 +147,7 @@ namespace MercadoBitcoin.Client
 
         /// <summary>
         /// Obtém candles com validação e normalização de entradas, retornando lista tipada de CandleData.
+        /// <para>**Não requer autenticação**</para>
         /// </summary>
         /// <param name="symbol">Símbolo do par (ex.: BTC-BRL ou btcbrl)</param>
         /// <param name="resolution">Resolução/timeframe (ex.: 1m, 15m, 1h, 1d)</param>
@@ -183,6 +187,7 @@ namespace MercadoBitcoin.Client
 
         /// <summary>
         /// Sobrecarga prática: busca últimos N candles até agora (usa countback).
+        /// <para>**Não requer autenticação**</para>
         /// </summary>
         public Task<IReadOnlyList<CandleData>> GetRecentCandlesTypedAsync(string symbol, string resolution, int countback, CancellationToken cancellationToken = default)
         {
@@ -197,6 +202,10 @@ namespace MercadoBitcoin.Client
             }
         }
 
+        /// <summary>
+        /// Obtém a lista de símbolos negociáveis disponíveis na API pública.
+        /// <para>**Não requer autenticação**</para>
+        /// </summary>
         public Task<ListSymbolInfoResponse> GetSymbolsAsync(string? symbols = null, CancellationToken cancellationToken = default)
         {
             try
@@ -209,6 +218,10 @@ namespace MercadoBitcoin.Client
             }
         }
 
+        /// <summary>
+        /// Obtém os tickers atuais para um ou mais símbolos.
+        /// <para>**Não requer autenticação**</para>
+        /// </summary>
         public Task<ICollection<TickerResponse>> GetTickersAsync(string symbols, CancellationToken cancellationToken = default)
         {
             try
@@ -221,6 +234,10 @@ namespace MercadoBitcoin.Client
             }
         }
 
+        /// <summary>
+        /// Obtém as redes disponíveis para um ativo (ex: USDC, BTC).
+        /// <para>**Não requer autenticação**</para>
+        /// </summary>
         public Task<ICollection<Network>> GetAssetNetworksAsync(string asset, CancellationToken cancellationToken = default)
         {
             try

@@ -12,6 +12,32 @@
 > services.AddMercadoBitcoinClient(...);
 > ```
 > Consulte a seção "Migração e Atualizações" para detalhes.
+
+## ⚡️ Uso: Endpoints Públicos vs Privados
+
+> **Atenção:**
+> - **Dados públicos** (ex: tickers, candles, trades, orderbook, taxas, símbolos) **NÃO exigem autenticação**. Basta instanciar o cliente e chamar os métodos.
+> - **Dados privados** (ex: saldos, ordens, depósitos, saques, trading) **EXIGEM autenticação**. Use `AuthenticateAsync` antes de chamar métodos privados.
+
+### Exemplos rápidos
+
+**Dados públicos (NÃO precisa autenticar):**
+```csharp
+var client = MercadoBitcoinClientExtensions.CreateWithRetryPolicies();
+var tickers = await client.GetTickersAsync("BTC-BRL");
+var candles = await client.GetCandlesAsync("BTC-BRL", "1h", to: (int)DateTimeOffset.UtcNow.ToUnixTimeSeconds(), countback: 24);
+```
+
+**Dados privados (precisa autenticar):**
+```csharp
+var client = MercadoBitcoinClientExtensions.CreateWithRetryPolicies();
+await client.AuthenticateAsync("seu_login", "sua_senha");
+var accounts = await client.GetAccountsAsync();
+var balances = await client.GetBalancesAsync(accounts.First().Id);
+```
+
+---
+
 ### Configuração Básica (Apenas Métodos Modernos)
 
 ```csharp
@@ -346,9 +372,12 @@ var authenticatedClient = new MercadoBitcoinClient();
 await authenticatedClient.AuthenticateAsync("seu_api_token_id", "seu_api_token_secret");
 ```
 
-### 📊 Dados Públicos
+### 📊 Dados Públicos (sem autenticação)
 
 ```csharp
+using MercadoBitcoin.Client.Extensions;
+var client = MercadoBitcoinClientExtensions.CreateWithRetryPolicies();
+
 // Obter lista de todos os símbolos disponíveis
 var symbols = await client.GetSymbolsAsync();
 Console.WriteLine($"Símbolos disponíveis: {symbols.Symbol.Count}");
@@ -368,7 +397,7 @@ var trades = await client.GetTradesAsync("BTC-BRL", limit: 100);
 Console.WriteLine($"Últimas {trades.Count} negociações obtidas");
 
 // Obter dados de candles/gráficos
-var to = DateTimeOffset.Now.ToUnixTimeSeconds();
+var to = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 var candles = await client.GetCandlesAsync("BTC-BRL", "1h", (int)to, countback: 24);
 Console.WriteLine($"OHLCV das últimas 24 horas obtidas");
 
@@ -384,31 +413,36 @@ foreach (var network in networks)
 }
 ```
 
-### 👤 Gestão de Conta
+
+### 👤 Dados Privados (com autenticação)
 
 ```csharp
+using MercadoBitcoin.Client.Extensions;
+var client = MercadoBitcoinClientExtensions.CreateWithRetryPolicies();
+await client.AuthenticateAsync("seu_login", "sua_senha");
+
 // Obter informações das contas
-var accounts = await authenticatedClient.GetAccountsAsync();
+var accounts = await client.GetAccountsAsync();
 var account = accounts.First();
 Console.WriteLine($"Conta: {account.Name} ({account.Currency})");
 
 // Obter saldos
-var balances = await authenticatedClient.GetBalancesAsync(account.Id);
+var balances = await client.GetBalancesAsync(account.Id);
 foreach (var balance in balances)
 {
     Console.WriteLine($"{balance.Symbol}: {balance.Available} (disponível) + {balance.On_hold} (reservado)");
 }
 
 // Obter tier de taxas
-var tier = await authenticatedClient.GetTierAsync(account.Id);
+var tier = await client.GetTierAsync(account.Id);
 Console.WriteLine($"Tier atual: {tier.First().Tier}");
 
 // Obter taxas de trading para um símbolo
-var tradingFees = await authenticatedClient.GetTradingFeesAsync(account.Id, "BTC-BRL");
+var tradingFees = await client.GetTradingFeesAsync(account.Id, "BTC-BRL");
 Console.WriteLine($"Taxa maker: {tradingFees.Maker_fee}% | Taxa taker: {tradingFees.Taker_fee}%");
 
 // Obter posições abertas
-var positions = await authenticatedClient.GetPositionsAsync(account.Id);
+var positions = await client.GetPositionsAsync(account.Id);
 foreach (var position in positions)
 {
     Console.WriteLine($"Posição {position.Side} {position.Instrument}: {position.Qty} @ R$ {position.AvgPrice}");
