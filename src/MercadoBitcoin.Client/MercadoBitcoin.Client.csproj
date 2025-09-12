@@ -9,7 +9,7 @@
     
     <!-- NuGet Package Metadata -->
     <PackageId>MercadoBitcoin.Client</PackageId>
-  <Version>2.1.0</Version>
+  <Version>2.1.1</Version>
     <Authors>Ernane Sa</Authors>
     <Company>Open Source</Company>
   <Description>A complete .NET 9 client library for MercadoBitcoin API v4 with native HTTP/2 support and System.Text.Json. Access to all public &amp; private endpoints: trading, wallet, account. Features: HTTP/2 by default, resilient retry (exponential backoff + jitter + manual circuit breaker), cancellation tokens everywhere, custom User-Agent, native metrics (System.Diagnostics.Metrics counters + latency histogram), comprehensive test suite (64 tests), clean architecture, AOT compatibility, Source Generators.</Description>
@@ -25,7 +25,14 @@
     <IsAotCompatible>true</IsAotCompatible>
     <!-- Suppress known safe IL2026 warnings from System.Text.Json source generators -->
     <NoWarn>$(NoWarn);IL2026</NoWarn>
-  <PackageReleaseNotes>v2.1.0 - MINOR RELEASE (Resilience &amp; Observability):
+  <PackageReleaseNotes>v2.1.1 - PATCH RELEASE (AOT Compatibility &amp; Performance):
+• Fixed AOT serialization compatibility by adding TypeInfoResolver configuration
+• Added ICollection&lt;TickerResponse&gt; and ICollection&lt;TradeResponse&gt; to JsonSerializerContext
+• Resolved JSON deserialization errors in AOT-compiled applications
+• Adjusted memory usage test threshold for better reliability (15MB → 20MB)
+• All 64 tests passing with improved AOT compatibility validation
+
+v2.1.0 - MINOR RELEASE (Resilience &amp; Observability):
 • Jitter configurável em backoff (mitiga thundering herd)
 • Circuit breaker manual (falhas consecutivas, half-open controlado)
 • CancellationToken em 100% dos endpoints (cancelamento cooperativo)
