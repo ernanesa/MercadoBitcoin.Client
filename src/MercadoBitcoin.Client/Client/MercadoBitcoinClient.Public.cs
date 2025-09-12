@@ -1,12 +1,9 @@
 using MercadoBitcoin.Client.Generated;
-using System.Net.Http;
-using System.Net.Http.Headers;
-using System.Threading.Tasks;
 using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
 using MercadoBitcoin.Client.Extensions;
 using MercadoBitcoin.Client.Models;
-
-using System;
 
 namespace MercadoBitcoin.Client
 {

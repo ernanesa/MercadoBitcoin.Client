@@ -1,6 +1,7 @@
 using MercadoBitcoin.Client.Generated;
-using System.Threading.Tasks;
 using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace MercadoBitcoin.Client
 {
