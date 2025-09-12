@@ -1,11 +1,14 @@
 # MercadoBitcoin.Client
-> **ATENÇÃO: BREAKING CHANGE NA PRÓXIMA VERSÃO 3.0.0**
+
+> **ATENÇÃO: BREAKING CHANGE NA VERSÃO 3.0.0**
 >
-> Todos os construtores públicos de `MercadoBitcoinClient` foram removidos. Agora, a única forma suportada de instanciar o cliente é via métodos de extensão (`MercadoBitcoinClientExtensions.CreateWithRetryPolicies`, etc.) ou injeção de dependência (`services.AddMercadoBitcoinClient(...)`).
+> Todos os construtores públicos de `MercadoBitcoinClient` foram **removidos**. A única forma suportada de instanciar o cliente agora é via métodos de extensão (`MercadoBitcoinClientExtensions.CreateWithRetryPolicies`, etc.) ou injeção de dependência (`services.AddMercadoBitcoinClient(...)`).
 >
 > **Antes (obsoleto):**
 > ```csharp
-> **Depois (recomendado):**
+> var client = new MercadoBitcoinClient();
+> ```
+> **Depois (v3.0.0+):**
 > ```csharp
 > var client = MercadoBitcoinClientExtensions.CreateWithRetryPolicies();
 > // ou via DI:
@@ -38,6 +41,7 @@ var balances = await client.GetBalancesAsync(accounts.First().Id);
 
 ---
 
+
 ### Configuração Básica (Apenas Métodos Modernos)
 
 ```csharp
@@ -55,6 +59,8 @@ services.AddMercadoBitcoinClient(options =>
     options.BaseUrl = "https://api.mercadobitcoin.net/api/v4";
     // ...outras opções
 });
+```
+
 ### Configuração com Injeção de Dependência (Recomendado)
 
 ```csharp
@@ -65,6 +71,8 @@ services.AddMercadoBitcoinClient(options =>
     options.HttpVersion = HttpVersion.Version20; // HTTP/2 por padrão
     options.EnableRetryPolicy = true;
 });
+```
+
 ### Configuração Básica com Retry
 
 ```csharp
@@ -74,57 +82,32 @@ var client = MercadoBitcoinClientExtensions.CreateWithRetryPolicies();
 
 // Autenticar
 await client.AuthenticateAsync("seu_login", "sua_senha");
+```
 
-// Configuração personalizada de retry
-var client = MercadoBitcoinClient.CreateWithRetryPolicy(options =>
-{
-    options.MaxRetryAttempts = 5;
-    options.RetryDelaySeconds = 2;
-    options.UseExponentialBackoff = true;
-    options.HttpVersion = HttpVersion.Version20; // HTTP/2
-});
-### Configuração Inicial (Apenas Métodos Modernos)
 
-```csharp
-using MercadoBitcoin.Client.Extensions;
+## 🛠️ Migração e Atualizações (v3.0.0)
 
-// Cliente para dados públicos (sem autenticação)
-var client = MercadoBitcoinClientExtensions.CreateWithRetryPolicies();
+### Remoção de Construtores Obsoletos
 
-// Cliente autenticado
-await client.AuthenticateAsync("seu_api_token_id", "seu_api_token_secret");
-// Antes (HTTP/1.1)
-// var client = new MercadoBitcoinClient(); // REMOVIDO
-
-// Depois (HTTP/2 - recomendado)
-var client = MercadoBitcoinClientExtensions.CreateWithRetryPolicies();
-
-// Ou manter HTTP/1.1 se necessário
-// var client = MercadoBitcoinClient.CreateWithHttp11(); // REMOVIDO
-
-### Migração e Atualizações
-
-#### Remoção de Construtores Obsoletos (v3.0.0)
-
-Todos os construtores públicos de `MercadoBitcoinClient` foram removidos. Utilize apenas métodos de extensão ou DI:
+Todos os construtores públicos de `MercadoBitcoinClient` foram **removidos**. Utilize apenas métodos de extensão ou DI:
 
 ```csharp
 // Antes (obsoleto)
 var client = new MercadoBitcoinClient();
 
-// Depois (recomendado)
+// Depois (v3.0.0+)
 var client = MercadoBitcoinClientExtensions.CreateWithRetryPolicies();
 // ou via DI:
 services.AddMercadoBitcoinClient(...);
 ```
 
-#### Migração para HTTP/2
+### Migração para HTTP/2
 
 Se você está migrando de uma versão anterior que usava HTTP/1.1:
 
 ```csharp
 // Antes (HTTP/1.1)
-// var client = new MercadoBitcoinClient(); // REMOVIDO
+var client = new MercadoBitcoinClient();
 
 // Depois (HTTP/2 - recomendado)
 var client = MercadoBitcoinClientExtensions.CreateWithRetryPolicies();
@@ -768,7 +751,10 @@ A biblioteca passou por rigorosos testes de qualidade que garantem:
 - **Escalabilidade**: Otimizado para alta concorrência
 - **Segurança**: Tratamento seguro de credenciais e dados sensíveis
 
+
 ## 📋 Changelog
+
+Consulte o arquivo [CHANGELOG.md](CHANGELOG.md) ou [RELEASE_NOTES_v3.0.0.md](RELEASE_NOTES_v3.0.0.md) para detalhes completos das mudanças, breaking changes e instruções de migração.
 
 ## 📈 Observabilidade e Métricas
 
@@ -1268,7 +1254,7 @@ Esses documentos são autocontidos e otimizados para interpretação programáti
 
 ---
 
-*Última atualização: Agosto 2025 - Versão 2.1.0 (Resiliência expandida, jitter, breaker, cancelamento total)*
+*Última atualização: Agosto 2025 - Versão 3.0.0 (Remoção de construtores públicos, DI e métodos de extensão obrigatórios, alinhamento total com .NET 9 e AOT)*
 
 [![GitHub stars](https://img.shields.io/github/stars/seu-usuario/MercadoBitcoin.Client?style=social)](https://github.com/seu-usuario/MercadoBitcoin.Client/stargazers)
 [![GitHub forks](https://img.shields.io/github/forks/seu-usuario/MercadoBitcoin.Client?style=social)](https://github.com/seu-usuario/MercadoBitcoin.Client/network/members)

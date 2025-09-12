@@ -9,7 +9,7 @@
     
     <!-- NuGet Package Metadata -->
     <PackageId>MercadoBitcoin.Client</PackageId>
-  <Version>2.1.1</Version>
+  <Version>3.0.0</Version>
     <Authors>Ernane Sa</Authors>
     <Company>Open Source</Company>
   <Description>A complete .NET 9 client library for MercadoBitcoin API v4 with native HTTP/2 support and System.Text.Json. Access to all public &amp; private endpoints: trading, wallet, account. Features: HTTP/2 by default, resilient retry (exponential backoff + jitter + manual circuit breaker), cancellation tokens everywhere, custom User-Agent, native metrics (System.Diagnostics.Metrics counters + latency histogram), comprehensive test suite (64 tests), clean architecture, AOT compatibility, Source Generators.</Description>
@@ -25,55 +25,7 @@
     <IsAotCompatible>true</IsAotCompatible>
     <!-- Suppress known safe IL2026 warnings from System.Text.Json source generators -->
     <NoWarn>$(NoWarn);IL2026</NoWarn>
-  <PackageReleaseNotes>v2.1.1 - PATCH RELEASE (AOT Compatibility &amp; Performance):
-• Fixed AOT serialization compatibility by adding TypeInfoResolver configuration
-• Added ICollection&lt;TickerResponse&gt; and ICollection&lt;TradeResponse&gt; to JsonSerializerContext
-• Resolved JSON deserialization errors in AOT-compiled applications
-• Adjusted memory usage test threshold for better reliability (15MB → 20MB)
-• All 64 tests passing with improved AOT compatibility validation
-
-v2.1.0 - MINOR RELEASE (Resilience &amp; Observability):
-• Jitter configurável em backoff (mitiga thundering herd)
-• Circuit breaker manual (falhas consecutivas, half-open controlado)
-• CancellationToken em 100% dos endpoints (cancelamento cooperativo)
-• User-Agent customizável via variável de ambiente MB_USER_AGENT
-• Métricas nativas: counters (retries e transições de circuito) + histogram de latência com classificação de outcome
-• Test suite expandida: 64 cenários (retry/circuit breaker/zero-retry path)
-• Documentação atualizada com seção de Observabilidade e Métricas
-
-v2.0.1 - PATCH RELEASE:
-• Fixed AuthHttpClient error handling and validation
-• Improved test coverage with comprehensive integration tests
-• Enhanced performance metrics and memory usage optimization
-• Updated documentation with complete integration test guide
-• All 59 tests passing with robust error handling (historical baseline before 2.1.0)
-
-v2.0.0 - MAJOR RELEASE WITH BREAKING CHANGES:
-⚠️ BREAKING CHANGES - Migration Required:
-• Migrated from Newtonsoft.Json to System.Text.Json with Source Generators
-• JSON property names now use snake_case format (e.g., 'user_id' instead of 'userId')
-• Serialization behavior changes may affect custom JSON handling
-• Removed legacy AccessToken type - use string tokens directly
-• Updated HttpConfiguration namespace and API surface
-• AuthHttpClient.Create method signature changes
-
-✨ New Features:
-• Performance improved up to 2.1x faster serialization/deserialization
-• Full AOT (Ahead-of-Time) compilation support for native deployments
-• .NET 9 and C# 13 support with latest language features
-• HTTP/2 native support maintained for optimal performance
-• Comprehensive test suite with 59 integration tests
-• Enhanced error handling with detailed API error responses
-• Source Generators for compile-time JSON serialization
-• Memory-efficient operations with reduced allocations
-
-📖 Migration Guide:
-• Update JSON property handling to snake_case format
-• Replace Newtonsoft.Json dependencies with System.Text.Json
-• Update authentication token handling (remove AccessToken wrapper)
-• Review custom serialization logic for compatibility
-• Test thoroughly with new JSON serialization behavior
-• See README.md for detailed migration instructions</PackageReleaseNotes>
+  <PackageReleaseNotes>See CHANGELOG.md for full release notes.</PackageReleaseNotes>
     <!-- Build / determinism / source link / optimization -->
     <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
     <Deterministic>true</Deterministic>
@@ -101,6 +53,7 @@ v2.0.0 - MAJOR RELEASE WITH BREAKING CHANGES:
 
   <ItemGroup>
     <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+    <None Include="..\..\CHANGELOG.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
   <Target Name="NSwag" BeforeTargets="PrepareForBuild">
