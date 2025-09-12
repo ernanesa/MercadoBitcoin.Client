@@ -9,6 +9,10 @@ namespace MercadoBitcoin.Client.Configuration
     public class MercadoBitcoinClientOptions
     {
         /// <summary>
+        /// Limite de requisições por segundo (rate limit client-side). Padrão: 5 req/s.
+        /// </summary>
+        public int RequestsPerSecond { get; set; } = 5;
+        /// <summary>
         /// URL base da API (padrão: https://api.mercadobitcoin.net/api/v4)
         /// </summary>
         public string BaseUrl { get; set; } = "https://api.mercadobitcoin.net/api/v4";

@@ -1,4 +1,109 @@
 # MercadoBitcoin.Client
+> **ATENÇÃO: BREAKING CHANGE NA PRÓXIMA VERSÃO 3.0.0**
+>
+> Todos os construtores públicos de `MercadoBitcoinClient` foram removidos. Agora, a única forma suportada de instanciar o cliente é via métodos de extensão (`MercadoBitcoinClientExtensions.CreateWithRetryPolicies`, etc.) ou injeção de dependência (`services.AddMercadoBitcoinClient(...)`).
+>
+> **Antes (obsoleto):**
+> ```csharp
+> **Depois (recomendado):**
+> ```csharp
+> var client = MercadoBitcoinClientExtensions.CreateWithRetryPolicies();
+> // ou via DI:
+> services.AddMercadoBitcoinClient(...);
+> ```
+> Consulte a seção "Migração e Atualizações" para detalhes.
+### Configuração Básica (Apenas Métodos Modernos)
+
+```csharp
+using MercadoBitcoin.Client.Extensions;
+
+// Configuração recomendada (retry policies + HTTP/2)
+var client = MercadoBitcoinClientExtensions.CreateWithRetryPolicies();
+
+// Configuração otimizada para trading
+var client = MercadoBitcoinClientExtensions.CreateForTrading();
+
+// Configuração via DI (recomendado para ASP.NET Core)
+services.AddMercadoBitcoinClient(options =>
+{
+    options.BaseUrl = "https://api.mercadobitcoin.net/api/v4";
+    // ...outras opções
+});
+### Configuração com Injeção de Dependência (Recomendado)
+
+```csharp
+// Program.cs ou Startup.cs
+services.AddMercadoBitcoinClient(options =>
+{
+    options.BaseUrl = "https://api.mercadobitcoin.net/api/v4";
+    options.HttpVersion = HttpVersion.Version20; // HTTP/2 por padrão
+    options.EnableRetryPolicy = true;
+});
+### Configuração Básica com Retry
+
+```csharp
+using MercadoBitcoin.Client.Extensions;
+// Criar cliente com retry policies
+var client = MercadoBitcoinClientExtensions.CreateWithRetryPolicies();
+
+// Autenticar
+await client.AuthenticateAsync("seu_login", "sua_senha");
+
+// Configuração personalizada de retry
+var client = MercadoBitcoinClient.CreateWithRetryPolicy(options =>
+{
+    options.MaxRetryAttempts = 5;
+    options.RetryDelaySeconds = 2;
+    options.UseExponentialBackoff = true;
+    options.HttpVersion = HttpVersion.Version20; // HTTP/2
+});
+### Configuração Inicial (Apenas Métodos Modernos)
+
+```csharp
+using MercadoBitcoin.Client.Extensions;
+
+// Cliente para dados públicos (sem autenticação)
+var client = MercadoBitcoinClientExtensions.CreateWithRetryPolicies();
+
+// Cliente autenticado
+await client.AuthenticateAsync("seu_api_token_id", "seu_api_token_secret");
+// Antes (HTTP/1.1)
+// var client = new MercadoBitcoinClient(); // REMOVIDO
+
+// Depois (HTTP/2 - recomendado)
+var client = MercadoBitcoinClientExtensions.CreateWithRetryPolicies();
+
+// Ou manter HTTP/1.1 se necessário
+// var client = MercadoBitcoinClient.CreateWithHttp11(); // REMOVIDO
+
+### Migração e Atualizações
+
+#### Remoção de Construtores Obsoletos (v3.0.0)
+
+Todos os construtores públicos de `MercadoBitcoinClient` foram removidos. Utilize apenas métodos de extensão ou DI:
+
+```csharp
+// Antes (obsoleto)
+var client = new MercadoBitcoinClient();
+
+// Depois (recomendado)
+var client = MercadoBitcoinClientExtensions.CreateWithRetryPolicies();
+// ou via DI:
+services.AddMercadoBitcoinClient(...);
+```
+
+#### Migração para HTTP/2
+
+Se você está migrando de uma versão anterior que usava HTTP/1.1:
+
+```csharp
+// Antes (HTTP/1.1)
+// var client = new MercadoBitcoinClient(); // REMOVIDO
+
+// Depois (HTTP/2 - recomendado)
+var client = MercadoBitcoinClientExtensions.CreateWithRetryPolicies();
+```
+# MercadoBitcoin.Client
 
 [![.NET](https://img.shields.io/badge/.NET-9.0-blue)](https://dotnet.microsoft.com/download/dotnet/9.0)
 [![C#](https://img.shields.io/badge/C%23-13.0-blue)](https://docs.microsoft.com/en-us/dotnet/csharp/)
