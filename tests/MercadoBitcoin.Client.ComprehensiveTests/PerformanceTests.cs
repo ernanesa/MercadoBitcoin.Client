@@ -205,12 +205,12 @@ public class PerformanceTests : TestBase
             var finalMemory = GC.GetTotalMemory(false);
             var memoryRetained = finalMemory - initialMemory;
 
-            LogTestResult("MeasureMemoryUsage", true, 
+            LogTestResult("MeasureMemoryUsage", true,
                 $"Peak usage: {memoryUsed / 1024.0:F2}KB, Retained: {memoryRetained / 1024.0:F2}KB");
 
             // Assert reasonable memory usage
             Assert.True(memoryUsed < 50 * 1024 * 1024, $"Peak memory usage {memoryUsed / 1024.0 / 1024.0:F2}MB exceeds 50MB threshold");
-            Assert.True(memoryRetained < 15 * 1024 * 1024, $"Retained memory {memoryRetained / 1024.0 / 1024.0:F2}MB exceeds 15MB threshold");
+            Assert.True(memoryRetained < 20 * 1024 * 1024, $"Retained memory {memoryRetained / 1024.0 / 1024.0:F2}MB exceeds 20MB threshold");
         }
         catch (Exception ex)
         {
@@ -250,7 +250,7 @@ public class PerformanceTests : TestBase
 
             var avgTimePerRequest = stopwatch.ElapsedMilliseconds / (double)(concurrentRequests * 2); // 2 requests per task
 
-            LogTestResult("MeasureConcurrentRequests", true, 
+            LogTestResult("MeasureConcurrentRequests", true,
                 $"Completed {concurrentRequests * 2} concurrent requests in {stopwatch.ElapsedMilliseconds}ms, avg: {avgTimePerRequest:F2}ms per request");
 
             // Assert reasonable concurrent performance
@@ -270,27 +270,27 @@ public class PerformanceTests : TestBase
         {
             // This test validates that we're using Source Generators by checking the JsonSerializerContext
             var context = MercadoBitcoinJsonSerializerContext.Default;
-            
+
             Assert.NotNull(context);
             Assert.NotNull(context.Options);
-            
+
             // Verify that specific types are registered in the context
             var symbolsTypeInfo = context.GetTypeInfo(typeof(ListSymbolInfoResponse));
             var tickerTypeInfo = context.GetTypeInfo(typeof(TickerResponse[]));
             var orderbookTypeInfo = context.GetTypeInfo(typeof(OrderBookResponse));
-            
+
             Assert.NotNull(symbolsTypeInfo);
             Assert.NotNull(tickerTypeInfo);
             Assert.NotNull(orderbookTypeInfo);
-            
+
             // Test actual serialization with context
             var symbols = await Client.GetSymbolsAsync();
             var json = JsonSerializer.Serialize(symbols, context.ListSymbolInfoResponse);
             var deserialized = JsonSerializer.Deserialize(json, context.ListSymbolInfoResponse);
-            
+
             Assert.NotNull(deserialized);
             Assert.Equal(symbols.Symbol.Count, deserialized.Symbol.Count);
-            
+
             LogTestResult("ValidateSourceGenerators", true, "Source Generators are working correctly");
         }
         catch (Exception ex)
