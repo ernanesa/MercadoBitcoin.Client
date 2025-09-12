@@ -11,13 +11,45 @@ using System.Runtime.Serialization;
 
 
 namespace MercadoBitcoin.Client
+
 {
+    using System.Text.Json;
+
     public partial class MercadoBitcoinClient : IDisposable
     {
+        private readonly Internal.AsyncRateLimiter _rateLimiter;
         private readonly MercadoBitcoin.Client.Generated.Client _generatedClient;
         private readonly AuthHttpClient _authHandler;
         private readonly MercadoBitcoin.Client.Generated.OpenClient _openClient;
         private readonly HttpClient _httpClient;
+
+        /// <summary>
+        /// Mapeia ApiException do client gerado para exceções ricas MercadoBitcoin.
+        /// </summary>
+        private static Exception MapApiException(Exception ex)
+        {
+            if (ex is MercadoBitcoinApiException)
+                return ex;
+            if (ex is Generated.ApiException apiEx)
+            {
+                ErrorResponse? error = null;
+                try
+                {
+                    if (!string.IsNullOrWhiteSpace(apiEx.Response))
+                        error = JsonSerializer.Deserialize(apiEx.Response, MercadoBitcoinJsonSerializerContext.Default.ErrorResponse);
+                }
+                catch { /* fallback para null */ }
+                var code = apiEx.StatusCode;
+                if (code == 401 || code == 403)
+                    return new MercadoBitcoinUnauthorizedException(apiEx.Message, error ?? new ErrorResponse { Code = $"HTTP_{code}", Message = apiEx.Message });
+                if (code == 400)
+                    return new MercadoBitcoinValidationException(apiEx.Message, error ?? new ErrorResponse { Code = $"HTTP_{code}", Message = apiEx.Message });
+                if (code == 429)
+                    return new MercadoBitcoinRateLimitException(apiEx.Message, error ?? new ErrorResponse { Code = $"HTTP_{code}", Message = apiEx.Message });
+                return new MercadoBitcoinApiException(apiEx.Message, error ?? new ErrorResponse { Code = $"HTTP_{code}", Message = apiEx.Message });
+            }
+            return ex;
+        }
 
         /// <summary>
         /// Construtor para uso com IHttpClientFactory (DI)
@@ -28,6 +60,10 @@ namespace MercadoBitcoin.Client
         {
             _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
             _authHandler = authHandler ?? throw new ArgumentNullException(nameof(authHandler));
+
+            // TODO: Permitir injeção de opções/configuração
+            var requestsPerSecond = 5; // valor padrão, pode ser lido de opções futuramente
+            _rateLimiter = new Internal.AsyncRateLimiter(requestsPerSecond);
 
             // The generated client will be initialized with the injected HttpClient
             _generatedClient = new MercadoBitcoin.Client.Generated.Client(_httpClient) { BaseUrl = "https://api.mercadobitcoin.net/api/v4" };
@@ -42,35 +78,7 @@ namespace MercadoBitcoin.Client
             }
         }
 
-        /// <summary>
-        /// Construtor para compatibilidade com versões anteriores (não recomendado para aplicações ASP.NET Core)
-        /// </summary>
-        [Obsolete("Use o construtor com HttpClient e AuthHttpClient para melhor integração com IHttpClientFactory")]
-        public MercadoBitcoinClient() : this(CreateLegacyHttpClient(), new AuthHttpClient())
-        {
-        }
-
-        /// <summary>
-        /// Construtor para compatibilidade com versões anteriores (não recomendado para aplicações ASP.NET Core)
-        /// </summary>
-        [Obsolete("Use o construtor com HttpClient e AuthHttpClient para melhor integração com IHttpClientFactory")]
-        public MercadoBitcoinClient(AuthHttpClient? authHandler) : this(CreateLegacyHttpClient(), authHandler ?? new AuthHttpClient())
-        {
-        }
-
-        private static HttpClient CreateLegacyHttpClient()
-        {
-            var handler = new AuthHttpClient();
-            var httpClient = new HttpClient(handler, false);
-            var httpConfig = HttpConfiguration.CreateHttp2Default();
-
-            httpClient.DefaultRequestVersion = httpConfig.HttpVersion;
-            httpClient.DefaultVersionPolicy = httpConfig.VersionPolicy;
-            httpClient.Timeout = TimeSpan.FromSeconds(httpConfig.TimeoutSeconds);
-            httpClient.BaseAddress = new Uri("https://api.mercadobitcoin.net/api/v4");
-
-            return httpClient;
-        }
+        // ...existing code...
 
         public async Task AuthenticateAsync(string login, string password)
         {
@@ -84,6 +92,7 @@ namespace MercadoBitcoin.Client
 
             try
             {
+                await _rateLimiter.WaitAsync();
                 var response = await _generatedClient.AuthorizeAsync(authorizeRequest);
                 _authHandler.SetAccessToken(response.Access_token);
                 // valida formato básico
@@ -91,12 +100,10 @@ namespace MercadoBitcoin.Client
                 {
                     throw new MercadoBitcoinApiException("Token de acesso vazio retornado pela API", new ErrorResponse { Code = "AUTHORIZE|EMPTY_TOKEN", Message = "Access token vazio" });
                 }
-
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-
-                throw;
+                throw MapApiException(ex);
             }
         }
 

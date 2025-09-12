@@ -12,21 +12,79 @@ namespace MercadoBitcoin.Client
 {
     public partial class MercadoBitcoinClient
     {
+        /// <summary>
+        /// Itera de forma assíncrona sobre todos os depósitos cripto de um usuário, paginando automaticamente.
+        /// </summary>
+        /// <param name="accountId">ID da conta</param>
+        /// <param name="symbol">Símbolo do ativo (ex: BTC)</param>
+        /// <param name="limit">Tamanho da página (padrão: 50, máximo: 50)</param>
+        /// <param name="from">Timestamp inicial (opcional)</param>
+        /// <param name="to">Timestamp final (opcional)</param>
+        /// <param name="cancellationToken">Token de cancelamento</param>
+        /// <returns>IAsyncEnumerable de Deposit</returns>
+        public IAsyncEnumerable<Deposit> GetDepositsPagedAsync(
+            string accountId,
+            string symbol,
+            int limit = 50,
+            int? from = null,
+            int? to = null,
+            CancellationToken cancellationToken = default)
+        {
+            return Internal.AsyncPaginationHelper.PaginateAsync<Deposit>(
+                fetchPage: async (pageSize, page, ct) =>
+                {
+                    await _rateLimiter.WaitAsync(ct);
+                    return await _generatedClient.DepositsAsync(
+                        accountId,
+                        symbol,
+                        limit: pageSize.ToString(),
+                        page: page.ToString(),
+                        from: from?.ToString(),
+                        to: to?.ToString(),
+                        cancellationToken: ct
+                    ).ConfigureAwait(false);
+                },
+                pageSize: limit,
+                startPage: 1,
+                cancellationToken: cancellationToken
+            );
+        }
         #region Public Data
 
         public Task<AssetFee> GetAssetFeesAsync(string asset, string? network = null, CancellationToken cancellationToken = default)
         {
-            return _generatedClient.FeesAsync(asset, network, cancellationToken);
+            try
+            {
+                return _generatedClient.FeesAsync(asset, network, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                throw MapApiException(ex);
+            }
         }
 
         public Task<OrderBookResponse> GetOrderBookAsync(string symbol, string? limit = null, CancellationToken cancellationToken = default)
         {
-            return _generatedClient.OrderbookAsync(symbol, limit, cancellationToken);
+            try
+            {
+                return _generatedClient.OrderbookAsync(symbol, limit, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                throw MapApiException(ex);
+            }
         }
 
         public Task<ICollection<TradeResponse>> GetTradesAsync(string symbol, int? tid = null, int? since = null, int? from = null, int? to = null, int? limit = null, CancellationToken cancellationToken = default)
         {
-            return _generatedClient.TradesAsync(symbol, tid, since, from, to, limit, cancellationToken);
+            try
+            {
+                return _generatedClient.TradesAsync(symbol, tid, since, from, to, limit, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                throw MapApiException(ex);
+            }
         }
 
         /// <summary>
@@ -55,7 +113,14 @@ namespace MercadoBitcoin.Client
                 from = tmp;
             }
 
-            return _generatedClient.CandlesAsync(normalizedSymbol, normalizedResolution, from, to, countback, cancellationToken);
+            try
+            {
+                return _generatedClient.CandlesAsync(normalizedSymbol, normalizedResolution, from, to, countback, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                throw MapApiException(ex);
+            }
         }
 
         /// <summary>
@@ -67,7 +132,14 @@ namespace MercadoBitcoin.Client
             var right = to ?? (int)DateTimeOffset.UtcNow.ToUnixTimeSeconds();
             var normalizedSymbol = CandleExtensions.NormalizeSymbol(symbol);
             var normalizedResolution = CandleExtensions.NormalizeResolution(resolution);
-            return _generatedClient.CandlesAsync(normalizedSymbol, normalizedResolution, from: null, to: right, countback: countback, cancellationToken);
+            try
+            {
+                return _generatedClient.CandlesAsync(normalizedSymbol, normalizedResolution, from: null, to: right, countback: countback, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                throw MapApiException(ex);
+            }
         }
 
         /// <summary>
@@ -95,12 +167,18 @@ namespace MercadoBitcoin.Client
                 from = tmp;
             }
 
-            // Chama o cliente gerado com parâmetros normalizados
-            var response = await _generatedClient.CandlesAsync(normalizedSymbol, normalizedResolution, from, to, countback, cancellationToken).ConfigureAwait(false);
-
-            // Converte resposta em lista tipada
-            var candles = response.ToCandleDataList(normalizedSymbol, normalizedResolution);
-            return candles;
+            try
+            {
+                // Chama o cliente gerado com parâmetros normalizados
+                var response = await _generatedClient.CandlesAsync(normalizedSymbol, normalizedResolution, from, to, countback, cancellationToken).ConfigureAwait(false);
+                // Converte resposta em lista tipada
+                var candles = response.ToCandleDataList(normalizedSymbol, normalizedResolution);
+                return candles;
+            }
+            catch (Exception ex)
+            {
+                throw MapApiException(ex);
+            }
         }
 
         /// <summary>
@@ -109,22 +187,50 @@ namespace MercadoBitcoin.Client
         public Task<IReadOnlyList<CandleData>> GetRecentCandlesTypedAsync(string symbol, string resolution, int countback, CancellationToken cancellationToken = default)
         {
             var to = (int)DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-            return GetCandlesTypedAsync(symbol, resolution, to, from: null, countback: countback, cancellationToken);
+            try
+            {
+                return GetCandlesTypedAsync(symbol, resolution, to, from: null, countback: countback, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                throw MapApiException(ex);
+            }
         }
 
         public Task<ListSymbolInfoResponse> GetSymbolsAsync(string? symbols = null, CancellationToken cancellationToken = default)
         {
-            return _generatedClient.SymbolsAsync(symbols, cancellationToken);
+            try
+            {
+                return _generatedClient.SymbolsAsync(symbols, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                throw MapApiException(ex);
+            }
         }
 
         public Task<ICollection<TickerResponse>> GetTickersAsync(string symbols, CancellationToken cancellationToken = default)
         {
-            return _generatedClient.TickersAsync(symbols, cancellationToken);
+            try
+            {
+                return _generatedClient.TickersAsync(symbols, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                throw MapApiException(ex);
+            }
         }
 
         public Task<ICollection<Network>> GetAssetNetworksAsync(string asset, CancellationToken cancellationToken = default)
         {
-            return _generatedClient.NetworksAsync(asset, cancellationToken);
+            try
+            {
+                return _generatedClient.NetworksAsync(asset, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                throw MapApiException(ex);
+            }
         }
 
         #endregion
