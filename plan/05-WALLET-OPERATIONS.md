@@ -486,7 +486,7 @@ public class WithdrawalSecurityChecks
 - [ ] Cache configs (limits, fees)
 - [ ] Alerts for near-limit conditions
 
-**Next**: [06-PERFORMANCE-OTIMIZACAO.md](06-PERFORMANCE-OTIMIZACAO.md)
+**Next**: [06-PERFORMANCE-AND-OPTIMIZATION.md](06-PERFORMANCE-AND-OPTIMIZATION.md)
 **Next**: [06-PERFORMANCE-AND-OPTIMIZATION.md](06-PERFORMANCE-AND-OPTIMIZATION.md)
 
 ````

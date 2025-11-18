@@ -109,7 +109,7 @@ for (int i = 0; i < span.Length; i++)
 
 ---
 
-**Document**: 15-INLINE-ARRAYS-EN.md  
+**Document**: 15-INLINE-ARRAYS.md  
 **Version**: 1.0  
 **Date**: 2025-11-18  
 **Status**: 🚧 Planned

@@ -787,6 +787,6 @@ var balances = await GetCachedAsync(
 
 ---
 
-**Next**: [04-OPERACOES-TRADING.md](04-OPERACOES-TRADING.md)
+**Next**: [04-TRADING-OPERATIONS.md](04-TRADING-OPERATIONS.md)
 
 ````

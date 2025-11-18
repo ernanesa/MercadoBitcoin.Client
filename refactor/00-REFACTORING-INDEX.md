@@ -12,7 +12,7 @@ Migrate the project from **.NET 9 to .NET 10**, applying **all advanced optimiza
 - [00-QUICK-REFERENCE-GUIDE.md](../plan/00-QUICK-REFERENCE-GUIDE.md)
 - [01-ARCHITECTURE-OVERVIEW.md](../plan/01-ARCHITECTURE-OVERVIEW.md)
 - [06-PERFORMANCE-AND-OPTIMIZATION.md](../plan/06-PERFORMANCE-AND-OPTIMIZATION.md)
-- [11-NET10-STRUCTURE-AND-UPDATES.md](../plan/11-NET10-STRUCTURE-AND-UPDATES.md)
+- [11-FOLDER-STRUCTURE-AND-NET10.md](../plan/11-FOLDER-STRUCTURE-AND-NET10.md)
 - [12-ADVANCED-OPTIMIZATIONS-NET10-CSHARP14.md](../plan/12-ADVANCED-OPTIMIZATIONS-NET10-CSHARP14.md)
 
 ---
@@ -27,34 +27,34 @@ Migrate the project from **.NET 9 to .NET 10**, applying **all advanced optimiza
 ### Phase 2: Configuration and Infrastructure
 - **[04-NET10-MIGRATION.md](04-NET10-MIGRATION.md)** - .NET 9 → .NET 10 migration
 - **[05-FOLDER-STRUCTURE.md](05-FOLDER-STRUCTURE.md)** - Folder structure reorganization
-- **[06-PROJECT-CONFIGURATION-EN.md](06-PROJECT-CONFIGURATION-EN.md)** - .csproj, runtimeconfig.json configuration
+- **[06-PROJECT-CONFIGURATION.md](06-PROJECT-CONFIGURATION.md)** - .csproj, runtimeconfig.json configuration
 
 ### Phase 3: Memory Optimizations
-- **[06-MEMORY-POOLING-EN.md](06-MEMORY-POOLING-EN.md)** - ArrayPool, MemoryPool, ObjectPool implementation
-- **[08-SPAN-MEMORY-EN.md](08-SPAN-MEMORY-EN.md)** - Refactoring to Span<T> and Memory<T>
-- **[09-STACK-ALLOCATION-EN.md](09-STACK-ALLOCATION-EN.md)** - Stack allocation leverage
+- **[06-MEMORY-POOLING.md](06-MEMORY-POOLING.md)** - ArrayPool, MemoryPool, ObjectPool implementation
+- **[08-SPAN-MEMORY.md](08-SPAN-MEMORY.md)** - Refactoring to Span<T> and Memory<T>
+- **[09-STACK-ALLOCATION.md](09-STACK-ALLOCATION.md)** - Stack allocation leverage
 
 ### Phase 4: Performance Optimizations
-- **[10-HTTP-OPTIMIZATION-EN.md](10-HTTP-OPTIMIZATION-EN.md)** - SocketsHttpHandler optimization, HTTP/3
-- **[10-RATE-LIMITING-EN.md](10-RATE-LIMITING-EN.md)** - Migration to System.Threading.RateLimiting
-- **[11-SOURCE-GENERATORS-EN.md](11-SOURCE-GENERATORS-EN.md)** - Source Generators expansion
-- **[12-PGO-CONFIGURATION-EN.md](12-PGO-CONFIGURATION-EN.md)** - Dynamic PGO configuration
+- **[10-HTTP-OPTIMIZATION.md](10-HTTP-OPTIMIZATION.md)** - SocketsHttpHandler optimization, HTTP/3
+- **[10-RATE-LIMITING.md](10-RATE-LIMITING.md)** - Migration to System.Threading.RateLimiting
+- **[11-SOURCE-GENERATORS.md](11-SOURCE-GENERATORS.md)** - Source Generators expansion
+- **[12-PGO-CONFIGURATION.md](12-PGO-CONFIGURATION.md)** - Dynamic PGO configuration
 
 ### Phase 5: Models and Structures
-- **[13-CANDLEDATA-STRUCT-EN.md](13-CANDLEDATA-STRUCT-EN.md)** - CandleData struct optimization
-- **[14-VALUE-TYPES-EN.md](14-VALUE-TYPES-EN.md)** - Class to struct conversion (where appropriate)
-- **[15-INLINE-ARRAYS-EN.md](15-INLINE-ARRAYS-EN.md)** - Inline Arrays implementation
-- **[16-REF-STRUCTS-EN.md](16-REF-STRUCTS-EN.md)** - Custom ref structs creation
+- **[13-CANDLEDATA-STRUCT.md](13-CANDLEDATA-STRUCT.md)** - CandleData struct optimization
+- **[14-VALUE-TYPES.md](14-VALUE-TYPES.md)** - Class to struct conversion (where appropriate)
+- **[15-INLINE-ARRAYS.md](15-INLINE-ARRAYS.md)** - Inline Arrays implementation
+- **[16-REF-STRUCTS.md](16-REF-STRUCTS.md)** - Custom ref structs creation
 
 ### Phase 6: Testing and Validation
-- **[17-TESTING-STRATEGY-EN.md](17-TESTING-STRATEGY-EN.md)** - Performance and functional testing strategy
-- **[18-BENCHMARKS-EN.md](18-BENCHMARKS-EN.md)** - BenchmarkDotNet setup
-- **[19-VALIDATION-EN.md](19-VALIDATION-EN.md)** - Validation and acceptance criteria
+- **[17-TESTING-STRATEGY.md](17-TESTING-STRATEGY.md)** - Performance and functional testing strategy
+- **[18-BENCHMARKS.md](18-BENCHMARKS.md)** - BenchmarkDotNet setup
+- **[19-VALIDATION.md](19-VALIDATION.md)** - Validation and acceptance criteria
 
 ### Phase 7: Documentation and Deployment
-- **[20-BREAKING-CHANGES-EN.md](20-BREAKING-CHANGES-EN.md)** - Breaking changes documentation
-- **[21-MIGRATION-GUIDE-EN.md](21-MIGRATION-GUIDE-EN.md)** - Migration guide for users
-- **[22-RELEASE-NOTES-EN.md](22-RELEASE-NOTES-EN.md)** - Release notes v4.0.0
+- **[20-BREAKING-CHANGES.md](20-BREAKING-CHANGES.md)** - Breaking changes documentation
+- **[21-MIGRATION-GUIDE.md](21-MIGRATION-GUIDE.md)** - Migration guide for users
+- **[22-RELEASE-NOTES.md](22-RELEASE-NOTES.md)** - Release notes v4.0.0
 
 ---
 

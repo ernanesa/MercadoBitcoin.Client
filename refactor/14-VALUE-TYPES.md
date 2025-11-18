@@ -144,7 +144,7 @@ public readonly struct OrderId
 
 ---
 
-**Document**: 14-VALUE-TYPES-EN.md  
+**Document**: 14-VALUE-TYPES.md  
 **Version**: 1.0  
 **Date**: 2025-11-18  
 **Status**: ✅ Strategy Defined

@@ -110,7 +110,7 @@ public ReadOnlySpan<char> NextToken(scoped ReadOnlySpan<char> delimiter)
 
 ---
 
-**Document**: 16-REF-STRUCTS-EN.md  
+**Document**: 16-REF-STRUCTS.md  
 **Version**: 1.0  
 **Date**: 2025-11-18  
 **Status**: 🚧 Planned

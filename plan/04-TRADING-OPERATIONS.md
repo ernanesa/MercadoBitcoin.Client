@@ -515,6 +515,6 @@ public class PrioritizedRateLimiter
 - [ ] Differentiated rate limiting
 - [ ] Specific error handling
 
-**Next**: [05-OPERACOES-CARTEIRA.md](05-OPERACOES-CARTEIRA.md)
+**Next**: [05-WALLET-OPERATIONS.md](05-WALLET-OPERATIONS.md)
 
 ````

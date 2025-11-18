@@ -227,8 +227,8 @@ catch (JsonException ex)
 
 ---
 
-**Document**: 11-SOURCE-GENERATORS-EN.md  
+**Document**: 11-SOURCE-GENERATORS.md  
 **Version**: 1.0  
 **Date**: 2025-11-18  
 **Status**: 🚧 Planned / Awaiting Implementation  
-**Next**: [12-PGO-CONFIGURATION-EN.md](12-PGO-CONFIGURATION-EN.md)
+**Next**: [12-PGO-CONFIGURATION.md](12-PGO-CONFIGURATION.md)

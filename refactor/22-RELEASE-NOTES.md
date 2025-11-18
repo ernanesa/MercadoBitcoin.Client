@@ -21,6 +21,6 @@ Version: 4.0.0 — Target: .NET 10 / C# 14. Focus: performance, memory efficienc
 
 ## Migration Recommendations
 
-See `21-MIGRATION-GUIDE-EN.md` for detailed steps.
+See `21-MIGRATION-GUIDE.md` for detailed steps.
 
 ```
