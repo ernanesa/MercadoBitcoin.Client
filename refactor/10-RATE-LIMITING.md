@@ -227,8 +227,8 @@ public async Task<HttpResponseMessage> SendAsync(
 
 ---
 
-**Document**: 10-RATE-LIMITING-EN.md  
+**Document**: 10-RATE-LIMITING.md  
 **Version**: 1.0  
 **Date**: 2025-11-18  
 **Status**: 🚧 Planned / Awaiting Implementation  
-**Next**: [11-SOURCE-GENERATORS-EN.md](11-SOURCE-GENERATORS-EN.md)
+**Next**: [11-SOURCE-GENERATORS.md](11-SOURCE-GENERATORS.md)

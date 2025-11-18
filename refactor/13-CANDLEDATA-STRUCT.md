@@ -135,7 +135,7 @@ for (int i = 0; i < candlesSpan.Length; i++)
 
 ### 6.2. Inline Arrays
 
-- Future: `InlineArray` for small candle buffers (see 15-INLINE-ARRAYS-EN.md)
+- Future: `InlineArray` for small candle buffers (see 15-INLINE-ARRAYS.md)
 
 ---
 
@@ -174,7 +174,7 @@ for (int i = 0; i < candlesSpan.Length; i++)
 
 ---
 
-**Document**: 13-CANDLEDATA-STRUCT-EN.md  
+**Document**: 13-CANDLEDATA-STRUCT.md  
 **Version**: 1.0  
 **Date**: 2025-11-18  
 **Status**: 🚧 Planned / Breaking change in v4.0.0

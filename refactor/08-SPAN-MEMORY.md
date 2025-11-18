@@ -27,7 +27,7 @@ This document defines how to use `Span<T>` and `Memory<T>` systematically in the
 It is directly aligned with:
 
 - Document `12-ADVANCED-OPTIMIZATIONS-NET10-CSHARP14.md`  
-- Documents `06-MEMORY-POOLING-EN.md` and `07-ARRAYPOOL-IMPLEMENTATION-EN.md`
+- Documents `06-MEMORY-POOLING.md` and `07-ARRAYPOOL-IMPLEMENTATION.md`
 
 ---
 
@@ -137,7 +137,7 @@ if (!decimal.TryParse(priceSpan, NumberStyles.Any, CultureInfo.InvariantCulture,
 
 ### 6.1. Input: ReadOnlySpan<byte>
 
-Comes from `ArrayPoolManager` as specified in `07-ARRAYPOOL-IMPLEMENTATION-EN.md`:
+Comes from `ArrayPoolManager` as specified in `07-ARRAYPOOL-IMPLEMENTATION.md`:
 
 ```csharp
 ReadOnlySpan<byte> payload = buffer.AsSpan(0, totalRead);
@@ -332,8 +332,8 @@ public void ParseWithSpan()
 
 ---
 
-**Document**: 08-SPAN-MEMORY-EN.md  
+**Document**: 08-SPAN-MEMORY.md  
 **Version**: 1.0  
 **Date**: 2025-11-18  
 **Status**: 🚧 Planned / Awaiting Implementation  
-**Next**: [09-HTTP-OPTIMIZATION-EN.md](09-HTTP-OPTIMIZATION-EN.md)
+**Next**: [09-HTTP-OPTIMIZATION.md](09-HTTP-OPTIMIZATION.md)

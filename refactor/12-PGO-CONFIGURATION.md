@@ -166,7 +166,7 @@ Create a sample executable (in `samples/`) with a `--training` mode:
 
 ### 7.2. Tools
 
-- `BenchmarkDotNet` for micro‑benchmarks (see 18-BENCHMARKS-EN.md).  
+- `BenchmarkDotNet` for micro‑benchmarks (see 18-BENCHMARKS.md).  
 - `dotnet-counters` and `dotnet-trace` to analyze JIT/PGO.
 
 ---
@@ -196,7 +196,7 @@ Create a sample executable (in `samples/`) with a `--training` mode:
 
 ---
 
-**Document**: 12-PGO-CONFIGURATION-EN.md  
+**Document**: 12-PGO-CONFIGURATION.md  
 **Version**: 1.0  
 **Date**: 2025-11-18  
 **Status**: ✅ Concept Defined / Implementation in host project

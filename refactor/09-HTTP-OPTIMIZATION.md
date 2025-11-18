@@ -272,8 +272,8 @@ services.AddHttpClient("MercadoBitcoin", client =>
 
 ---
 
-**Document**: 09-HTTP-OPTIMIZATION-EN.md  
+**Document**: 09-HTTP-OPTIMIZATION.md  
 **Version**: 1.0  
 **Date**: 2025-11-18  
 **Status**: 🚧 Planned / Awaiting Implementation  
-**Next**: [10-RATE-LIMITING-EN.md](10-RATE-LIMITING-EN.md)
+**Next**: [10-RATE-LIMITING.md](10-RATE-LIMITING.md)

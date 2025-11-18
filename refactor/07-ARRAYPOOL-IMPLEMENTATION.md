@@ -17,7 +17,7 @@
 
 ## 1. Specific Objective
 
-This document details the **practical implementation** of `ArrayPool<T>` in the library, reinforcing what was defined in `06-MEMORY-POOLING-EN.md`, focusing on:
+This document details the **practical implementation** of `ArrayPool<T>` in the library, reinforcing what was defined in `06-MEMORY-POOLING.md`, focusing on:
 
 - Standardizing **a single way** to allocate `byte[]` buffers for I/O  
 - Minimizing misuse (e.g., not returning arrays or using them after returning to the pool)  
@@ -261,7 +261,7 @@ logger.LogDebug("Response preview: {Preview}", preview);
 
 ### 8.3. Performance Tests
 
-- Create benchmarks (see `18-BENCHMARKS-EN.md`) comparing:
+- Create benchmarks (see `18-BENCHMARKS.md`) comparing:
   - `ReadAsStringAsync` + `JsonSerializer.Deserialize(string, ...)`  
   - vs. `Stream` + `ArrayPool` + `JsonSerializer.Deserialize(ReadOnlySpan<byte>, ...)`
 
@@ -294,9 +294,9 @@ logger.LogDebug("Response preview: {Preview}", preview);
 
 ---
 
-**Document**: 07-ARRAYPOOL-IMPLEMENTATION-EN.md  
+**Document**: 07-ARRAYPOOL-IMPLEMENTATION.md  
 **Version**: 1.0  
 **Date**: 2025-11-18  
 **Status**: 🚧 Planned / Awaiting Implementation  
-**Next**: [08-SPAN-MEMORY-EN.md](08-SPAN-MEMORY-EN.md)
+**Next**: [08-SPAN-MEMORY.md](08-SPAN-MEMORY.md)
 
