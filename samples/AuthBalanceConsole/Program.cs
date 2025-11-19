@@ -1,13 +1,14 @@
 using MercadoBitcoin.Client;
+using MercadoBitcoin.Client.Errors;
 using System.Text.Json;
 
-// Pequeno utilitário para:
-// 1. Autenticar usando login (API token id) e password (API token secret)
-// 2. Listar contas
-// 3. Listar saldos de cada conta
-// Uso:
+// Small utility to:
+// 1. Authenticate using login (API token id) and password (API token secret)
+// 2. List accounts
+// 3. List balances for each account
+// Usage:
 //   dotnet run --project samples/AuthBalanceConsole -- <login> <password>
-// ou definir variáveis de ambiente MB_LOGIN e MB_PASSWORD
+// or define environment variables MB_LOGIN and MB_PASSWORD
 
 var argList = args.ToList();
 var verbose = argList.Remove("--verbose") || Environment.GetEnvironmentVariable("MB_VERBOSE") == "1";
@@ -17,7 +18,7 @@ var allowMutations = argList.Remove("--allow-mutate") || Environment.GetEnvironm
 string? login = null;
 string? password = null;
 
-// Após remover flags, os dois primeiros argumentos remanescentes podem ser login e senha
+// After removing flags, the first two remaining arguments can be login and password
 if (argList.Count >= 2)
 {
     login = argList[0];
@@ -31,14 +32,14 @@ else
 
 if (runDiagnostics)
 {
-    // Para diagnostics a autenticação é opcional: se não houver credenciais, testaremos só endpoints públicos.
+    // For diagnostics authentication is optional: if no credentials, only public endpoints will be tested.
     if (string.IsNullOrWhiteSpace(login) || string.IsNullOrWhiteSpace(password))
     {
-        Console.WriteLine("[DIAG] Sem credenciais - serão testados apenas endpoints públicos.");
+        Console.WriteLine("[DIAG] No credentials - only public endpoints will be tested.");
     }
     else if (verbose)
     {
-        Console.WriteLine("[DIAG] Credenciais detectadas - endpoints privados inclusos.");
+        Console.WriteLine("[DIAG] Credentials detected - private endpoints included.");
     }
 
     var diag = new AuthBalanceConsole.EndpointDiagnostics(login, password, allowMutations);
@@ -48,7 +49,7 @@ if (runDiagnostics)
 
 if (string.IsNullOrWhiteSpace(login) || string.IsNullOrWhiteSpace(password))
 {
-    Console.WriteLine("Parâmetros ausentes. Uso: dotnet run -- <login> <password> [--verbose] [--diag] [--allow-mutate] ou defina MB_LOGIN / MB_PASSWORD. Para log detalhado use --verbose ou MB_VERBOSE=1.");
+    Console.WriteLine("Missing parameters. Usage: dotnet run -- <login> <password> [--verbose] [--diag] [--allow-mutate] or define MB_LOGIN / MB_PASSWORD. For detailed log use --verbose or MB_VERBOSE=1.");
     return 1;
 }
 
@@ -56,9 +57,9 @@ var client = MercadoBitcoin.Client.Extensions.MercadoBitcoinClientExtensions.Cre
 
 try
 {
-    Console.WriteLine("== Autenticando ==");
+    Console.WriteLine("== Authenticating ==");
     await client.AuthenticateAsync(login, password);
-    Console.WriteLine("Autenticado com sucesso (token armazenado internamente).");
+    Console.WriteLine("Authenticated successfully (token stored internally).");
 
     if (verbose)
     {
@@ -71,34 +72,34 @@ try
             return $"{head}...{tail} (len={t.Length})";
         }
         Console.WriteLine($"[DEBUG] Token: {Mask(token)}");
-        Console.WriteLine("[DEBUG] Autenticação concluída. Próxima chamada: /accounts");
+        Console.WriteLine("[DEBUG] Authentication completed. Next call: /accounts");
     }
 
-    Console.WriteLine("== Contas ==");
+    Console.WriteLine("== Accounts ==");
     var accounts = await client.GetAccountsAsync();
     if (verbose)
     {
-        Console.WriteLine($"[DEBUG] /accounts retornou {accounts?.Count ?? 0} registros");
+        Console.WriteLine($"[DEBUG] /accounts returned {accounts?.Count ?? 0} records");
     }
     if (accounts == null || accounts.Count == 0)
     {
-        Console.WriteLine("Nenhuma conta retornada.");
+        Console.WriteLine("No accounts returned.");
         return 0;
     }
 
     var allData = new List<object>();
     foreach (var acct in accounts)
     {
-        Console.WriteLine($"Conta: {acct.Id} | {acct.Name} | {acct.Currency} ({acct.Type})");
+        Console.WriteLine($"Account: {acct.Id} | {acct.Name} | {acct.Currency} ({acct.Type})");
         try
         {
             var balances = await client.GetBalancesAsync(acct.Id!);
             if (verbose)
             {
-                Console.WriteLine($"[DEBUG] /accounts/{acct.Id}/balances retornou {balances.Count} itens");
+                Console.WriteLine($"[DEBUG] /accounts/{acct.Id}/balances returned {balances.Count} items");
             }
             allData.Add(new { account = acct, balances });
-            Console.WriteLine("  Saldos:");
+            Console.WriteLine("  Balances:");
             foreach (var b in balances)
             {
                 Console.WriteLine($"    {b.Symbol}: available={b.Available} on_hold={b.On_hold} total={b.Total}");
@@ -106,7 +107,7 @@ try
         }
         catch (Exception exBal)
         {
-            Console.WriteLine($"  Erro ao obter saldos: {exBal.Message}");
+            Console.WriteLine($"  Error getting balances: {exBal.Message}");
             if (verbose)
             {
                 Console.WriteLine(exBal);
@@ -115,20 +116,20 @@ try
     }
 
     Console.WriteLine();
-    Console.WriteLine("== JSON Consolidado ==");
+    Console.WriteLine("== Consolidated JSON ==");
     var json = JsonSerializer.Serialize(allData, new JsonSerializerOptions { WriteIndented = true });
     Console.WriteLine(json);
 }
 catch (MercadoBitcoinApiException apiEx)
 {
-    Console.WriteLine("Falha de API:");
+    Console.WriteLine("API Failure:");
     Console.WriteLine($"  Code: {apiEx.Error.Code}");
     Console.WriteLine($"  Message: {apiEx.Error.Message}");
     return 2;
 }
 catch (Exception ex)
 {
-    Console.WriteLine("Erro inesperado: " + ex.Message);
+    Console.WriteLine("Unexpected error: " + ex.Message);
     Console.WriteLine(ex);
     return 3;
 }

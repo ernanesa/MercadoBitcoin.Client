@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
 using MercadoBitcoin.Client.Generated;
+using MercadoBitcoin.Client.Errors;
 
 namespace MercadoBitcoin.Client;
 
@@ -60,7 +61,7 @@ namespace MercadoBitcoin.Client;
 [JsonSerializable(typeof(ApiException<object>))]
 public partial class MercadoBitcoinJsonSerializerContext : JsonSerializerContext
 {
-    // Ajuda o IL Trimmer/AOT a preservar membros acessados indiretamente pelo código gerado/NSwag
+    // Helps IL Trimmer/AOT preserve members accessed indirectly by generated code/NSwag
     [System.Diagnostics.CodeAnalysis.DynamicDependency(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.All, typeof(AccountResponse))]
     [System.Diagnostics.CodeAnalysis.DynamicDependency(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.All, typeof(AuthorizeResponse))]
     [System.Diagnostics.CodeAnalysis.DynamicDependency(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.All, typeof(PlaceOrderResponse))]

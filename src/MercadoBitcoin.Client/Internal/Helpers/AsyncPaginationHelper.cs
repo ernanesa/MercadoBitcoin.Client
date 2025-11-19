@@ -3,22 +3,22 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace MercadoBitcoin.Client.Internal
+namespace MercadoBitcoin.Client.Internal.Helpers
 {
     /// <summary>
-    /// Helper genérico para paginação assíncrona de APIs baseadas em limit/page.
+    /// Generic helper for asynchronous pagination of limit/page based APIs.
     /// </summary>
     public static class AsyncPaginationHelper
     {
         /// <summary>
-        /// Itera de forma assíncrona sobre páginas de uma API, retornando cada item individualmente.
+        /// Asynchronously iterates over API pages, returning each item individually.
         /// </summary>
-        /// <typeparam name="T">Tipo do item retornado pela API.</typeparam>
-        /// <param name="fetchPage">Função que recebe (limit, page, cancellationToken) e retorna uma página de resultados.</param>
-        /// <param name="pageSize">Tamanho da página (limit).</param>
-        /// <param name="startPage">Página inicial (default 1).</param>
-        /// <param name="cancellationToken">Token de cancelamento.</param>
-        /// <returns>IAsyncEnumerable de T.</returns>
+        /// <typeparam name="T">Type of item returned by the API.</typeparam>
+        /// <param name="fetchPage">Function that receives (limit, page, cancellationToken) and returns a page of results.</param>
+        /// <param name="pageSize">Page size (limit).</param>
+        /// <param name="startPage">Start page (default 1).</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>IAsyncEnumerable of T.</returns>
         public static async IAsyncEnumerable<T> PaginateAsync<T>(
             Func<int, int, CancellationToken, Task<ICollection<T>>> fetchPage,
             int pageSize,

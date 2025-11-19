@@ -1,9 +1,12 @@
 using MercadoBitcoin.Client.Generated;
 using MercadoBitcoin.Client.Http;
+using MercadoBitcoin.Client.Internal.RateLimiting;
+using MercadoBitcoin.Client.Errors;
 using System;
 using System.Net.Http;
 using System.Threading.Tasks;
 using System.Linq;
+using System.Threading.RateLimiting;
 
 
 namespace MercadoBitcoin.Client
@@ -13,82 +16,82 @@ namespace MercadoBitcoin.Client
 
     public partial class MercadoBitcoinClient : IDisposable
     {
-        private readonly Internal.AsyncRateLimiter _rateLimiter;
+        private readonly TokenBucketRateLimiter _rateLimiter;
         private readonly MercadoBitcoin.Client.Generated.Client _generatedClient;
         private readonly AuthHttpClient _authHandler;
         private readonly MercadoBitcoin.Client.Generated.OpenClient _openClient;
         private readonly HttpClient _httpClient;
 
         /// <summary>
-        /// Construtor para uso com DI, permitindo injeção real de opções de configuração.
+        /// Constructor for use with DI, allowing real injection of configuration options.
         /// </summary>
-        /// <param name="httpClient">HttpClient gerenciado pelo IHttpClientFactory</param>
-        /// <param name="authHandler">Handler de autenticação</param>
-        /// <param name="options">Opções de configuração injetadas</param>
+        /// <param name="httpClient">HttpClient managed by IHttpClientFactory</param>
+        /// <param name="authHandler">Authentication handler</param>
+        /// <param name="options">Injected configuration options</param>
         public MercadoBitcoinClient(HttpClient httpClient, AuthHttpClient authHandler, Microsoft.Extensions.Options.IOptions<Configuration.MercadoBitcoinClientOptions> options)
         {
             _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
             _authHandler = authHandler ?? throw new ArgumentNullException(nameof(authHandler));
-            var opts = options?.Value ?? new Configuration.MercadoBitcoinClientOptions();
-            _rateLimiter = new Internal.AsyncRateLimiter(opts.RequestsPerSecond);
-            _generatedClient = new MercadoBitcoin.Client.Generated.Client(_httpClient) { BaseUrl = opts.BaseUrl };
-            _openClient = new MercadoBitcoin.Client.Generated.OpenClient(_httpClient) { BaseUrl = opts.BaseUrl };
+            var clientOptions = options?.Value ?? new Configuration.MercadoBitcoinClientOptions();
+            _rateLimiter = RateLimiterFactory.CreateTokenBucket(clientOptions.RequestsPerSecond);
+            _generatedClient = new MercadoBitcoin.Client.Generated.Client(_httpClient) { BaseUrl = clientOptions.BaseUrl };
+            _openClient = new MercadoBitcoin.Client.Generated.OpenClient(_httpClient) { BaseUrl = clientOptions.BaseUrl };
             if (!_httpClient.DefaultRequestHeaders.UserAgent.TryParseAdd(Environment.GetEnvironmentVariable("MB_USER_AGENT")
                 ?? $"MercadoBitcoin.Client/{GetLibraryVersion()} (.NET {Environment.Version.Major}.{Environment.Version.Minor})"))
             {
-                // fallback silencioso
+                // silent fallback
             }
         }
 
         /// <summary>
-        /// Mapeia ApiException do client gerado para exceções ricas MercadoBitcoin.
+        /// Maps ApiException from the generated client to rich MercadoBitcoin exceptions.
         /// </summary>
-        private static Exception MapApiException(Exception ex)
+        private static Exception MapApiException(Exception exception)
         {
-            if (ex is MercadoBitcoinApiException)
-                return ex;
-            if (ex is Generated.ApiException apiEx)
+            if (exception is MercadoBitcoinApiException)
+                return exception;
+            if (exception is Generated.ApiException apiException)
             {
                 ErrorResponse? error = null;
                 try
                 {
-                    if (!string.IsNullOrWhiteSpace(apiEx.Response))
-                        error = JsonSerializer.Deserialize(apiEx.Response, MercadoBitcoinJsonSerializerContext.Default.ErrorResponse);
+                    if (!string.IsNullOrWhiteSpace(apiException.Response))
+                        error = JsonSerializer.Deserialize(apiException.Response, MercadoBitcoinJsonSerializerContext.Default.ErrorResponse);
                 }
-                catch { /* fallback para null */ }
-                var code = apiEx.StatusCode;
+                catch { /* fallback to null */ }
+                var code = apiException.StatusCode;
                 if (code == 401 || code == 403)
-                    return new MercadoBitcoinUnauthorizedException(apiEx.Message, error ?? new ErrorResponse { Code = $"HTTP_{code}", Message = apiEx.Message });
+                    return new MercadoBitcoinUnauthorizedException(apiException.Message, error ?? new ErrorResponse { Code = $"HTTP_{code}", Message = apiException.Message });
                 if (code == 400)
-                    return new MercadoBitcoinValidationException(apiEx.Message, error ?? new ErrorResponse { Code = $"HTTP_{code}", Message = apiEx.Message });
+                    return new MercadoBitcoinValidationException(apiException.Message, error ?? new ErrorResponse { Code = $"HTTP_{code}", Message = apiException.Message });
                 if (code == 429)
-                    return new MercadoBitcoinRateLimitException(apiEx.Message, error ?? new ErrorResponse { Code = $"HTTP_{code}", Message = apiEx.Message });
-                return new MercadoBitcoinApiException(apiEx.Message, error ?? new ErrorResponse { Code = $"HTTP_{code}", Message = apiEx.Message });
+                    return new MercadoBitcoinRateLimitException(apiException.Message, error ?? new ErrorResponse { Code = $"HTTP_{code}", Message = apiException.Message });
+                return new MercadoBitcoinApiException(apiException.Message, error ?? new ErrorResponse { Code = $"HTTP_{code}", Message = apiException.Message });
             }
-            return ex;
+            return exception;
         }
 
         /// <summary>
-        /// Construtor para uso com IHttpClientFactory (DI)
+        /// Constructor for use with IHttpClientFactory (DI)
         /// </summary>
-        /// <param name="httpClient">HttpClient gerenciado pelo IHttpClientFactory</param>
-        /// <param name="authHandler">Handler de autenticação</param>
+        /// <param name="httpClient">HttpClient managed by IHttpClientFactory</param>
+        /// <param name="authHandler">Authentication handler</param>
         public MercadoBitcoinClient(HttpClient httpClient, AuthHttpClient authHandler)
         {
             _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
             _authHandler = authHandler ?? throw new ArgumentNullException(nameof(authHandler));
 
 
-            // Usa sempre as opções padrão (pode ser expandido para DI no futuro)
+            // Always uses default options (can be expanded for DI in the future)
             var options = new Configuration.MercadoBitcoinClientOptions();
-            _rateLimiter = new Internal.AsyncRateLimiter(options.RequestsPerSecond);
+            _rateLimiter = RateLimiterFactory.CreateTokenBucket(options.RequestsPerSecond);
             _generatedClient = new MercadoBitcoin.Client.Generated.Client(_httpClient) { BaseUrl = options.BaseUrl };
             _openClient = new MercadoBitcoin.Client.Generated.OpenClient(_httpClient) { BaseUrl = options.BaseUrl };
 
             if (!_httpClient.DefaultRequestHeaders.UserAgent.TryParseAdd(Environment.GetEnvironmentVariable("MB_USER_AGENT")
                 ?? $"MercadoBitcoin.Client/{GetLibraryVersion()} (.NET {Environment.Version.Major}.{Environment.Version.Minor})"))
             {
-                // fallback silencioso
+                // silent fallback
             }
         }
 
@@ -106,18 +109,22 @@ namespace MercadoBitcoin.Client
 
             try
             {
-                await _rateLimiter.WaitAsync();
+                using var lease = await _rateLimiter.AcquireAsync(1);
+                if (!lease.IsAcquired)
+                {
+                    throw new MercadoBitcoinRateLimitException("Rate limit exceeded (client-side).", new ErrorResponse { Code = "CLIENT_RATE_LIMIT", Message = "Rate limit exceeded (client-side)." });
+                }
                 var response = await _generatedClient.AuthorizeAsync(authorizeRequest);
                 _authHandler.SetAccessToken(response.Access_token);
-                // valida formato básico
+                // basic format validation
                 if (string.IsNullOrWhiteSpace(response.Access_token))
                 {
-                    throw new MercadoBitcoinApiException("Token de acesso vazio retornado pela API", new ErrorResponse { Code = "AUTHORIZE|EMPTY_TOKEN", Message = "Access token vazio" });
+                    throw new MercadoBitcoinApiException("Empty access token returned by API", new ErrorResponse { Code = "AUTHORIZE|EMPTY_TOKEN", Message = "Empty access token" });
                 }
             }
-            catch (Exception ex)
+            catch (Exception exception)
             {
-                throw MapApiException(ex);
+                throw MapApiException(exception);
             }
         }
 
@@ -145,7 +152,7 @@ namespace MercadoBitcoin.Client
             else if (value.GetType().IsArray)
             {
                 var array = ((System.Array)value).OfType<object?>();
-                return string.Join(",", System.Linq.Enumerable.Select(array, o => ConvertToString(o, cultureInfo)));
+                return string.Join(",", System.Linq.Enumerable.Select(array, item => ConvertToString(item, cultureInfo)));
             }
 
             return System.Convert.ToString(value, cultureInfo);
@@ -157,7 +164,7 @@ namespace MercadoBitcoin.Client
         }
 
         /// <summary>
-        /// Retorna o token de acesso atual (apenas para diagnóstico / debug).
+        /// Returns the current access token (for diagnostics / debug only).
         /// </summary>
         public string? GetAccessToken() => _authHandler.GetAccessToken();
 

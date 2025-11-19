@@ -1,9 +1,9 @@
 using System;
 
-namespace MercadoBitcoin.Client
+namespace MercadoBitcoin.Client.Errors
 {
     /// <summary>
-    /// Exceção base para todos os erros retornados pela API Mercado Bitcoin.
+    /// Base exception for all errors returned by the Mercado Bitcoin API.
     /// </summary>
     public class MercadoBitcoinApiException : Exception
     {
@@ -32,7 +32,7 @@ namespace MercadoBitcoin.Client
     }
 
     /// <summary>
-    /// Exceção lançada quando a API retorna erro de autenticação ou autorização (401/403).
+    /// Exception thrown when the API returns an authentication or authorization error (401/403).
     /// </summary>
     public class MercadoBitcoinUnauthorizedException : MercadoBitcoinApiException
     {
@@ -41,7 +41,7 @@ namespace MercadoBitcoin.Client
     }
 
     /// <summary>
-    /// Exceção lançada quando a API retorna erro de validação de parâmetros (400).
+    /// Exception thrown when the API returns a parameter validation error (400).
     /// </summary>
     public class MercadoBitcoinValidationException : MercadoBitcoinApiException
     {
@@ -50,7 +50,7 @@ namespace MercadoBitcoin.Client
     }
 
     /// <summary>
-    /// Exceção lançada quando a API retorna erro de rate limit (429).
+    /// Exception thrown when the API returns a rate limit error (429).
     /// </summary>
     public class MercadoBitcoinRateLimitException : MercadoBitcoinApiException
     {

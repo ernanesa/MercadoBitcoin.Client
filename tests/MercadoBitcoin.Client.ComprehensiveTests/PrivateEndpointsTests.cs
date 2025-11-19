@@ -1,6 +1,9 @@
 using Xunit;
 using Xunit.Abstractions;
 using MercadoBitcoin.Client.Generated;
+using MercadoBitcoin.Client.Errors;
+using Microsoft.Extensions.Configuration;
+using System.Net;
 
 namespace MercadoBitcoin.Client.ComprehensiveTests;
 
@@ -168,10 +171,10 @@ public class PrivateEndpointsTests : TestBase
             // Act - Get orders from last 30 days
             var from = DateTimeOffset.UtcNow.AddDays(-30);
             var to = DateTimeOffset.UtcNow;
-            // API (swagger) mostra exemplos em timestamp (segundos desde epoch), não em ISO8601.
+            // API (swagger) shows examples in timestamp (seconds since epoch), not in ISO8601.
             var fromTs = from.ToUnixTimeSeconds().ToString();
             var toTs = to.ToUnixTimeSeconds().ToString();
-            var result = await Client.ListOrdersAsync(TestSymbol, TestAccountId, created_at_from: fromTs, created_at_to: toTs);
+            var result = await Client.ListOrdersAsync(TestSymbol, TestAccountId, createdAtFrom: fromTs, createdAtTo: toTs);
             LogApiCall($"GET /orders/{TestSymbol}", new { from, to }, result);
 
             // Assert
@@ -187,8 +190,8 @@ public class PrivateEndpointsTests : TestBase
         }
         catch (MercadoBitcoinApiException ex) when (ex.Message.Contains("Invalid request parameters", StringComparison.OrdinalIgnoreCase))
         {
-            // Se ainda retornar parâmetros inválidos, registrar como skip informativo
-            LogTestResult("GetOrdersWithDateRange", true, "Skipped - API retornou 'Invalid request parameters' (possível ausência de ordens / filtros)");
+            // If it still returns invalid parameters, log as informative skip
+            LogTestResult("GetOrdersWithDateRange", true, "Skipped - API returned 'Invalid request parameters' (possible absence of orders / filters)");
             return;
         }
         catch (MercadoBitcoinApiException ex) when (ex.Message.Contains("You need to be authenticated"))

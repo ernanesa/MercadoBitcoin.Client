@@ -3,14 +3,16 @@ using System.Net;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+using MercadoBitcoin.Client.Generated;
+using MercadoBitcoin.Client.Errors;
 using MercadoBitcoin.Client.Http;
 using Xunit;
 
 namespace MercadoBitcoin.Client.ComprehensiveTests
 {
     /// <summary>
-    /// Testes direcionados ao comportamento de retry + circuit breaker.
-    /// Usa um fake handler para simular respostas.
+    /// Tests targeted at retry + circuit breaker behavior.
+    /// Uses a fake handler to simulate responses.
     /// </summary>
     public class RetryAndCircuitBreakerTests
     {
@@ -43,7 +45,7 @@ namespace MercadoBitcoin.Client.ComprehensiveTests
                 EnableJitter = false
             };
 
-            // 1ª e 2ª respostas 500 -> depois 200
+            // 1st and 2nd responses 500 -> then 200
             var handler = new SequenceHandler(i =>
             {
                 if (i < 3) return new HttpResponseMessage(HttpStatusCode.InternalServerError) { Content = new StringContent("err") };
@@ -57,7 +59,7 @@ namespace MercadoBitcoin.Client.ComprehensiveTests
             var body = await resp.Content.ReadAsStringAsync();
 
             Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
-            // 3 chamadas: original + 2 retries
+            // 3 calls: original + 2 retries
             Assert.Equal(3, handler.Calls);
             Assert.Equal("ok", body);
         }
@@ -79,7 +81,7 @@ namespace MercadoBitcoin.Client.ComprehensiveTests
 
             var resp = await client.GetAsync("/fail-once");
             Assert.Equal(HttpStatusCode.InternalServerError, resp.StatusCode);
-            Assert.Equal(1, handler.Calls); // sem retries
+            Assert.Equal(1, handler.Calls); // no retries
         }
 
         [Fact]
@@ -88,10 +90,10 @@ namespace MercadoBitcoin.Client.ComprehensiveTests
             var opened = false;
             var cfg = new RetryPolicyConfig
             {
-                MaxRetryAttempts = 0, // sem retries para isolar breaker
+                MaxRetryAttempts = 0, // no retries to isolate breaker
                 EnableCircuitBreaker = true,
                 CircuitBreakerFailuresBeforeBreaking = 3,
-                CircuitBreakerDurationSeconds = 2, // curto para teste
+                CircuitBreakerDurationSeconds = 2, // short for testing
                 OnCircuitBreakerEvent = e =>
                 {
                     if (e.State == CircuitBreakerState.Open) opened = true;
@@ -102,15 +104,15 @@ namespace MercadoBitcoin.Client.ComprehensiveTests
             var retry = new RetryHandler(handler, cfg);
             var client = new HttpClient(retry) { BaseAddress = new Uri("https://test.local") };
 
-            // 3 falhas consecutivas para abrir
+            // 3 consecutive failures to open
             for (int i = 0; i < 3; i++)
             {
                 var resp = await client.GetAsync("/fail");
                 Assert.Equal(HttpStatusCode.InternalServerError, resp.StatusCode);
             }
-            Assert.True(opened, "Circuit breaker deveria estar aberto após 3 falhas");
+            Assert.True(opened, "Circuit breaker should be open after 3 failures");
 
-            // Próxima chamada deve falhar rápido (HttpRequestException) porque circuito aberto
+            // Next call should fail fast (HttpRequestException) because circuit is open
             await Assert.ThrowsAsync<HttpRequestException>(() => client.GetAsync("/fast-fail"));
         }
 
@@ -127,7 +129,7 @@ namespace MercadoBitcoin.Client.ComprehensiveTests
                 OnCircuitBreakerEvent = _ => Interlocked.Increment(ref stateTransitions)
             };
 
-            // Falha nas duas primeiras, sucesso depois
+            // Fails on first two, success afterwards
             var handler = new SequenceHandler(i =>
             {
                 if (i <= 2) return new HttpResponseMessage(HttpStatusCode.InternalServerError);
@@ -137,24 +139,24 @@ namespace MercadoBitcoin.Client.ComprehensiveTests
             var retry = new RetryHandler(handler, cfg);
             var client = new HttpClient(retry) { BaseAddress = new Uri("https://test.local") };
 
-            // Dispara falhas para abrir
+            // Trigger failures to open
             for (int i = 0; i < 2; i++)
             {
                 var resp = await client.GetAsync("/fail");
                 Assert.Equal(HttpStatusCode.InternalServerError, resp.StatusCode);
             }
 
-            // Agora circuito aberto -> fast fail
+            // Now circuit open -> fast fail
             await Assert.ThrowsAsync<HttpRequestException>(() => client.GetAsync("/fast-fail"));
 
-            // Espera período para meia-abertura
+            // Wait for half-open period
             await Task.Delay(TimeSpan.FromSeconds(cfg.CircuitBreakerDurationSeconds + 0.2));
 
-            // Sonda (half-open) deve permitir passagem e fechar em sucesso
+            // Probe (half-open) should allow passage and close on success
             var probe = await client.GetAsync("/recover");
             Assert.Equal(HttpStatusCode.OK, probe.StatusCode);
 
-            // Nova requisição deve passar normalmente (circuito fechado)
+            // New request should pass normally (circuit closed)
             var second = await client.GetAsync("/after-close");
             Assert.Equal(HttpStatusCode.OK, second.StatusCode);
         }

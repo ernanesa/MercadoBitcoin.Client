@@ -1,7 +1,10 @@
 using Xunit;
 using Xunit.Abstractions;
 using MercadoBitcoin.Client.Generated;
+using MercadoBitcoin.Client.Errors;
 using MercadoBitcoin.Client.Models;
+using Microsoft.Extensions.Configuration;
+using System.Net;
 
 namespace MercadoBitcoin.Client.ComprehensiveTests;
 

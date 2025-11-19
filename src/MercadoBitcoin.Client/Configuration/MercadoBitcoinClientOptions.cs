@@ -1,34 +1,35 @@
 using MercadoBitcoin.Client.Http;
 using System;
+using System.Net.Http;
 
 namespace MercadoBitcoin.Client.Configuration
 {
     /// <summary>
-    /// Opções de configuração para o MercadoBitcoinClient
+    /// Configuration options for MercadoBitcoinClient
     /// </summary>
     public class MercadoBitcoinClientOptions
     {
         /// <summary>
-        /// Limite de requisições por segundo (rate limit client-side). Padrão: 5 req/s.
+        /// Requests per second limit (client-side rate limit). Default: 5 req/s.
         /// </summary>
         public int RequestsPerSecond { get; set; } = 5;
         /// <summary>
-        /// URL base da API (padrão: https://api.mercadobitcoin.net/api/v4)
+        /// API Base URL (default: https://api.mercadobitcoin.net/api/v4)
         /// </summary>
         public string BaseUrl { get; set; } = "https://api.mercadobitcoin.net/api/v4";
 
         /// <summary>
-        /// Configuração HTTP para o cliente
+        /// HTTP configuration for the client
         /// </summary>
         public HttpConfiguration HttpConfiguration { get; set; } = HttpConfiguration.CreateHttp2Default();
 
         /// <summary>
-        /// Configuração das políticas de retry
+        /// Retry policy configuration
         /// </summary>
         public RetryPolicyConfig RetryPolicyConfig { get; set; } = new RetryPolicyConfig();
 
         /// <summary>
-        /// Timeout para requisições HTTP em segundos (padrão: 30)
+        /// HTTP request timeout in seconds (default: 30)
         /// </summary>
         public int TimeoutSeconds
         {
@@ -37,7 +38,7 @@ namespace MercadoBitcoin.Client.Configuration
         }
 
         /// <summary>
-        /// Versão HTTP a ser utilizada (padrão: 2.0 para HTTP/2)
+        /// HTTP version to be used (default: 2.0 for HTTP/2)
         /// </summary>
         public Version HttpVersion
         {
@@ -46,7 +47,7 @@ namespace MercadoBitcoin.Client.Configuration
         }
 
         /// <summary>
-        /// Política de versão HTTP (padrão: RequestVersionOrLower)
+        /// HTTP version policy (default: RequestVersionOrLower)
         /// </summary>
         public HttpVersionPolicy VersionPolicy
         {
@@ -55,7 +56,7 @@ namespace MercadoBitcoin.Client.Configuration
         }
 
         /// <summary>
-        /// Número máximo de tentativas de retry (padrão: 3)
+        /// Maximum number of retry attempts (default: 3)
         /// </summary>
         public int MaxRetryAttempts
         {
@@ -64,7 +65,7 @@ namespace MercadoBitcoin.Client.Configuration
         }
 
         /// <summary>
-        /// Delay base em segundos para o exponential backoff (padrão: 1)
+        /// Base delay in seconds for exponential backoff (default: 1)
         /// </summary>
         public double BaseDelaySeconds
         {
@@ -73,7 +74,7 @@ namespace MercadoBitcoin.Client.Configuration
         }
 
         /// <summary>
-        /// Multiplicador para o exponential backoff (padrão: 2)
+        /// Multiplier for exponential backoff (default: 2)
         /// </summary>
         public double BackoffMultiplier
         {
@@ -82,7 +83,7 @@ namespace MercadoBitcoin.Client.Configuration
         }
 
         /// <summary>
-        /// Delay máximo em segundos (padrão: 30)
+        /// Maximum delay in seconds (default: 30)
         /// </summary>
         public double MaxDelaySeconds
         {
@@ -91,7 +92,7 @@ namespace MercadoBitcoin.Client.Configuration
         }
 
         /// <summary>
-        /// Se deve fazer retry em erros de timeout (padrão: true)
+        /// Whether to retry on timeout errors (default: true)
         /// </summary>
         public bool RetryOnTimeout
         {
@@ -100,7 +101,7 @@ namespace MercadoBitcoin.Client.Configuration
         }
 
         /// <summary>
-        /// Se deve fazer retry em erros de rate limiting (padrão: true)
+        /// Whether to retry on rate limiting errors (default: true)
         /// </summary>
         public bool RetryOnRateLimit
         {
@@ -109,7 +110,7 @@ namespace MercadoBitcoin.Client.Configuration
         }
 
         /// <summary>
-        /// Se deve fazer retry em erros de servidor (5xx) (padrão: true)
+        /// Whether to retry on server errors (5xx) (default: true)
         /// </summary>
         public bool RetryOnServerErrors
         {

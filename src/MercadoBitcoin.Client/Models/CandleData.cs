@@ -1,78 +1,99 @@
 using System;
+using System.Text.Json.Serialization;
 
 namespace MercadoBitcoin.Client.Models
 {
     /// <summary>
-    /// Representa dados de candle (OHLCV) para análise técnica
+    /// Represents candle data (OHLCV) for technical analysis.
+    /// Optimized as a readonly struct to reduce heap allocations in large lists.
     /// </summary>
-    public class CandleData
+    public readonly struct CandleData
     {
         /// <summary>
-        /// Símbolo do par de negociação (ex: BTC-BRL)
+        /// Default constructor required for deserialization in some scenarios,
+        /// but System.Text.Json supports init-only properties.
         /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("symbol")]
-        public string Symbol { get; set; } = string.Empty;
+        public CandleData()
+        {
+            Symbol = string.Empty;
+            Interval = string.Empty;
+            OpenTime = 0;
+            CloseTime = 0;
+            Open = 0;
+            High = 0;
+            Low = 0;
+            Close = 0;
+            Volume = 0;
+        }
 
         /// <summary>
-        /// Intervalo do candle (ex: 1m, 5m, 15m, 1h, 1d)
+        /// Trading pair symbol (e.g., BTC-BRL)
         /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("interval")]
-        public string Interval { get; set; } = string.Empty;
+        [JsonPropertyName("symbol")]
+        public string Symbol { get; init; }
 
         /// <summary>
-        /// Timestamp de abertura do candle (em milliseconds)
+        /// Candle interval (e.g., 1m, 5m, 15m, 1h, 1d)
         /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("open_time")]
-        public long OpenTime { get; set; }
+        [JsonPropertyName("interval")]
+        public string Interval { get; init; }
 
         /// <summary>
-        /// Timestamp de fechamento do candle (em milliseconds)
+        /// Candle opening timestamp (in milliseconds)
         /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("close_time")]
-        public long CloseTime { get; set; }
+        [JsonPropertyName("open_time")]
+        public long OpenTime { get; init; }
 
         /// <summary>
-        /// Preço de abertura
+        /// Candle closing timestamp (in milliseconds)
         /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("open")]
-        public decimal Open { get; set; }
+        [JsonPropertyName("close_time")]
+        public long CloseTime { get; init; }
 
         /// <summary>
-        /// Preço máximo
+        /// Opening price
         /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("high")]
-        public decimal High { get; set; }
+        [JsonPropertyName("open")]
+        public decimal Open { get; init; }
 
         /// <summary>
-        /// Preço mínimo
+        /// Highest price
         /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("low")]
-        public decimal Low { get; set; }
+        [JsonPropertyName("high")]
+        public decimal High { get; init; }
 
         /// <summary>
-        /// Preço de fechamento
+        /// Lowest price
         /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("close")]
-        public decimal Close { get; set; }
+        [JsonPropertyName("low")]
+        public decimal Low { get; init; }
 
         /// <summary>
-        /// Volume negociado
+        /// Closing price
         /// </summary>
-        [System.Text.Json.Serialization.JsonPropertyName("volume")]
-        public decimal Volume { get; set; }
+        [JsonPropertyName("close")]
+        public decimal Close { get; init; }
 
         /// <summary>
-        /// Data/hora de abertura do candle
+        /// Traded volume
         /// </summary>
+        [JsonPropertyName("volume")]
+        public decimal Volume { get; init; }
+
+        /// <summary>
+        /// Candle opening date/time
+        /// </summary>
+        [JsonIgnore]
         public DateTime OpenDateTime => DateTimeOffset.FromUnixTimeMilliseconds(OpenTime).DateTime;
 
         /// <summary>
-        /// Data/hora de fechamento do candle
+        /// Candle closing date/time
         /// </summary>
+        [JsonIgnore]
         public DateTime CloseDateTime => DateTimeOffset.FromUnixTimeMilliseconds(CloseTime).DateTime;
 
         /// <summary>
-        /// Retorna uma representação string do candle
+        /// Returns a string representation of the candle
         /// </summary>
         public override string ToString()
         {

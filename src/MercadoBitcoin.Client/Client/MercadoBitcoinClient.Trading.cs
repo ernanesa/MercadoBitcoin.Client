@@ -10,14 +10,14 @@ namespace MercadoBitcoin.Client
     {
         #region Trading
 
-        public Task<ICollection<OrderResponse>> ListOrdersAsync(string symbol, string accountId, string? has_executions = null, string? side = null, string? status = null, string? id_from = null, string? id_to = null, string? created_at_from = null, string? created_at_to = null, string? executed_at_from = null, string? executed_at_to = null)
+        public Task<ICollection<OrderResponse>> ListOrdersAsync(string symbol, string accountId, string? hasExecutions = null, string? side = null, string? status = null, string? idFrom = null, string? idTo = null, string? createdAtFrom = null, string? createdAtTo = null, string? executedAtFrom = null, string? executedAtTo = null)
         {
-            return _generatedClient.OrdersAllAsync(symbol, accountId, has_executions, side, status, id_from, id_to, created_at_from, created_at_to, executed_at_from, executed_at_to);
+            return _generatedClient.OrdersAllAsync(symbol, accountId, hasExecutions, side, status, idFrom, idTo, createdAtFrom, createdAtTo, executedAtFrom, executedAtTo);
         }
 
-        public Task<ICollection<OrderResponse>> ListOrdersAsync(string symbol, string accountId, CancellationToken cancellationToken, string? has_executions = null, string? side = null, string? status = null, string? id_from = null, string? id_to = null, string? created_at_from = null, string? created_at_to = null, string? executed_at_from = null, string? executed_at_to = null)
+        public Task<ICollection<OrderResponse>> ListOrdersAsync(string symbol, string accountId, CancellationToken cancellationToken, string? hasExecutions = null, string? side = null, string? status = null, string? idFrom = null, string? idTo = null, string? createdAtFrom = null, string? createdAtTo = null, string? executedAtFrom = null, string? executedAtTo = null)
         {
-            return _generatedClient.OrdersAllAsync(symbol, accountId, has_executions, side, status, id_from, id_to, created_at_from, created_at_to, executed_at_from, executed_at_to, cancellationToken);
+            return _generatedClient.OrdersAllAsync(symbol, accountId, hasExecutions, side, status, idFrom, idTo, createdAtFrom, createdAtTo, executedAtFrom, executedAtTo, cancellationToken);
         }
 
         public Task<PlaceOrderResponse> PlaceOrderAsync(string symbol, string accountId, PlaceOrderRequest payload)
@@ -50,25 +50,25 @@ namespace MercadoBitcoin.Client
             return _generatedClient.OrdersGETAsync(symbol, accountId, orderId, cancellationToken);
         }
 
-        public Task<ListAllOrdersResponse> ListAllOrdersAsync(string accountId, string? has_executions = null, string? symbol = null, string? status = null, string? size = null)
+        public Task<ListAllOrdersResponse> ListAllOrdersAsync(string accountId, string? hasExecutions = null, string? symbol = null, string? status = null, string? size = null)
         {
-            return _generatedClient.OrdersGET2Async(accountId, has_executions, symbol, status, size);
+            return _generatedClient.OrdersGET2Async(accountId, hasExecutions, symbol, status, size);
         }
 
-        public Task<ListAllOrdersResponse> ListAllOrdersAsync(string accountId, CancellationToken cancellationToken, string? has_executions = null, string? symbol = null, string? status = null, string? size = null)
+        public Task<ListAllOrdersResponse> ListAllOrdersAsync(string accountId, CancellationToken cancellationToken, string? hasExecutions = null, string? symbol = null, string? status = null, string? size = null)
         {
-            return _generatedClient.OrdersGET2Async(accountId, has_executions, symbol, status, size, cancellationToken);
+            return _generatedClient.OrdersGET2Async(accountId, hasExecutions, symbol, status, size, cancellationToken);
         }
 
-        public Task<ICollection<CancelOpenOrdersResponse>> CancelAllOpenOrdersByAccountAsync(string accountId, bool? has_executions = null, string? symbol = null)
+        public Task<ICollection<CancelOpenOrdersResponse>> CancelAllOpenOrdersByAccountAsync(string accountId, bool? hasExecutions = null, string? symbol = null)
         {
             // Use OpenClient since cancel_all_open_orders lives there in the generated code
-            return _openClient.OrdersAsync(accountId, has_executions, symbol);
+            return _openClient.OrdersAsync(accountId, hasExecutions, symbol);
         }
 
-        public Task<ICollection<CancelOpenOrdersResponse>> CancelAllOpenOrdersByAccountAsync(string accountId, CancellationToken cancellationToken, bool? has_executions = null, string? symbol = null)
+        public Task<ICollection<CancelOpenOrdersResponse>> CancelAllOpenOrdersByAccountAsync(string accountId, CancellationToken cancellationToken, bool? hasExecutions = null, string? symbol = null)
         {
-            return _openClient.OrdersAsync(accountId, has_executions, symbol, cancellationToken);
+            return _openClient.OrdersAsync(accountId, hasExecutions, symbol, cancellationToken);
         }
 
         #endregion

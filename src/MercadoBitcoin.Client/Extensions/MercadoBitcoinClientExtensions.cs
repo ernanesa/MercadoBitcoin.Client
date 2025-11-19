@@ -10,23 +10,23 @@ using System.Net.Http;
 namespace MercadoBitcoin.Client.Extensions
 {
     /// <summary>
-    /// Extensões para facilitar a configuração do MercadoBitcoinClient
+    /// Extensions to facilitate MercadoBitcoinClient configuration
     /// </summary>
     public static class MercadoBitcoinClientExtensions
     {
         /// <summary>
-        /// Cria uma instância do MercadoBitcoinClient com retry policies configuradas e HTTP/2 habilitado
+        /// Creates a MercadoBitcoinClient instance with configured retry policies and HTTP/2 enabled
         /// </summary>
-        /// <param name="retryConfig">Configuração personalizada de retry (opcional)</param>
-        /// <returns>Instância configurada do MercadoBitcoinClient com HTTP/2</returns>
+        /// <param name="retryConfig">Custom retry configuration (optional)</param>
+        /// <returns>Configured MercadoBitcoinClient instance with HTTP/2</returns>
         public static MercadoBitcoinClient CreateWithRetryPolicies(
             RetryPolicyConfig? retryConfig = null)
         {
-            // Usar configuração padrão se não fornecida
+            // Use default configuration if not provided
             retryConfig ??= new RetryPolicyConfig();
             var httpConfig = HttpConfiguration.CreateHttp2Default();
 
-            // Criar um único AuthHttpClient (DelegatingHandler) e construir HttpClient com ele
+            // Create a single AuthHttpClient (DelegatingHandler) and build HttpClient with it
             var authHandler = new AuthHttpClient(retryConfig, httpConfig);
             var httpClient = new HttpClient(authHandler, disposeHandler: false)
             {
@@ -40,9 +40,9 @@ namespace MercadoBitcoin.Client.Extensions
         }
 
         /// <summary>
-        /// Cria uma configuração de retry otimizada para trading (mais agressiva) com HTTP/2
+        /// Creates a retry configuration optimized for trading (more aggressive) with HTTP/2
         /// </summary>
-        /// <returns>Configuração de retry para operações de trading</returns>
+        /// <returns>Retry configuration for trading operations</returns>
         public static RetryPolicyConfig CreateTradingRetryConfig()
         {
             return new RetryPolicyConfig
@@ -58,20 +58,20 @@ namespace MercadoBitcoin.Client.Extensions
         }
 
         /// <summary>
-        /// Cria uma instância do MercadoBitcoinClient otimizada para HTTP/2
+        /// Creates a MercadoBitcoinClient instance optimized for HTTP/2
         /// </summary>
-        /// <param name="retryConfig">Configuração personalizada de retry (opcional)</param>
-        /// <param name="httpConfig">Configuração HTTP personalizada (opcional)</param>
-        /// <returns>Instância configurada do MercadoBitcoinClient com HTTP/2 otimizado</returns>
+        /// <param name="retryConfig">Custom retry configuration (optional)</param>
+        /// <param name="httpConfig">Custom HTTP configuration (optional)</param>
+        /// <returns>Configured MercadoBitcoinClient instance with optimized HTTP/2</returns>
         public static MercadoBitcoinClient CreateWithHttp2(
             RetryPolicyConfig? retryConfig = null,
             HttpConfiguration? httpConfig = null)
         {
-            // Usar configuração padrão otimizada para HTTP/2
+            // Use default configuration optimized for HTTP/2
             retryConfig ??= new RetryPolicyConfig
             {
                 MaxRetryAttempts = 3,
-                BaseDelaySeconds = 0.5, // HTTP/2 permite retry mais rápido
+                BaseDelaySeconds = 0.5, // HTTP/2 allows faster retry
                 BackoffMultiplier = 1.5,
                 MaxDelaySeconds = 15.0,
                 RetryOnTimeout = true,
@@ -81,7 +81,7 @@ namespace MercadoBitcoin.Client.Extensions
 
             httpConfig ??= HttpConfiguration.CreateHttp2Default();
 
-            // Criar único handler + HttpClient compartilhado
+            // Create single handler + shared HttpClient
             var authHandler = new AuthHttpClient(retryConfig, httpConfig);
             var httpClient = new HttpClient(authHandler, disposeHandler: false)
             {
@@ -94,9 +94,9 @@ namespace MercadoBitcoin.Client.Extensions
         }
 
         /// <summary>
-        /// Cria uma configuração de retry conservadora para consultas públicas
+        /// Creates a conservative retry configuration for public queries
         /// </summary>
-        /// <returns>Configuração de retry para consultas públicas</returns>
+        /// <returns>Retry configuration for public queries</returns>
         public static RetryPolicyConfig CreatePublicDataRetryConfig()
         {
             return new RetryPolicyConfig
@@ -106,16 +106,16 @@ namespace MercadoBitcoin.Client.Extensions
                 BackoffMultiplier = 2.0,
                 MaxDelaySeconds = 30.0,
                 RetryOnTimeout = true,
-                RetryOnRateLimit = false, // Dados públicos geralmente não têm rate limit
+                RetryOnRateLimit = false, // Public data usually doesn't have rate limit
                 RetryOnServerErrors = true
             };
         }
 
         /// <summary>
-        /// Cria uma instância do MercadoBitcoinClient otimizada para trading com HTTP/2
+        /// Creates a MercadoBitcoinClient instance optimized for trading with HTTP/2
         /// </summary>
-        /// <param name="retryConfig">Configuração personalizada de retry (opcional)</param>
-        /// <returns>Instância configurada do MercadoBitcoinClient</returns>
+        /// <param name="retryConfig">Custom retry configuration (optional)</param>
+        /// <returns>Configured MercadoBitcoinClient instance</returns>
         public static MercadoBitcoinClient CreateForTrading(RetryPolicyConfig? retryConfig = null)
         {
             var tradingRetryConfig = retryConfig ?? CreateTradingRetryConfig();
@@ -124,10 +124,10 @@ namespace MercadoBitcoin.Client.Extensions
         }
 
         /// <summary>
-        /// Cria uma instância do MercadoBitcoinClient otimizada para desenvolvimento com HTTP/2
+        /// Creates a MercadoBitcoinClient instance optimized for development with HTTP/2
         /// </summary>
-        /// <param name="retryConfig">Configuração personalizada de retry (opcional)</param>
-        /// <returns>Instância configurada do MercadoBitcoinClient</returns>
+        /// <param name="retryConfig">Custom retry configuration (optional)</param>
+        /// <returns>Configured MercadoBitcoinClient instance</returns>
         public static MercadoBitcoinClient CreateForDevelopment(RetryPolicyConfig? retryConfig = null)
         {
             var publicRetryConfig = retryConfig ?? CreatePublicDataRetryConfig();
@@ -136,11 +136,11 @@ namespace MercadoBitcoin.Client.Extensions
         }
 
         /// <summary>
-        /// Registra o MercadoBitcoinClient no contêiner de DI com integração ao IHttpClientFactory
+        /// Registers MercadoBitcoinClient in the DI container with IHttpClientFactory integration
         /// </summary>
-        /// <param name="services">Coleção de serviços</param>
-        /// <param name="configureOptions">Configuração das opções do cliente</param>
-        /// <returns>IServiceCollection para encadeamento</returns>
+        /// <param name="services">Service collection</param>
+        /// <param name="configureOptions">Client options configuration</param>
+        /// <returns>IServiceCollection for chaining</returns>
         public static IServiceCollection AddMercadoBitcoinClient(
             this IServiceCollection services,
             Action<MercadoBitcoinClientOptions> configureOptions)
@@ -150,24 +150,24 @@ namespace MercadoBitcoin.Client.Extensions
             if (configureOptions == null)
                 throw new ArgumentNullException(nameof(configureOptions));
 
-            // Registra as opções
+            // Register options
             services.Configure(configureOptions);
 
-            // Registra o AuthHttpClient com ciclo de vida escopado para isolamento por requisição
+            // Register AuthHttpClient with scoped lifecycle for per-request isolation
             services.AddScoped<AuthHttpClient>();
 
-            // Registra o MercadoBitcoinClient usando AddHttpClient para integração com IHttpClientFactory
+            // Register MercadoBitcoinClient using AddHttpClient for IHttpClientFactory integration
             services.AddHttpClient<MercadoBitcoinClient>((serviceProvider, httpClient) =>
             {
                 var options = serviceProvider.GetRequiredService<IOptions<MercadoBitcoinClientOptions>>().Value;
 
-                // Configura o HttpClient baseado nas opções
+                // Configure HttpClient based on options
                 httpClient.BaseAddress = new Uri(options.BaseUrl);
                 httpClient.Timeout = TimeSpan.FromSeconds(options.HttpConfiguration.TimeoutSeconds);
                 httpClient.DefaultRequestVersion = options.HttpConfiguration.HttpVersion;
                 httpClient.DefaultVersionPolicy = options.HttpConfiguration.VersionPolicy;
             })
-            .AddHttpMessageHandler<AuthHttpClient>(); // Adiciona o AuthHttpClient ao pipeline
+            .AddHttpMessageHandler<AuthHttpClient>(); // Add AuthHttpClient to the pipeline
 
             return services;
         }

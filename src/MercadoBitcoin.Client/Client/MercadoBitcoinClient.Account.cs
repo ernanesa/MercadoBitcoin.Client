@@ -15,7 +15,7 @@ namespace MercadoBitcoin.Client
         }
 
         /// <summary>
-        /// Versão com CancellationToken para cenários que exigem cancelamento cooperativo.
+        /// Version with CancellationToken for scenarios requiring cooperative cancellation.
         /// </summary>
         public Task<ICollection<AccountResponse>> GetAccountsAsync(CancellationToken cancellationToken)
         {
@@ -24,16 +24,16 @@ namespace MercadoBitcoin.Client
 
         public Task<ICollection<CryptoBalanceResponse>> GetBalancesAsync(string accountId)
         {
-            if (string.IsNullOrWhiteSpace(accountId)) throw new ArgumentException("accountId inválido", nameof(accountId));
+            if (string.IsNullOrWhiteSpace(accountId)) throw new ArgumentException("Invalid accountId", nameof(accountId));
             return _generatedClient.BalancesAsync(accountId.Trim());
         }
 
         /// <summary>
-        /// Versão com CancellationToken de <see cref="GetBalancesAsync(string)"/>.
+        /// Version with CancellationToken of <see cref="GetBalancesAsync(string)"/>.
         /// </summary>
         public Task<ICollection<CryptoBalanceResponse>> GetBalancesAsync(string accountId, CancellationToken cancellationToken)
         {
-            if (string.IsNullOrWhiteSpace(accountId)) throw new ArgumentException("accountId inválido", nameof(accountId));
+            if (string.IsNullOrWhiteSpace(accountId)) throw new ArgumentException("Invalid accountId", nameof(accountId));
             return _generatedClient.BalancesAsync(accountId.Trim(), cancellationToken);
         }
 

@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using MercadoBitcoin.Client;
 using MercadoBitcoin.Client.Extensions;
 using MercadoBitcoin.Client.Generated;
+using MercadoBitcoin.Client.Errors;
 
 namespace AuthBalanceConsole;
 
@@ -93,7 +94,7 @@ internal class EndpointDiagnostics
             }));
         }
 
-        // Serializar relatório
+        // Serialize report
         var report = new
         {
             generatedAtUtc = DateTime.UtcNow,
@@ -119,7 +120,7 @@ internal class EndpointDiagnostics
         {
             Console.WriteLine($"{r.Type,-7} | {(r.Success ? "OK" : "FAIL"),-4} | {r.Name} | {(r.Success ? r.DurationMs + "ms" : r.ErrorCode)} | {r.ErrorMessage}");
         }
-        Console.WriteLine("Relatório salvo em diagnostics-report.json");
+        Console.WriteLine("Report saved to diagnostics-report.json");
     }
 
     private async Task<ProbeResult> Probe(string name, ProbeType type, Func<Task<object>> action)
