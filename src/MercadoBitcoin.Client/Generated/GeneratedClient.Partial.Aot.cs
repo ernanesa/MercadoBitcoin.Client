@@ -3,24 +3,24 @@ using System.Text.Json;
 namespace MercadoBitcoin.Client.Generated
 {
     /// <summary>
-    /// Extensão parcial do client gerado para alinhar as opções de serialização com o contexto Source Generation
-    /// e reduzir warnings AOT relacionados a reflexão dinâmica.
+    /// Partial extension of the generated client to align serialization options with the Source Generation context
+    /// and reduce AOT warnings related to dynamic reflection.
     /// </summary>
     public partial class Client
     {
         static partial void UpdateJsonSerializerSettings(JsonSerializerOptions settings)
         {
-            var ctx = MercadoBitcoinJsonSerializerContext.Default;
+            var context = MercadoBitcoinJsonSerializerContext.Default;
 
-            // CORREÇÃO: Atribui o resolvedor de tipos do contexto gerado.
-            // Esta é a linha crucial para a compatibilidade com AOT.
-            settings.TypeInfoResolver = ctx;
+            // FIX: Assigns the type resolver from the generated context.
+            // This is the crucial line for AOT compatibility.
+            settings.TypeInfoResolver = context;
 
-            // As linhas abaixo são mantidas para garantir consistência, embora o TypeInfoResolver já encapsule estas opções.
-            settings.PropertyNamingPolicy = ctx.Options.PropertyNamingPolicy;
-            settings.DefaultIgnoreCondition = ctx.Options.DefaultIgnoreCondition;
-            settings.PropertyNameCaseInsensitive = ctx.Options.PropertyNameCaseInsensitive;
-            settings.WriteIndented = ctx.Options.WriteIndented;
+            // The lines below are kept to ensure consistency, although TypeInfoResolver already encapsulates these options.
+            settings.PropertyNamingPolicy = context.Options.PropertyNamingPolicy;
+            settings.DefaultIgnoreCondition = context.Options.DefaultIgnoreCondition;
+            settings.PropertyNameCaseInsensitive = context.Options.PropertyNameCaseInsensitive;
+            settings.WriteIndented = context.Options.WriteIndented;
         }
     }
 
@@ -28,15 +28,15 @@ namespace MercadoBitcoin.Client.Generated
     {
         static partial void UpdateJsonSerializerSettings(JsonSerializerOptions settings)
         {
-            var ctx = MercadoBitcoinJsonSerializerContext.Default;
+            var context = MercadoBitcoinJsonSerializerContext.Default;
 
-            // CORREÇÃO: Atribui o resolvedor de tipos também para o OpenClient.
-            settings.TypeInfoResolver = ctx;
+            // FIX: Assigns the type resolver also for the OpenClient.
+            settings.TypeInfoResolver = context;
 
-            settings.PropertyNamingPolicy = ctx.Options.PropertyNamingPolicy;
-            settings.DefaultIgnoreCondition = ctx.Options.DefaultIgnoreCondition;
-            settings.PropertyNameCaseInsensitive = ctx.Options.PropertyNameCaseInsensitive;
-            settings.WriteIndented = ctx.Options.WriteIndented;
+            settings.PropertyNamingPolicy = context.Options.PropertyNamingPolicy;
+            settings.DefaultIgnoreCondition = context.Options.DefaultIgnoreCondition;
+            settings.PropertyNameCaseInsensitive = context.Options.PropertyNameCaseInsensitive;
+            settings.WriteIndented = context.Options.WriteIndented;
         }
     }
 }

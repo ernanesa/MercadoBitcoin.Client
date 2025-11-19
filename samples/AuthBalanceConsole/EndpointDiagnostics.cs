@@ -52,9 +52,9 @@ internal class EndpointDiagnostics
         {
             var accountsResult = await Probe("GET /accounts", ProbeType.Private, async () =>
             {
-                var accts = await _client.GetAccountsAsync();
-                _accountId = accts.FirstOrDefault()?.Id;
-                return new { count = accts.Count, first = _accountId };
+                var accounts = await _client.GetAccountsAsync();
+                _accountId = accounts.FirstOrDefault()?.Id;
+                return new { count = accounts.Count, first = _accountId };
             });
             results.Add(accountsResult);
 
@@ -139,7 +139,7 @@ internal class EndpointDiagnostics
                 PayloadPreview = Truncate(JsonSerializer.Serialize(obj), 300)
             };
         }
-        catch (MercadoBitcoinApiException apiEx)
+        catch (MercadoBitcoinApiException apiException)
         {
             sw.Stop();
             return new ProbeResult
@@ -148,11 +148,11 @@ internal class EndpointDiagnostics
                 Type = type,
                 Success = false,
                 DurationMs = (int)sw.Elapsed.TotalMilliseconds,
-                ErrorCode = apiEx.Error.Code,
-                ErrorMessage = apiEx.Error.Message
+                ErrorCode = apiException.Error.Code,
+                ErrorMessage = apiException.Error.Message
             };
         }
-        catch (Exception ex)
+        catch (Exception exception)
         {
             sw.Stop();
             return new ProbeResult
@@ -161,8 +161,8 @@ internal class EndpointDiagnostics
                 Type = type,
                 Success = false,
                 DurationMs = (int)sw.Elapsed.TotalMilliseconds,
-                ErrorCode = ex.GetType().Name,
-                ErrorMessage = ex.Message
+                ErrorCode = exception.GetType().Name,
+                ErrorMessage = exception.Message
             };
         }
     }
