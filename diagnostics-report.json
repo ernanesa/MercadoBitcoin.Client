@@ -1,0 +1,35 @@
+{
+  "generatedAtUtc": "2025-11-19T14:16:13.653272Z",
+  "authUsed": false,
+  "accountId": null,
+  "allowMutations": false,
+  "results": [
+    {
+      "Name": "GET /asset/BTC/fees",
+      "Type": 0,
+      "Success": true,
+      "DurationMs": 258,
+      "ErrorCode": null,
+      "ErrorMessage": null,
+      "PayloadPreview": "{\u0022asset\u0022:\u0022BTC\u0022,\u0022network\u0022:\u0022bitcoin\u0022,\u0022deposit_minimum\u0022:\u00220.00001\u0022,\u0022deposit_confirmations_required\u0022:\u00223\u0022,\u0022withdraw_minimum\u0022:\u00220.0003\u0022,\u0022withdrawal_fee\u0022:\u00220.00016\u0022}"
+    },
+    {
+      "Name": "GET /BTC-BRL/orderbook",
+      "Type": 0,
+      "Success": true,
+      "DurationMs": 605,
+      "ErrorCode": null,
+      "ErrorMessage": null,
+      "PayloadPreview": "{\u0022asks\u0022:[[\u0022488898.00000000\u0022,\u00220.00535337\u0022],[\u0022488899.00000000\u0022,\u00220.02301212\u0022],[\u0022489003.00000000\u0022,\u00220.06442711\u0022],[\u0022489007.00000000\u0022,\u00221.54796659\u0022],[\u0022489008.00000000\u0022,\u00220.02088604\u0022],[\u0022489099.00000000\u0022,\u00220.12034576\u0022],[\u0022489116.00000000\u0022,\u00220.16289000\u0022],[\u0022489738.00000000\u0022,\u00220.04568970\u0022],[\u0022489747.00000000\u0022,\u00220.13160..."
+    },
+    {
+      "Name": "GET /BTC-BRL/trades",
+      "Type": 0,
+      "Success": true,
+      "DurationMs": 278,
+      "ErrorCode": null,
+      "ErrorMessage": null,
+      "PayloadPreview": "[{\u0022amount\u0022:\u00220.00392858\u0022,\u0022date\u0022:1763561763,\u0022price\u0022:\u0022488903.00000000\u0022,\u0022tid\u0022:21259638,\u0022type\u0022:\u0022buy\u0022},{\u0022amount\u0022:\u00220.01227530\u0022,\u0022date\u0022:1763561763,\u0022price\u0022:\u0022488795.00000000\u0022,\u0022tid\u0022:21259637,\u0022type\u0022:\u0022buy\u0022},{\u0022amount\u0022:\u00220.00050211\u0022,\u0022date\u0022:1763561757,\u0022price\u0022:\u0022488601.00000000\u0022,\u0022tid\u0022:21259636,\u0022type\u0022:\u0022buy\u0022},{\u0022amount\u0022:\u0022..."
+    }
+  ]
+}
