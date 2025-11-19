@@ -219,6 +219,16 @@ namespace MercadoBitcoin.Client
         }
 
         /// <summary>
+        /// Gets the list of tradable symbols available in the public API (Convenience overload).
+        /// <para>**Does not require authentication**</para>
+        /// </summary>
+        public Task<ListSymbolInfoResponse> GetSymbolsAsync(IEnumerable<string> symbols, CancellationToken cancellationToken = default)
+        {
+            var joined = string.Join(",", symbols);
+            return GetSymbolsAsync(joined, cancellationToken);
+        }
+
+        /// <summary>
         /// Gets the current tickers for one or more symbols.
         /// <para>**Does not require authentication**</para>
         /// </summary>
@@ -232,6 +242,16 @@ namespace MercadoBitcoin.Client
             {
                 throw MapApiException(ex);
             }
+        }
+
+        /// <summary>
+        /// Gets the current tickers for one or more symbols (Convenience overload).
+        /// <para>**Does not require authentication**</para>
+        /// </summary>
+        public Task<ICollection<TickerResponse>> GetTickersAsync(IEnumerable<string> symbols, CancellationToken cancellationToken = default)
+        {
+            var joined = string.Join(",", symbols);
+            return GetTickersAsync(joined, cancellationToken);
         }
 
         /// <summary>
