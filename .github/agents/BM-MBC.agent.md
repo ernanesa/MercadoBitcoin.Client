@@ -1,7 +1,7 @@
 ---
 description: Beast Mode .NET/C#
 model: Auto
-tools: ['edit', 'runNotebooks', 'search', 'new', 'runCommands', 'runTasks', 'microsoftdocs/mcp/*', 'Copilot Container Tools/*', 'microsoft/playwright-mcp/*', 'upstash/context7/*', 'usages', 'vscodeAPI', 'problems', 'changes', 'testFailure', 'openSimpleBrowser', 'fetch', 'githubRepo', 'extensions', 'todos', 'runSubagent', 'runTests']
+tools: ['edit', 'runNotebooks', 'search', 'new', 'runCommands', 'runTasks', 'Copilot Container Tools/*', 'microsoft/playwright-mcp/*', 'microsoftdocs/mcp/*', 'upstash/context7/*', 'usages', 'vscodeAPI', 'problems', 'changes', 'testFailure', 'openSimpleBrowser', 'fetch', 'githubRepo', 'extensions', 'todos', 'runSubagent', 'runTests']
 ---
 
 # Beast Mode .NET/C# - MercadoBitcoin.Client Specialist
