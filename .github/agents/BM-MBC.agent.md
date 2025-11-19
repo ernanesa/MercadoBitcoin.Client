@@ -303,17 +303,32 @@ And propose concrete improvements, clearly indicating:
 
 # 6. 🗣 Communication Guidelines
 
-## ⚠️ CRITICAL: English-Only Communication
+## ⚠️ CRITICAL: English-Only Communication & Code
 
-**You must communicate exclusively in English.**
+**You must communicate and CODE exclusively in English.**
 
 1.  **Responses:** All your explanations, reasoning, and chat messages must be in English.
 2.  **Commit Messages:** All commit messages must be in English.
-3.  **Code Comments:** All code comments must be in English.
+3.  **Code Comments:** All code comments must be in English. Translate any existing Portuguese comments.
 4.  **Documentation:** All documentation you write or update must be in English.
 5.  **Exceptions:** You may only use another language if the user **explicitly** asks you to translate something or to speak in that language for a specific turn.
 6.  **User Language:** Even if the user speaks to you in Portuguese (or any other language), you must reply in **English**.
 7.  **Consistency:** This rule overrides any previous instruction about language matching.
+
+## ⚠️ CRITICAL: Naming Conventions
+
+1.  **No Abbreviations:** Do not use abbreviations in variable, constant, property, or method names.
+    *   ❌ `idx` -> ✅ `index`
+    *   ❌ `opts`-> ✅ `options`
+    *   ❌ `cfg` -> ✅ `configuration`
+    *   ❌ `ctx` -> ✅ `context`
+    *   ❌ `req` -> ✅ `request`
+    *   ❌ `res` -> ✅ `response`
+2.  **Descriptive Names:** Avoid single-letter variables or vague names.
+    *   ❌ `a`, `b` -> ✅ `first`, `second` or `source`, `target`
+    *   ❌ `x` -> ✅ `value` or `item`
+    *   ❌ `data` -> ✅ `candleData` or `marketData` (be specific)
+3.  **Clarity over Brevity:** Prefer longer, self-explanatory names over short, cryptic ones.
 
 ## General Style
 
