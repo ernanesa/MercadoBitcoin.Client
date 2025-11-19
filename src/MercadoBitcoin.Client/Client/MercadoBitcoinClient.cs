@@ -7,7 +7,7 @@ using System.Net.Http;
 using System.Threading.Tasks;
 using System.Linq;
 using System.Threading.RateLimiting;
-
+using Microsoft.Extensions.ObjectPool;
 
 namespace MercadoBitcoin.Client
 
@@ -16,6 +16,7 @@ namespace MercadoBitcoin.Client
 
     public partial class MercadoBitcoinClient : IDisposable
     {
+        private static readonly ObjectPool<ErrorResponse> _errorResponsePool = new DefaultObjectPoolProvider().Create<ErrorResponse>();
         private readonly TokenBucketRateLimiter _rateLimiter;
         private readonly MercadoBitcoin.Client.Generated.Client _generatedClient;
         private readonly AuthHttpClient _authHandler;
@@ -52,21 +53,57 @@ namespace MercadoBitcoin.Client
                 return exception;
             if (exception is Generated.ApiException apiException)
             {
-                ErrorResponse? error = null;
-                try
+                string errorCode = string.Empty;
+                string errorMessage = apiException.Message;
+
+                if (!string.IsNullOrWhiteSpace(apiException.Response))
                 {
-                    if (!string.IsNullOrWhiteSpace(apiException.Response))
-                        error = JsonSerializer.Deserialize(apiException.Response, MercadoBitcoinJsonSerializerContext.Default.ErrorResponse);
+                    // Use pooled object for parsing to avoid allocation
+                    var errorResponse = _errorResponsePool.Get();
+                    try
+                    {
+                        errorResponse.Reset();
+                        // Manual parsing or using JsonSerializer on the pooled object?
+                        // JsonSerializer.Deserialize creates a new object.
+                        // We use JsonDocument to parse without allocating the target object, then populate.
+                        using (var doc = JsonDocument.Parse(apiException.Response))
+                        {
+                            if (doc.RootElement.TryGetProperty("code", out var codeProp))
+                                errorResponse.Code = codeProp.GetString() ?? string.Empty;
+                            if (doc.RootElement.TryGetProperty("message", out var msgProp))
+                                errorResponse.Message = msgProp.GetString() ?? string.Empty;
+                        }
+
+                        errorCode = errorResponse.Code;
+                        if (!string.IsNullOrWhiteSpace(errorResponse.Message))
+                        {
+                            errorMessage = errorResponse.Message;
+                        }
+                    }
+                    catch
+                    {
+                        // Fallback: use default values
+                        errorCode = $"HTTP_{apiException.StatusCode}";
+                    }
+                    finally
+                    {
+                        _errorResponsePool.Return(errorResponse);
+                    }
                 }
-                catch { /* fallback to null */ }
+                else
+                {
+                    errorCode = $"HTTP_{apiException.StatusCode}";
+                }
+
                 var code = apiException.StatusCode;
                 if (code == 401 || code == 403)
-                    return new MercadoBitcoinUnauthorizedException(apiException.Message, error ?? new ErrorResponse { Code = $"HTTP_{code}", Message = apiException.Message });
+                    return new MercadoBitcoinUnauthorizedException(apiException.Message, errorCode, errorMessage);
                 if (code == 400)
-                    return new MercadoBitcoinValidationException(apiException.Message, error ?? new ErrorResponse { Code = $"HTTP_{code}", Message = apiException.Message });
+                    return new MercadoBitcoinValidationException(apiException.Message, errorCode, errorMessage);
                 if (code == 429)
-                    return new MercadoBitcoinRateLimitException(apiException.Message, error ?? new ErrorResponse { Code = $"HTTP_{code}", Message = apiException.Message });
-                return new MercadoBitcoinApiException(apiException.Message, error ?? new ErrorResponse { Code = $"HTTP_{code}", Message = apiException.Message });
+                    return new MercadoBitcoinRateLimitException(apiException.Message, errorCode, errorMessage);
+
+                return new MercadoBitcoinApiException(apiException.Message, errorCode, errorMessage);
             }
             return exception;
         }
