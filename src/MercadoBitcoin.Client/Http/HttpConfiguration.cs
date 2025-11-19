@@ -1,4 +1,8 @@
 using System;
+using System.Net;
+using System.Net.Http;
+using System.Net.Security;
+using System.Security.Authentication;
 
 namespace MercadoBitcoin.Client.Http
 {
@@ -41,6 +45,50 @@ namespace MercadoBitcoin.Client.Http
         /// Connection lifetime in seconds (default: 300 - 5 minutes)
         /// </summary>
         public int ConnectionLifetimeSeconds { get; set; } = 300;
+
+        /// <summary>
+        /// Creates a SocketsHttpHandler optimized based on current configuration
+        /// </summary>
+        public SocketsHttpHandler CreateOptimizedHandler()
+        {
+            var handler = new SocketsHttpHandler
+            {
+                // Pooling
+                PooledConnectionLifetime = TimeSpan.FromSeconds(ConnectionLifetimeSeconds),
+                PooledConnectionIdleTimeout = TimeSpan.FromMinutes(1),
+                MaxConnectionsPerServer = MaxConnectionsPerServer,
+
+                // HTTP/2
+                EnableMultipleHttp2Connections = true,
+
+                // Keep-alive
+                KeepAlivePingPolicy = HttpKeepAlivePingPolicy.Always,
+                KeepAlivePingTimeout = TimeSpan.FromSeconds(30),
+                KeepAlivePingDelay = TimeSpan.FromSeconds(60),
+
+                // Compression
+                AutomaticDecompression = EnableCompression
+                    ? DecompressionMethods.GZip | DecompressionMethods.Deflate | DecompressionMethods.Brotli
+                    : DecompressionMethods.None,
+
+                // Low-level timeouts
+                ConnectTimeout = TimeSpan.FromSeconds(10),
+                Expect100ContinueTimeout = TimeSpan.FromSeconds(1),
+                ResponseDrainTimeout = TimeSpan.FromSeconds(2),
+
+                // Security
+                SslOptions = new SslClientAuthenticationOptions
+                {
+                    EnabledSslProtocols = SslProtocols.Tls12 | SslProtocols.Tls13,
+                },
+
+                // Proxy and cookies
+                UseProxy = false,
+                UseCookies = false,
+            };
+
+            return handler;
+        }
 
         /// <summary>
         /// Creates a default configuration optimized for HTTP/2

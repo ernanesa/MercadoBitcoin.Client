@@ -52,16 +52,7 @@ namespace MercadoBitcoin.Client.Http
 
         private static HttpMessageHandler CreateDefaultInnerHandler(HttpConfiguration httpConfig)
         {
-            // Use SocketsHttpHandler for HTTP/3 support and better performance in .NET 10
-            var handler = new SocketsHttpHandler
-            {
-                MaxConnectionsPerServer = httpConfig.MaxConnectionsPerServer,
-                PooledConnectionLifetime = TimeSpan.FromSeconds(httpConfig.ConnectionLifetimeSeconds),
-                AutomaticDecompression = httpConfig.EnableCompression ? DecompressionMethods.All : DecompressionMethods.None,
-                EnableMultipleHttp2Connections = true
-            };
-
-            return handler;
+            return httpConfig.CreateOptimizedHandler();
         }
 
         protected override async Task<HttpResponseMessage> SendAsync(

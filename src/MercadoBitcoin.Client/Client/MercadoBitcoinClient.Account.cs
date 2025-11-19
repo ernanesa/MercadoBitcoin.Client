@@ -2,6 +2,7 @@ using MercadoBitcoin.Client.Generated;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Linq;
 
 namespace MercadoBitcoin.Client
 {
@@ -65,6 +66,15 @@ namespace MercadoBitcoin.Client
         public Task<ICollection<PositionResponse>> GetPositionsAsync(string accountId, string? symbols, CancellationToken cancellationToken)
         {
             return _generatedClient.PositionsAsync(accountId, symbols, cancellationToken);
+        }
+
+        /// <summary>
+        /// Gets open positions for specific symbols (Convenience overload).
+        /// </summary>
+        public Task<ICollection<PositionResponse>> GetPositionsAsync(string accountId, IEnumerable<string> symbols, CancellationToken cancellationToken = default)
+        {
+            var joined = string.Join(",", symbols);
+            return GetPositionsAsync(accountId, joined, cancellationToken);
         }
 
         #endregion

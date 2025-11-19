@@ -153,8 +153,19 @@ namespace MercadoBitcoin.Client.Extensions
             // Register options
             services.Configure(configureOptions);
 
-            // Register AuthHttpClient with scoped lifecycle for per-request isolation
-            services.AddScoped<AuthHttpClient>();
+            // Register AuthHttpClient with scoped lifecycle using options
+            services.AddScoped<AuthHttpClient>(sp =>
+            {
+                var options = sp.GetRequiredService<IOptions<MercadoBitcoinClientOptions>>().Value;
+                return new AuthHttpClient(options.RetryPolicyConfig, options.HttpConfiguration);
+            });
+
+            // Register RetryHandler with scoped lifecycle using options
+            services.AddScoped<RetryHandler>(sp =>
+            {
+                var options = sp.GetRequiredService<IOptions<MercadoBitcoinClientOptions>>().Value;
+                return new RetryHandler(options.RetryPolicyConfig, options.HttpConfiguration);
+            });
 
             // Register MercadoBitcoinClient using AddHttpClient for IHttpClientFactory integration
             services.AddHttpClient<MercadoBitcoinClient>((serviceProvider, httpClient) =>
@@ -167,7 +178,13 @@ namespace MercadoBitcoin.Client.Extensions
                 httpClient.DefaultRequestVersion = options.HttpConfiguration.HttpVersion;
                 httpClient.DefaultVersionPolicy = options.HttpConfiguration.VersionPolicy;
             })
-            .AddHttpMessageHandler<AuthHttpClient>(); // Add AuthHttpClient to the pipeline
+            .ConfigurePrimaryHttpMessageHandler((serviceProvider) =>
+            {
+                var options = serviceProvider.GetRequiredService<IOptions<MercadoBitcoinClientOptions>>().Value;
+                return options.HttpConfiguration.CreateOptimizedHandler();
+            })
+            .AddHttpMessageHandler<AuthHttpClient>() // First handler in pipeline
+            .AddHttpMessageHandler<RetryHandler>();  // Second handler in pipeline
 
             return services;
         }
