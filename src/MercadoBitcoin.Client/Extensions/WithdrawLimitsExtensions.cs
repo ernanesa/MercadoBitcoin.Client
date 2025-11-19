@@ -53,8 +53,8 @@ namespace MercadoBitcoin.Client.Extensions
                     if (kv.Value is null)
                         continue;
 
-                    if (TryConvertToDecimal(kv.Value, out var val))
-                        result[kv.Key] = val;
+                    if (TryConvertToDecimal(kv.Value, out var limitValue))
+                        result[kv.Key] = limitValue;
                     else if (throwOnError)
                         throw new FormatException($"Could not parse withdraw limit value for symbol '{kv.Key}': {kv.Value}");
                 }

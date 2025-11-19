@@ -10,19 +10,19 @@ using System.Text.Json;
 //   dotnet run --project samples/AuthBalanceConsole -- <login> <password>
 // or define environment variables MB_LOGIN and MB_PASSWORD
 
-var argList = args.ToList();
-var verbose = argList.Remove("--verbose") || Environment.GetEnvironmentVariable("MB_VERBOSE") == "1";
-var runDiagnostics = argList.Remove("--diag");
-var allowMutations = argList.Remove("--allow-mutate") || Environment.GetEnvironmentVariable("MB_ALLOW_MUTATE") == "1";
+var arguments = args.ToList();
+var verbose = arguments.Remove("--verbose") || Environment.GetEnvironmentVariable("MB_VERBOSE") == "1";
+var runDiagnostics = arguments.Remove("--diag");
+var allowMutations = arguments.Remove("--allow-mutate") || Environment.GetEnvironmentVariable("MB_ALLOW_MUTATE") == "1";
 
 string? login = null;
 string? password = null;
 
 // After removing flags, the first two remaining arguments can be login and password
-if (argList.Count >= 2)
+if (arguments.Count >= 2)
 {
-    login = argList[0];
-    password = argList[1];
+    login = arguments[0];
+    password = arguments[1];
 }
 else
 {
@@ -88,29 +88,29 @@ try
     }
 
     var allData = new List<object>();
-    foreach (var acct in accounts)
+    foreach (var account in accounts)
     {
-        Console.WriteLine($"Account: {acct.Id} | {acct.Name} | {acct.Currency} ({acct.Type})");
+        Console.WriteLine($"Account: {account.Id} | {account.Name} | {account.Currency} ({account.Type})");
         try
         {
-            var balances = await client.GetBalancesAsync(acct.Id!);
+            var balances = await client.GetBalancesAsync(account.Id!);
             if (verbose)
             {
-                Console.WriteLine($"[DEBUG] /accounts/{acct.Id}/balances returned {balances.Count} items");
+                Console.WriteLine($"[DEBUG] /accounts/{account.Id}/balances returned {balances.Count} items");
             }
-            allData.Add(new { account = acct, balances });
+            allData.Add(new { account = account, balances });
             Console.WriteLine("  Balances:");
-            foreach (var b in balances)
+            foreach (var balance in balances)
             {
-                Console.WriteLine($"    {b.Symbol}: available={b.Available} on_hold={b.On_hold} total={b.Total}");
+                Console.WriteLine($"    {balance.Symbol}: available={balance.Available} on_hold={balance.On_hold} total={balance.Total}");
             }
         }
-        catch (Exception exBal)
+        catch (Exception balanceException)
         {
-            Console.WriteLine($"  Error getting balances: {exBal.Message}");
+            Console.WriteLine($"  Error getting balances: {balanceException.Message}");
             if (verbose)
             {
-                Console.WriteLine(exBal);
+                Console.WriteLine(balanceException);
             }
         }
     }
@@ -120,11 +120,11 @@ try
     var json = JsonSerializer.Serialize(allData, new JsonSerializerOptions { WriteIndented = true });
     Console.WriteLine(json);
 }
-catch (MercadoBitcoinApiException apiEx)
+catch (MercadoBitcoinApiException apiException)
 {
     Console.WriteLine("API Failure:");
-    Console.WriteLine($"  Code: {apiEx.Error.Code}");
-    Console.WriteLine($"  Message: {apiEx.Error.Message}");
+    Console.WriteLine($"  Code: {apiException.Error.Code}");
+    Console.WriteLine($"  Message: {apiException.Error.Message}");
     return 2;
 }
 catch (Exception ex)
