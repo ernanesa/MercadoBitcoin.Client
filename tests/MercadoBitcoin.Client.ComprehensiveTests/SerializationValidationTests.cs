@@ -3,6 +3,7 @@ using System.Text.Json;
 using Xunit;
 using Xunit.Abstractions;
 using MercadoBitcoin.Client.Generated;
+using MercadoBitcoin.Client.Errors;
 
 namespace MercadoBitcoin.Client.ComprehensiveTests;
 

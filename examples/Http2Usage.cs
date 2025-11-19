@@ -10,40 +10,44 @@ using System.Threading.Tasks;
 namespace MercadoBitcoin.Client.Examples
 {
     /// <summary>
-    /// Exemplos de uso do MercadoBitcoinClient com HTTP/2
+    /// Usage examples of MercadoBitcoinClient with HTTP/2
     /// </summary>
     public class Http2Usage
     {
         /// <summary>
-        /// Exemplo 1: Uso básico com HTTP/2 padrão
+        /// Example 1: Basic usage with default HTTP/2
         /// </summary>
         public static async Task BasicHttp2Example()
         {
-            // Criar cliente com configuração HTTP/2 padrão
+            // Create client with default HTTP/2 configuration
             var client = MercadoBitcoinClientExtensions.CreateWithHttp2();
-            
+
             try
             {
-                // Fazer uma requisição de teste
-                var ticker = await client.GetTickerAsync("BRLBTC");
-                Console.WriteLine($"Ticker BTC: {ticker.Last}");
+                // Make a test request
+                var tickers = await client.GetTickersAsync("BRLBTC");
+                var ticker = System.Linq.Enumerable.FirstOrDefault(tickers);
+                if (ticker != null)
+                {
+                    Console.WriteLine($"Ticker BTC: {ticker.Last}");
+                }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Erro: {ex.Message}");
+                Console.WriteLine($"Error: {ex.Message}");
             }
             finally
             {
                 client.Dispose();
             }
         }
-        
+
         /// <summary>
-        /// Exemplo 2: Configuração personalizada de HTTP/2
+        /// Example 2: Custom HTTP/2 configuration
         /// </summary>
         public static async Task CustomHttp2Example()
         {
-            // Configuração HTTP personalizada
+            // Custom HTTP configuration
             var httpConfig = new HttpConfiguration
             {
                 HttpVersion = new Version(2, 0),
@@ -52,8 +56,8 @@ namespace MercadoBitcoin.Client.Examples
                 EnableCompression = true,
                 MaxConnectionsPerServer = 150
             };
-            
-            // Configuração de retry personalizada
+
+            // Custom retry configuration
             var retryConfig = new RetryPolicyConfig
             {
                 MaxRetryAttempts = 5,
@@ -64,9 +68,9 @@ namespace MercadoBitcoin.Client.Examples
                 RetryOnRateLimit = true,
                 RetryOnServerErrors = true
             };
-            
+
             var client = MercadoBitcoinClientExtensions.CreateWithHttp2(retryConfig, httpConfig);
-            
+
             try
             {
                 var orderBook = await client.GetOrderBookAsync("BRLBTC");
@@ -74,137 +78,141 @@ namespace MercadoBitcoin.Client.Examples
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Erro: {ex.Message}");
+                Console.WriteLine($"Error: {ex.Message}");
             }
             finally
             {
                 client.Dispose();
             }
         }
-        
+
         /// <summary>
-        /// Exemplo 3: Cliente otimizado para trading
+        /// Example 3: Trading optimized client
         /// </summary>
         public static async Task TradingOptimizedExample()
         {
             var client = MercadoBitcoinClientExtensions.CreateForTrading();
-            
+
             try
             {
-                // Operações de trading com baixa latência
+                // Low latency trading operations
                 var trades = await client.GetTradesAsync("BRLBTC");
-                Console.WriteLine($"Últimos trades: {trades.Count}");
+                Console.WriteLine($"Last trades: {trades.Count}");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Erro: {ex.Message}");
+                Console.WriteLine($"Error: {ex.Message}");
             }
             finally
             {
                 client.Dispose();
             }
         }
-        
+
         /// <summary>
-        /// Exemplo 4: Configuração via appsettings.json
+        /// Example 4: Configuration via appsettings.json
         /// </summary>
         public static async Task ConfigurationExample()
         {
             var configuration = new ConfigurationBuilder()
                 .AddJsonFile("appsettings.json", optional: true)
                 .Build();
-            
-            // Ler configuração HTTP do appsettings
+
+            // Read HTTP configuration from appsettings
             var httpSection = configuration.GetSection("MercadoBitcoin:Http");
             var httpConfig = new HttpConfiguration();
             httpSection.Bind(httpConfig);
-            
-            // Ler configuração de retry do appsettings
+
+            // Read retry configuration from appsettings
             var retrySection = configuration.GetSection("MercadoBitcoin:Retry");
             var retryConfig = new RetryPolicyConfig();
             retrySection.Bind(retryConfig);
-            
+
             var client = MercadoBitcoinClientExtensions.CreateWithHttp2(retryConfig, httpConfig);
-            
+
             try
             {
-                var summary = await client.GetDaySummaryAsync("BRLBTC");
-                Console.WriteLine($"Resumo do dia - Volume: {summary.Volume}");
+                var tickers = await client.GetTickersAsync("BRLBTC");
+                var ticker = System.Linq.Enumerable.FirstOrDefault(tickers);
+                if (ticker != null)
+                {
+                    Console.WriteLine($"Day Summary - Volume: {ticker.Vol}");
+                }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Erro: {ex.Message}");
+                Console.WriteLine($"Error: {ex.Message}");
             }
             finally
             {
                 client.Dispose();
             }
         }
-        
+
         /// <summary>
-        /// Exemplo 5: Injeção de dependência com HTTP/2
+        /// Example 5: Dependency Injection with HTTP/2
         /// </summary>
         public static void DependencyInjectionExample(IServiceCollection services, IConfiguration configuration)
         {
-            // Registrar configurações
+            // Register configurations
             services.Configure<HttpConfiguration>(configuration.GetSection("MercadoBitcoin:Http"));
             services.Configure<RetryPolicyConfig>(configuration.GetSection("MercadoBitcoin:Retry"));
-            
-            // Registrar cliente como singleton
+
+            // Register client as singleton
             services.AddSingleton<MercadoBitcoinClient>(provider =>
             {
                 var httpConfig = provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<HttpConfiguration>>().Value;
                 var retryConfig = provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<RetryPolicyConfig>>().Value;
-                
+
                 return MercadoBitcoinClientExtensions.CreateWithHttp2(retryConfig, httpConfig);
             });
         }
-        
+
         /// <summary>
-        /// Exemplo 6: Comparação de performance HTTP/1.1 vs HTTP/2
+        /// Example 6: Performance Comparison HTTP/1.1 vs HTTP/2
         /// </summary>
         public static async Task PerformanceComparisonExample()
         {
-            Console.WriteLine("=== Comparação de Performance HTTP/1.1 vs HTTP/2 ===");
-            
-            // Cliente HTTP/1.1
+            Console.WriteLine("=== Performance Comparison HTTP/1.1 vs HTTP/2 ===");
+
+            // HTTP/1.1 Client
             var http11Config = HttpConfiguration.CreateHttp11Default();
             var clientHttp11 = MercadoBitcoinClientExtensions.CreateWithHttp2(null, http11Config);
-            
-            // Cliente HTTP/2
+
+            // HTTP/2 Client
             var clientHttp2 = MercadoBitcoinClientExtensions.CreateWithHttp2();
-            
+
             var symbols = new[] { "BRLBTC", "BRLETH", "BRLLTC", "BRLXRP", "BRLADA" };
-            
+
             try
             {
-                // Teste HTTP/1.1
+                // Test HTTP/1.1
                 var startTime = DateTime.UtcNow;
                 var tasks11 = new List<Task>();
                 foreach (var symbol in symbols)
                 {
-                    tasks11.Add(clientHttp11.GetTickerAsync(symbol));
+                    tasks11.Add(clientHttp11.GetTickersAsync(symbol));
                 }
                 await Task.WhenAll(tasks11);
                 var http11Time = DateTime.UtcNow - startTime;
-                
-                // Teste HTTP/2
+
+                // Test HTTP/2
                 startTime = DateTime.UtcNow;
                 var tasks2 = new List<Task>();
                 foreach (var symbol in symbols)
                 {
-                    tasks2.Add(clientHttp2.GetTickerAsync(symbol));
+                    tasks2.Add(clientHttp2.GetTickersAsync(symbol));
                 }
                 await Task.WhenAll(tasks2);
                 var http2Time = DateTime.UtcNow - startTime;
-                
-                Console.WriteLine($"HTTP/1.1 - Tempo: {http11Time.TotalMilliseconds:F2}ms");
-                Console.WriteLine($"HTTP/2.0 - Tempo: {http2Time.TotalMilliseconds:F2}ms");
-                Console.WriteLine($"Melhoria: {((http11Time.TotalMilliseconds - http2Time.TotalMilliseconds) / http11Time.TotalMilliseconds * 100):F1}%");
+
+                Console.WriteLine($"HTTP/1.1 - Time: {http11Time.TotalMilliseconds:F2}ms");
+                Console.WriteLine($"HTTP/2.0 - Time: {http2Time.TotalMilliseconds:F2}ms");
+                Console.WriteLine($"Improvement: {((http11Time.TotalMilliseconds - http2Time.TotalMilliseconds) / http11Time.TotalMilliseconds * 100):F1}%");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Erro no teste de performance: {ex.Message}");
+                Console.WriteLine($"Error in performance test: {ex.Message}");
             }
             finally
             {

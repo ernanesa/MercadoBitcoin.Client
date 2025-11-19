@@ -48,14 +48,14 @@ namespace MercadoBitcoin.Client
             return _generatedClient.WithdrawPOSTAsync(accountId, symbol, payload, cancellationToken);
         }
 
-        public Task<ICollection<Withdraw>> ListWithdrawalsAsync(string accountId, string symbol, int? page = null, int? page_size = null, int? from = null)
+        public Task<ICollection<Withdraw>> ListWithdrawalsAsync(string accountId, string symbol, int? page = null, int? pageSize = null, int? from = null)
         {
-            return _generatedClient.WithdrawAllAsync(accountId, symbol, page, page_size, from);
+            return _generatedClient.WithdrawAllAsync(accountId, symbol, page, pageSize, from);
         }
 
-        public Task<ICollection<Withdraw>> ListWithdrawalsAsync(string accountId, string symbol, CancellationToken cancellationToken, int? page = null, int? page_size = null, int? from = null)
+        public Task<ICollection<Withdraw>> ListWithdrawalsAsync(string accountId, string symbol, CancellationToken cancellationToken, int? page = null, int? pageSize = null, int? from = null)
         {
-            return _generatedClient.WithdrawAllAsync(accountId, symbol, page, page_size, from, cancellationToken);
+            return _generatedClient.WithdrawAllAsync(accountId, symbol, page, pageSize, from, cancellationToken);
         }
 
         public Task<Withdraw> GetWithdrawalAsync(string accountId, string symbol, string withdrawId)

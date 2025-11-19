@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Text.Json;
 using MercadoBitcoin.Client.Http;
+using MercadoBitcoin.Client.Errors;
 
 namespace MercadoBitcoin.Client
 {
@@ -27,23 +28,23 @@ namespace MercadoBitcoin.Client
         }
 
         /// <summary>
-        /// Construtor para uso com IHttpClientFactory (DI)
+        /// Constructor for use with IHttpClientFactory (DI)
         /// </summary>
         public AuthHttpClient() : this(null, null)
         {
         }
 
         /// <summary>
-        /// Define o token de acesso para autenticação
+        /// Sets the access token for authentication
         /// </summary>
-        /// <param name="accessToken">Token de acesso</param>
+        /// <param name="accessToken">Access token</param>
         public void SetAccessToken(string? accessToken)
         {
             _accessToken = accessToken;
         }
 
         /// <summary>
-        /// Obtém o token de acesso atual (para diagnósticos). NÃO exponha isso publicamente em logs de produção.
+        /// Gets the current access token (for diagnostics). DO NOT expose this publicly in production logs.
         /// </summary>
         public string? GetAccessToken() => _accessToken;
 
@@ -76,25 +77,34 @@ namespace MercadoBitcoin.Client
 
             if (!response.IsSuccessStatusCode)
             {
-                var responseContent = await response.Content.ReadAsStringAsync();
-                ErrorResponse? errorResponse = null;
+                var buffer = Internal.Pooling.ArrayPoolManager.RentBytes(4096);
                 try
                 {
-                    errorResponse = JsonSerializer.Deserialize(responseContent, MercadoBitcoinJsonSerializerContext.Default.ErrorResponse);
-                }
-                catch (System.Text.Json.JsonException)
-                {
-                    // If deserialization fails, create a generic error response
-                    errorResponse = new ErrorResponse { Code = "UNKNOWN_ERROR", Message = responseContent };
-                }
+                    await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+                    int bytesRead = await stream.ReadAsync(buffer, cancellationToken);
 
-                // Ensure errorResponse is not null before using it
-                var finalErrorResponse = errorResponse ?? new ErrorResponse { Code = "UNKNOWN_ERROR", Message = responseContent };
-                if (_traceHttp)
-                {
-                    Console.WriteLine($"[TRACE HTTP][ERROR] {finalErrorResponse.Code} {finalErrorResponse.Message}");
+                    ErrorResponse? errorResponse = null;
+                    try
+                    {
+                        errorResponse = JsonSerializer.Deserialize(buffer.AsSpan(0, bytesRead), MercadoBitcoinJsonSerializerContext.Default.ErrorResponse);
+                    }
+                    catch (System.Text.Json.JsonException)
+                    {
+                        var errorString = System.Text.Encoding.UTF8.GetString(buffer.AsSpan(0, bytesRead));
+                        errorResponse = new ErrorResponse { Code = "UNKNOWN_ERROR", Message = errorString };
+                    }
+
+                    var finalErrorResponse = errorResponse ?? new ErrorResponse { Code = "UNKNOWN_ERROR", Message = "Unknown error" };
+                    if (_traceHttp)
+                    {
+                        Console.WriteLine($"[TRACE HTTP][ERROR] {finalErrorResponse.Code} {finalErrorResponse.Message}");
+                    }
+                    throw new MercadoBitcoinApiException($"API Error: {finalErrorResponse.Message}", finalErrorResponse);
                 }
-                throw new MercadoBitcoinApiException($"API Error: {finalErrorResponse.Message}", finalErrorResponse);
+                finally
+                {
+                    Internal.Pooling.ArrayPoolManager.ReturnBytes(buffer);
+                }
             }
 
             return response;
@@ -102,7 +112,7 @@ namespace MercadoBitcoin.Client
 
         protected override void Dispose(bool disposing)
         {
-            // HttpClient é gerenciado pelo IHttpClientFactory, não precisamos fazer dispose
+            // HttpClient is managed by IHttpClientFactory, we don't need to dispose
             base.Dispose(disposing);
         }
     }

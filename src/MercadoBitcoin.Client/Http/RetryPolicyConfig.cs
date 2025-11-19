@@ -3,83 +3,83 @@ using System;
 namespace MercadoBitcoin.Client.Http
 {
     /// <summary>
-    /// Configurações para as políticas de retry
+    /// Configuration for retry policies
     /// </summary>
     public class RetryPolicyConfig
     {
         /// <summary>
-        /// Número máximo de tentativas de retry (padrão: 3)
+        /// Maximum number of retry attempts (default: 3)
         /// </summary>
         public int MaxRetryAttempts { get; set; } = 3;
 
         /// <summary>
-        /// Delay base em segundos para o exponential backoff (padrão: 1)
+        /// Base delay in seconds for exponential backoff (default: 1)
         /// </summary>
         public double BaseDelaySeconds { get; set; } = 1.0;
 
         /// <summary>
-        /// Multiplicador para o exponential backoff (padrão: 2)
+        /// Multiplier for exponential backoff (default: 2)
         /// </summary>
         public double BackoffMultiplier { get; set; } = 2.0;
 
         /// <summary>
-        /// Delay máximo em segundos (padrão: 30)
+        /// Maximum delay in seconds (default: 30)
         /// </summary>
         public double MaxDelaySeconds { get; set; } = 30.0;
 
         /// <summary>
-        /// Se deve fazer retry em erros de timeout (padrão: true)
+        /// Whether to retry on timeout errors (default: true)
         /// </summary>
         public bool RetryOnTimeout { get; set; } = true;
 
         /// <summary>
-        /// Se deve fazer retry em erros de rate limiting (padrão: true)
+        /// Whether to retry on rate limiting errors (default: true)
         /// </summary>
         public bool RetryOnRateLimit { get; set; } = true;
 
         /// <summary>
-        /// Se deve fazer retry em erros de servidor (5xx) (padrão: true)
+        /// Whether to retry on server errors (5xx) (default: true)
         /// </summary>
         public bool RetryOnServerErrors { get; set; } = true;
 
         /// <summary>
-        /// Se deve tentar respeitar o header Retry-After quando presente em respostas 429 (padrão: true)
+        /// Whether to try respecting the Retry-After header when present in 429 responses (default: true)
         /// </summary>
         public bool RespectRetryAfterHeader { get; set; } = true;
 
         /// <summary>
-        /// Habilita o uso de Circuit Breaker para evitar tempestade de falhas (padrão: true)
+        /// Enables Circuit Breaker usage to avoid failure storms (default: true)
         /// </summary>
         public bool EnableCircuitBreaker { get; set; } = true;
 
         /// <summary>
-        /// Número de falhas (consecutivas) antes de abrir o circuito (padrão: 8)
+        /// Number of (consecutive) failures before opening the circuit (default: 8)
         /// </summary>
         public int CircuitBreakerFailuresBeforeBreaking { get; set; } = 8;
 
         /// <summary>
-        /// Janela de tempo (em segundos) que o circuito permanecerá aberto antes de meia-abertura (padrão: 30)
+        /// Time window (in seconds) the circuit will remain open before half-open (default: 30)
         /// </summary>
         public int CircuitBreakerDurationSeconds { get; set; } = 30;
 
         /// <summary>
-        /// Expõe callback opcional para eventos de retry (tentativa, atraso, código HTTP) - útil para métricas
+        /// Exposes optional callback for retry events (attempt, delay, HTTP code) - useful for metrics
         /// </summary>
         public Action<RetryEvent>? OnRetryEvent { get; set; }
 
         /// <summary>
-        /// Expõe callback opcional para eventos de circuit breaker (estado abre / meia-abre / fecha)
+        /// Exposes optional callback for circuit breaker events (open / half-open / closed state)
         /// </summary>
         public Action<CircuitBreakerEvent>? OnCircuitBreakerEvent { get; set; }
 
         /// <summary>
-        /// Calcula o delay para uma tentativa específica usando exponential backoff
+        /// Calculates the delay for a specific attempt using exponential backoff
         /// </summary>
-        /// <param name="retryAttempt">Número da tentativa (1, 2, 3...)</param>
-        /// <returns>TimeSpan com o delay calculado</returns>
+        /// <param name="retryAttempt">Attempt number (1, 2, 3...)</param>
+        /// <returns>TimeSpan with the calculated delay</returns>
         public TimeSpan CalculateDelay(int retryAttempt)
         {
-            // Garante que BaseDelaySeconds seja não-negativo
+            // Ensures BaseDelaySeconds is non-negative
             var baseDelay = Math.Max(0, BaseDelaySeconds);
             var multiplier = BackoffMultiplier;
             var maxDelay = Math.Max(0, MaxDelaySeconds);
@@ -88,16 +88,16 @@ namespace MercadoBitcoin.Client.Http
             delay = Math.Min(delay, maxDelay);
             var final = TimeSpan.FromSeconds(Math.Max(0, delay));
 
-            // Aplica jitter opcional para evitar sincronização de bursts entre múltiplos clientes
+            // Applies optional jitter to avoid burst synchronization among multiple clients
             if (EnableJitter && JitterMillisecondsMax > 0)
             {
-                // Random.Shared é thread-safe a partir do .NET 6+
+                // Random.Shared is thread-safe from .NET 6+
                 var jitterMs = Random.Shared.Next(0, JitterMillisecondsMax + 1);
                 var jitter = TimeSpan.FromMilliseconds(jitterMs);
                 var candidate = final + jitter;
                 if (candidate.TotalSeconds > maxDelay)
                 {
-                    // Mantém limite superior absoluto
+                    // Keeps absolute upper limit
                     candidate = TimeSpan.FromSeconds(maxDelay);
                 }
                 final = candidate;
@@ -106,28 +106,28 @@ namespace MercadoBitcoin.Client.Http
         }
 
         /// <summary>
-        /// Habilita jitter (aleatoriedade) adicional ao backoff para reduzir thundering herd (padrão: true)
+        /// Enables additional jitter (randomness) to backoff to reduce thundering herd (default: true)
         /// </summary>
         public bool EnableJitter { get; set; } = true;
 
         /// <summary>
-        /// Jitter máximo em milissegundos adicionado ao delay calculado (padrão: 250ms)
+        /// Maximum jitter in milliseconds added to the calculated delay (default: 250ms)
         /// </summary>
         public int JitterMillisecondsMax { get; set; } = 250;
 
         /// <summary>
-        /// Habilita emissão de métricas (System.Diagnostics.Metrics) para observabilidade (padrão: true)
+        /// Enables metrics emission (System.Diagnostics.Metrics) for observability (default: true)
         /// </summary>
         public bool EnableMetrics { get; set; } = true;
     }
 
     /// <summary>
-    /// Dados enviados em cada evento de retry
+    /// Data sent in each retry event
     /// </summary>
     public readonly record struct RetryEvent(int Attempt, TimeSpan PlannedDelay, TimeSpan? OverrideDelay, int? StatusCode, bool FromCircuitBreaker);
 
     /// <summary>
-    /// Estados notificados do circuit breaker
+    /// Notified circuit breaker states
     /// </summary>
     public enum CircuitBreakerState
     {
@@ -137,7 +137,7 @@ namespace MercadoBitcoin.Client.Http
     }
 
     /// <summary>
-    /// Evento emitido pelo circuit breaker
+    /// Event emitted by the circuit breaker
     /// </summary>
     public readonly record struct CircuitBreakerEvent(CircuitBreakerState State, string Reason, int Failures, TimeSpan Duration);
 }

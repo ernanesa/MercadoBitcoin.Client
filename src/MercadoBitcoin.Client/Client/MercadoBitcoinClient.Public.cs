@@ -1,22 +1,24 @@
 using MercadoBitcoin.Client.Generated;
 using MercadoBitcoin.Client.Extensions;
 using MercadoBitcoin.Client.Models;
+using MercadoBitcoin.Client.Internal.Helpers;
+using MercadoBitcoin.Client.Errors;
 
 namespace MercadoBitcoin.Client
 {
     public partial class MercadoBitcoinClient
     {
         /// <summary>
-        /// Itera de forma assíncrona sobre todos os depósitos cripto de um usuário, paginando automaticamente.
-        /// <para>**Requer autenticação**</para>
+        /// Asynchronously iterates over all crypto deposits of a user, paginating automatically.
+        /// <para>**Requires authentication**</para>
         /// </summary>
-        /// <param name="accountId">ID da conta</param>
-        /// <param name="symbol">Símbolo do ativo (ex: BTC)</param>
-        /// <param name="limit">Tamanho da página (padrão: 50, máximo: 50)</param>
-        /// <param name="from">Timestamp inicial (opcional)</param>
-        /// <param name="to">Timestamp final (opcional)</param>
-        /// <param name="cancellationToken">Token de cancelamento</param>
-        /// <returns>IAsyncEnumerable de Deposit</returns>
+        /// <param name="accountId">Account ID</param>
+        /// <param name="symbol">Asset symbol (e.g., BTC)</param>
+        /// <param name="limit">Page size (default: 50, max: 50)</param>
+        /// <param name="from">Start timestamp (optional)</param>
+        /// <param name="to">End timestamp (optional)</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>IAsyncEnumerable of Deposit</returns>
         public IAsyncEnumerable<Deposit> GetDepositsPagedAsync(
             string accountId,
             string symbol,
@@ -25,10 +27,14 @@ namespace MercadoBitcoin.Client
             int? to = null,
             CancellationToken cancellationToken = default)
         {
-            return Internal.AsyncPaginationHelper.PaginateAsync<Deposit>(
+            return AsyncPaginationHelper.PaginateAsync<Deposit>(
                 fetchPage: async (pageSize, page, ct) =>
                 {
-                    await _rateLimiter.WaitAsync(ct);
+                    using var lease = await _rateLimiter.AcquireAsync(1, ct);
+                    if (!lease.IsAcquired)
+                    {
+                        throw new MercadoBitcoinRateLimitException("Rate limit exceeded (client-side).", new ErrorResponse { Code = "CLIENT_RATE_LIMIT", Message = "Rate limit exceeded (client-side)." });
+                    }
                     return await _generatedClient.DepositsAsync(
                         accountId,
                         symbol,
@@ -83,25 +89,25 @@ namespace MercadoBitcoin.Client
         }
 
         /// <summary>
-        /// Obtém candles (OHLCV) da API pública, com normalização de entradas e proteção contra janelas invertidas.
-        /// <para>**Não requer autenticação**</para>
-        /// Parâmetros:
-        /// - symbol: par no formato BASE-QUOTE (ex.: BTC-BRL, btcbrl)
-        /// - resolution: timeframe (ex.: 1m, 15m, 1h, 1d)
-        /// - to: unix timestamp (segundos) do limite direito (inclusivo)
-        /// - from: unix timestamp (segundos) do limite esquerdo (opcional)
-        /// - countback: quantidade de candles a partir de "to" (prioritário sobre "from")
+        /// Gets candles (OHLCV) from the public API, with input normalization and protection against inverted windows.
+        /// <para>**Does not require authentication**</para>
+        /// Parameters:
+        /// - symbol: pair in BASE-QUOTE format (e.g., BTC-BRL, btcbrl)
+        /// - resolution: timeframe (e.g., 1m, 15m, 1h, 1d)
+        /// - to: unix timestamp (seconds) of the right limit (inclusive)
+        /// - from: unix timestamp (seconds) of the left limit (optional)
+        /// - countback: number of candles from "to" (priority over "from")
         /// </summary>
         public Task<ListCandlesResponse> GetCandlesAsync(string symbol, string resolution, int to, int? from = null, int? countback = null, CancellationToken cancellationToken = default)
         {
             if (to <= 0)
                 throw new ArgumentException("Parameter 'to' must be a valid unix timestamp (seconds).", nameof(to));
 
-            // Normaliza entradas
+            // Normalizes inputs
             var normalizedSymbol = CandleExtensions.NormalizeSymbol(symbol);
             var normalizedResolution = CandleExtensions.NormalizeResolution(resolution);
 
-            // Se 'from' for informado e maior que 'to', faz swap para evitar janela invertida
+            // If 'from' is provided and greater than 'to', swap to avoid inverted window
             if (from.HasValue && from.Value > to)
             {
                 var tmp = to;
@@ -120,8 +126,8 @@ namespace MercadoBitcoin.Client
         }
 
         /// <summary>
-        /// Conveniência: busca os últimos N candles até agora (usa countback e ignora "from").
-        /// <para>**Não requer autenticação**</para>
+        /// Convenience: fetches the last N candles until now (uses countback and ignores "from").
+        /// <para>**Does not require authentication**</para>
         /// </summary>
         public Task<ListCandlesResponse> GetRecentCandlesAsync(string symbol, string resolution, int countback, int? to = null, CancellationToken cancellationToken = default)
         {
@@ -140,15 +146,15 @@ namespace MercadoBitcoin.Client
         }
 
         /// <summary>
-        /// Obtém candles com validação e normalização de entradas, retornando lista tipada de CandleData.
-        /// <para>**Não requer autenticação**</para>
+        /// Gets candles with validation and input normalization, returning a typed list of CandleData.
+        /// <para>**Does not require authentication**</para>
         /// </summary>
-        /// <param name="symbol">Símbolo do par (ex.: BTC-BRL ou btcbrl)</param>
-        /// <param name="resolution">Resolução/timeframe (ex.: 1m, 15m, 1h, 1d)</param>
-        /// <param name="to">Unix timestamp (segundos) do limite direito (inclusivo)</param>
-        /// <param name="from">Unix timestamp (segundos) do limite esquerdo (opcional)</param>
-        /// <param name="countback">Quantidade de candles a partir de "to" (prioritário sobre "from")</param>
-        /// <returns>Lista de candles mapeada para CandleData</returns>
+        /// <param name="symbol">Pair symbol (e.g., BTC-BRL or btcbrl)</param>
+        /// <param name="resolution">Resolution/timeframe (e.g., 1m, 15m, 1h, 1d)</param>
+        /// <param name="to">Unix timestamp (seconds) of the right limit (inclusive)</param>
+        /// <param name="from">Unix timestamp (seconds) of the left limit (optional)</param>
+        /// <param name="countback">Number of candles from "to" (priority over "from")</param>
+        /// <returns>List of candles mapped to CandleData</returns>
         public async Task<IReadOnlyList<CandleData>> GetCandlesTypedAsync(string symbol, string resolution, int to, int? from = null, int? countback = null, CancellationToken cancellationToken = default)
         {
             if (!CandleExtensions.IsValidResolution(resolution))
@@ -157,7 +163,7 @@ namespace MercadoBitcoin.Client
             var normalizedSymbol = CandleExtensions.NormalizeSymbol(symbol);
             var normalizedResolution = CandleExtensions.NormalizeResolution(resolution);
 
-            // Protege contra janela invertida
+            // Protects against inverted window
             if (from.HasValue && from.Value > to)
             {
                 var tmp = to;
@@ -167,9 +173,9 @@ namespace MercadoBitcoin.Client
 
             try
             {
-                // Chama o cliente gerado com parâmetros normalizados
+                // Calls the generated client with normalized parameters
                 var response = await _generatedClient.CandlesAsync(normalizedSymbol, normalizedResolution, from, to, countback, cancellationToken).ConfigureAwait(false);
-                // Converte resposta em lista tipada
+                // Converts response to typed list
                 var candles = response.ToCandleDataList(normalizedSymbol, normalizedResolution);
                 return candles;
             }
@@ -180,8 +186,8 @@ namespace MercadoBitcoin.Client
         }
 
         /// <summary>
-        /// Sobrecarga prática: busca últimos N candles até agora (usa countback).
-        /// <para>**Não requer autenticação**</para>
+        /// Practical overload: fetches last N candles until now (uses countback).
+        /// <para>**Does not require authentication**</para>
         /// </summary>
         public Task<IReadOnlyList<CandleData>> GetRecentCandlesTypedAsync(string symbol, string resolution, int countback, CancellationToken cancellationToken = default)
         {
@@ -197,8 +203,8 @@ namespace MercadoBitcoin.Client
         }
 
         /// <summary>
-        /// Obtém a lista de símbolos negociáveis disponíveis na API pública.
-        /// <para>**Não requer autenticação**</para>
+        /// Gets the list of tradable symbols available in the public API.
+        /// <para>**Does not require authentication**</para>
         /// </summary>
         public Task<ListSymbolInfoResponse> GetSymbolsAsync(string? symbols = null, CancellationToken cancellationToken = default)
         {
@@ -213,8 +219,8 @@ namespace MercadoBitcoin.Client
         }
 
         /// <summary>
-        /// Obtém os tickers atuais para um ou mais símbolos.
-        /// <para>**Não requer autenticação**</para>
+        /// Gets the current tickers for one or more symbols.
+        /// <para>**Does not require authentication**</para>
         /// </summary>
         public Task<ICollection<TickerResponse>> GetTickersAsync(string symbols, CancellationToken cancellationToken = default)
         {
@@ -229,8 +235,8 @@ namespace MercadoBitcoin.Client
         }
 
         /// <summary>
-        /// Obtém as redes disponíveis para um ativo (ex: USDC, BTC).
-        /// <para>**Não requer autenticação**</para>
+        /// Gets the available networks for an asset (e.g., USDC, BTC).
+        /// <para>**Does not require authentication**</para>
         /// </summary>
         public Task<ICollection<Network>> GetAssetNetworksAsync(string asset, CancellationToken cancellationToken = default)
         {

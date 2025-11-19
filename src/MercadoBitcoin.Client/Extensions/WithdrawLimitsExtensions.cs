@@ -36,7 +36,7 @@ namespace MercadoBitcoin.Client.Extensions
             // (or numeric values). We therefore serialize the raw object back to JSON and inspect nodes.
             try
             {
-                // Usa contexto gerado para evitar reflection AOT; Response já está incluído no contexto
+                // Use generated context to avoid AOT reflection; Response is already included in the context
                 var json = JsonSerializer.Serialize<Response>(raw, MercadoBitcoinJsonSerializerContext.Default.Response);
                 var node = JsonNode.Parse(json);
                 if (node is not JsonObject obj)

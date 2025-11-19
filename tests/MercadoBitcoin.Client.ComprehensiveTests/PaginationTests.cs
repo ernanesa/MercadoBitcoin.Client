@@ -7,13 +7,19 @@ namespace MercadoBitcoin.Client.ComprehensiveTests
 {
     public class PaginationTests : TestBase
     {
-        [Fact(DisplayName = "Paginação assíncrona de depósitos cripto retorna itens e respeita cancelamento")]
+        [Fact(DisplayName = "Async pagination of crypto deposits returns items and respects cancellation")]
         public async Task GetDepositsPagedAsync_ShouldIterateAllPages()
         {
+            if (string.IsNullOrEmpty(Client.GetAccessToken()))
+            {
+                LogTestResult("GetDepositsPagedAsync_ShouldIterateAllPages", true, "Skipped - Authentication required.");
+                return;
+            }
+
             // Arrange
             var accountId = TestAccountId;
             var symbol = "BTC";
-            var maxToFetch = 10; // Limita para não sobrecarregar
+            var maxToFetch = 10; // Limit to avoid overloading
             var count = 0;
 
             // Act
@@ -27,7 +33,7 @@ namespace MercadoBitcoin.Client.ComprehensiveTests
             }
 
             // Assert
-            Assert.True(count >= 0); // Pode ser zero se não houver depósitos
+            Assert.True(count >= 0); // Can be zero if there are no deposits
         }
     }
 }

@@ -4,18 +4,19 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using MercadoBitcoin.Client.Generated;
+using MercadoBitcoin.Client.Errors;
 
-namespace MercadoBitcoin.Client.Internal
+namespace MercadoBitcoin.Client.Internal.Helpers
 {
     /// <summary>
-    /// Helper centraliza serialização usando Source Generation para evitar dynamic code em AOT.
-    /// Para tipos não registrados, recai para opções padrão (ainda pode gerar warning se não controlado, mas minimiza superfícies principais).
+    /// Helper centralizes serialization using Source Generation to avoid dynamic code in AOT.
+    /// For unregistered types, falls back to default options (may still generate warning if uncontrolled, but minimizes main surfaces).
     /// </summary>
     internal static class JsonHelper
     {
         public static byte[] SerializeToUtf8Bytes<T>(T value)
         {
-            var typeInfo = GetTypeInfo<T>() ?? throw new NotSupportedException($"Tipo não registrado para source-gen JSON: {typeof(T).FullName}. Adicione [JsonSerializable] no contexto.");
+            var typeInfo = GetTypeInfo<T>() ?? throw new NotSupportedException($"Type not registered for source-gen JSON: {typeof(T).FullName}. Add [JsonSerializable] to context.");
             using var buffer = new MemoryStream();
             using var writer = new Utf8JsonWriter(buffer);
             JsonSerializer.Serialize(writer, value, typeInfo);
@@ -25,19 +26,19 @@ namespace MercadoBitcoin.Client.Internal
 
         public static T? Deserialize<T>(string json)
         {
-            var typeInfo = GetTypeInfo<T>() ?? throw new NotSupportedException($"Tipo não registrado para source-gen JSON: {typeof(T).FullName}. Adicione [JsonSerializable] no contexto.");
+            var typeInfo = GetTypeInfo<T>() ?? throw new NotSupportedException($"Type not registered for source-gen JSON: {typeof(T).FullName}. Add [JsonSerializable] to context.");
             return (T?)JsonSerializer.Deserialize(json, typeInfo);
         }
 
         public static async Task<T?> DeserializeAsync<T>(Stream utf8Json, CancellationToken ct)
         {
-            var typeInfo = GetTypeInfo<T>() ?? throw new NotSupportedException($"Tipo não registrado para source-gen JSON: {typeof(T).FullName}. Adicione [JsonSerializable] no contexto.");
+            var typeInfo = GetTypeInfo<T>() ?? throw new NotSupportedException($"Type not registered for source-gen JSON: {typeof(T).FullName}. Add [JsonSerializable] to context.");
             return await JsonSerializer.DeserializeAsync(utf8Json, typeInfo, ct).ConfigureAwait(false);
         }
 
         private static System.Text.Json.Serialization.Metadata.JsonTypeInfo<T>? GetTypeInfo<T>()
         {
-            // Map principal: adicionar se necessário novos DTOs
+            // Main map: add new DTOs if necessary
             return typeof(T) switch
             {
                 var t when t == typeof(ErrorResponse) => (System.Text.Json.Serialization.Metadata.JsonTypeInfo<T>?)(object)MercadoBitcoinJsonSerializerContext.Default.ErrorResponse,
@@ -60,7 +61,7 @@ namespace MercadoBitcoin.Client.Internal
                 var t when t == typeof(ListSymbolInfoResponse) => (System.Text.Json.Serialization.Metadata.JsonTypeInfo<T>?)(object)MercadoBitcoinJsonSerializerContext.Default.ListSymbolInfoResponse,
                 var t when t == typeof(PositionResponse) => (System.Text.Json.Serialization.Metadata.JsonTypeInfo<T>?)(object)MercadoBitcoinJsonSerializerContext.Default.PositionResponse,
                 var t when t == typeof(OrderResponse) => (System.Text.Json.Serialization.Metadata.JsonTypeInfo<T>?)(object)MercadoBitcoinJsonSerializerContext.Default.OrderResponse,
-                // Coleção de OrderResponse: usar fallback (ou adicionar manualmente quando necessário)
+                // Collection of OrderResponse: use fallback (or add manually when necessary)
                 var t when t == typeof(AssetFee) => (System.Text.Json.Serialization.Metadata.JsonTypeInfo<T>?)(object)MercadoBitcoinJsonSerializerContext.Default.AssetFee,
                 var t when t == typeof(Deposit) => (System.Text.Json.Serialization.Metadata.JsonTypeInfo<T>?)(object)MercadoBitcoinJsonSerializerContext.Default.Deposit,
                 var t when t == typeof(Network) => (System.Text.Json.Serialization.Metadata.JsonTypeInfo<T>?)(object)MercadoBitcoinJsonSerializerContext.Default.Network,

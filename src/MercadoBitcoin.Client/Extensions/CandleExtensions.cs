@@ -9,13 +9,13 @@ using MercadoBitcoin.Client.Models;
 namespace MercadoBitcoin.Client.Extensions
 {
     /// <summary>
-    /// Extensões para trabalhar com dados de candles
+    /// Extensions for working with candle data
     /// </summary>
     public static class CandleExtensions
     {
         private static readonly Dictionary<string, string> ResolutionMapping = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
-            // Mapeamento de diferentes formatos para o formato padrão da API
+            // Mapping of different formats to the API default format
             { "1m", "1m" },
             { "1min", "1m" },
             { "1minute", "1m" },
@@ -49,23 +49,23 @@ namespace MercadoBitcoin.Client.Extensions
         };
 
         /// <summary>
-        /// Normaliza o símbolo para o formato esperado pela API (BTC-BRL)
+        /// Normalizes the symbol to the format expected by the API (BTC-BRL)
         /// </summary>
-        /// <param name="symbol">Símbolo no formato original</param>
-        /// <returns>Símbolo normalizado</returns>
+        /// <param name="symbol">Symbol in original format</param>
+        /// <returns>Normalized symbol</returns>
         public static string NormalizeSymbol(string symbol)
         {
             if (string.IsNullOrWhiteSpace(symbol))
                 throw new ArgumentException("Symbol cannot be null or empty.", nameof(symbol));
 
-            // Remove espaços e converte para maiúsculo
+            // Removes spaces and converts to uppercase
             var normalizedSymbol = symbol.Trim().ToUpperInvariant();
 
-            // Se já está no formato correto (contém hífen), retorna como está
+            // If already in correct format (contains hyphen), return as is
             if (normalizedSymbol.Contains("-"))
                 return normalizedSymbol;
 
-            // Tenta mapear formatos comuns sem hífen para com hífen
+            // Tries to map common formats without hyphen to with hyphen
             // Ex: BTCBRL -> BTC-BRL, btcbrl -> BTC-BRL
             var commonMappings = new Dictionary<string, string>
             {
@@ -84,22 +84,22 @@ namespace MercadoBitcoin.Client.Extensions
             if (commonMappings.TryGetValue(normalizedSymbol, out var mappedSymbol))
                 return mappedSymbol;
 
-            // Se não conseguir mapear, assume que precisa adicionar hífen no meio
-            // Para símbolos de 6 caracteres (3+3), adiciona hífen no meio
+            // If cannot map, assumes it needs to add hyphen in the middle
+            // For 6-character symbols (3+3), adds hyphen in the middle
             if (normalizedSymbol.Length == 6)
             {
                 return $"{normalizedSymbol.Substring(0, 3)}-{normalizedSymbol.Substring(3)}";
             }
 
-            // Para outros casos, retorna como recebido
+            // For other cases, returns as received
             return normalizedSymbol;
         }
 
         /// <summary>
-        /// Normaliza a resolução/timeframe para o formato esperado pela API
+        /// Normalizes the resolution/timeframe to the format expected by the API
         /// </summary>
-        /// <param name="resolution">Resolução no formato original</param>
-        /// <returns>Resolução normalizada</returns>
+        /// <param name="resolution">Resolution in original format</param>
+        /// <returns>Normalized resolution</returns>
         public static string NormalizeResolution(string resolution)
         {
             if (string.IsNullOrWhiteSpace(resolution))
@@ -110,17 +110,17 @@ namespace MercadoBitcoin.Client.Extensions
             if (ResolutionMapping.TryGetValue(trimmedResolution, out var normalizedResolution))
                 return normalizedResolution;
 
-            // Se não encontrar mapeamento, retorna como recebido
+            // If mapping not found, returns as received
             return trimmedResolution;
         }
 
         /// <summary>
-        /// Converte ListCandlesResponse em lista de CandleData
+        /// Converts ListCandlesResponse to CandleData list
         /// </summary>
-        /// <param name="response">Resposta da API de candles</param>
-        /// <param name="symbol">Símbolo do par de negociação</param>
-        /// <param name="interval">Intervalo dos candles</param>
-        /// <returns>Lista de CandleData</returns>
+        /// <param name="response">Candles API response</param>
+        /// <param name="symbol">Trading pair symbol</param>
+        /// <param name="interval">Candle interval</param>
+        /// <returns>List of CandleData</returns>
         public static List<CandleData> ToCandleDataList(this ListCandlesResponse response, string symbol, string interval)
         {
             if (response == null)
@@ -132,14 +132,14 @@ namespace MercadoBitcoin.Client.Extensions
 
             var candles = new List<CandleData>();
 
-            // Converte arrays paralelos em objetos CandleData
+            // Converts parallel arrays into CandleData objects
             for (int i = 0; i < candleCount; i++)
             {
                 var candle = new CandleData
                 {
                     Symbol = symbol,
                     Interval = interval,
-                    OpenTime = GetValueAtIndex(response.T, i) * 1000L, // Converte para milliseconds
+                    OpenTime = GetValueAtIndex(response.T, i) * 1000L, // Converts to milliseconds
                     CloseTime = GetValueAtIndex(response.T, i) * 1000L + GetIntervalInMilliseconds(interval),
                     Open = ParseDecimal(GetValueAtIndex(response.O, i)),
                     High = ParseDecimal(GetValueAtIndex(response.H, i)),
@@ -155,7 +155,7 @@ namespace MercadoBitcoin.Client.Extensions
         }
 
         /// <summary>
-        /// Obtém o valor no índice especificado de uma coleção, ou valor padrão se não existir
+        /// Gets the value at the specified index of a collection, or default value if not exists
         /// </summary>
         private static T? GetValueAtIndex<T>(ICollection<T>? collection, int index)
         {
@@ -166,7 +166,7 @@ namespace MercadoBitcoin.Client.Extensions
         }
 
         /// <summary>
-        /// Converte string para decimal de forma segura
+        /// Safely converts string to decimal
         /// </summary>
         private static decimal ParseDecimal(string? value)
         {
@@ -180,7 +180,7 @@ namespace MercadoBitcoin.Client.Extensions
         }
 
         /// <summary>
-        /// Calcula a duração do intervalo em milliseconds
+        /// Calculates the interval duration in milliseconds
         /// </summary>
         private static long GetIntervalInMilliseconds(string interval)
         {
@@ -199,16 +199,16 @@ namespace MercadoBitcoin.Client.Extensions
                 "12h" => 12 * 60 * 60 * 1000L,
                 "1d" => 24 * 60 * 60 * 1000L,
                 "1w" => 7 * 24 * 60 * 60 * 1000L,
-                "1M" => 30 * 24 * 60 * 60 * 1000L, // Aproximação
-                _ => 60 * 1000L // Default para 1 minuto
+                "1M" => 30 * 24 * 60 * 60 * 1000L, // Approximation
+                _ => 60 * 1000L // Default to 1 minute
             };
         }
 
         /// <summary>
-        /// Valida se a resolução é suportada pela API
+        /// Validates if the resolution is supported by the API
         /// </summary>
-        /// <param name="resolution">Resolução a ser validada</param>
-        /// <returns>True se a resolução é válida</returns>
+        /// <param name="resolution">Resolution to be validated</param>
+        /// <returns>True if resolution is valid</returns>
         public static bool IsValidResolution(string resolution)
         {
             if (string.IsNullOrWhiteSpace(resolution))
@@ -216,23 +216,23 @@ namespace MercadoBitcoin.Client.Extensions
 
             var normalizedResolution = NormalizeResolution(resolution);
             var validResolutions = new[] { "1m", "5m", "15m", "30m", "1h", "3h", "4h", "6h", "12h", "1d", "1w", "1M" };
-            
+
             return validResolutions.Contains(normalizedResolution);
         }
 
         /// <summary>
-        /// Valida se o símbolo tem formato válido
+        /// Validates if the symbol has a valid format
         /// </summary>
-        /// <param name="symbol">Símbolo a ser validado</param>
-        /// <returns>True se o símbolo é válido</returns>
+        /// <param name="symbol">Symbol to be validated</param>
+        /// <returns>True if symbol is valid</returns>
         public static bool IsValidSymbol(string symbol)
         {
             if (string.IsNullOrWhiteSpace(symbol))
                 return false;
 
             var normalizedSymbol = NormalizeSymbol(symbol);
-            
-            // Verifica se tem formato BASE-QUOTE
+
+            // Checks if it has BASE-QUOTE format
             return normalizedSymbol.Contains("-") && normalizedSymbol.Split('-').Length == 2;
         }
     }

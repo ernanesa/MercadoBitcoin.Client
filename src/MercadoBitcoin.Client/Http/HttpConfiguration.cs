@@ -3,49 +3,49 @@ using System;
 namespace MercadoBitcoin.Client.Http
 {
     /// <summary>
-    /// Configurações HTTP para o cliente MercadoBitcoin
+    /// HTTP configurations for the MercadoBitcoin client
     /// </summary>
     public class HttpConfiguration
     {
         /// <summary>
-        /// Versão HTTP a ser utilizada (padrão: 2.0 para HTTP/2)
+        /// HTTP version to be used (default: 2.0 for HTTP/2)
         /// </summary>
         public Version HttpVersion { get; set; } = new Version(2, 0);
 
         /// <summary>
-        /// Política de versão HTTP (padrão: RequestVersionOrLower)
+        /// HTTP version policy (default: RequestVersionOrLower)
         /// </summary>
         public HttpVersionPolicy VersionPolicy { get; set; } = HttpVersionPolicy.RequestVersionOrLower;
 
         /// <summary>
-        /// Timeout para requisições HTTP em segundos (padrão: 30)
+        /// Timeout for HTTP requests in seconds (default: 30)
         /// </summary>
         public int TimeoutSeconds { get; set; } = 30;
 
         /// <summary>
-        /// Habilitar compressão automática (padrão: true)
+        /// Enable automatic compression (default: true)
         /// </summary>
         public bool EnableCompression { get; set; } = true;
 
         /// <summary>
-        /// Habilitar HTTP/2 Server Push (padrão: true)
+        /// Enable HTTP/2 Server Push (default: true)
         /// </summary>
         public bool EnableHttp2ServerPush { get; set; } = true;
 
         /// <summary>
-        /// Tamanho máximo do pool de conexões (padrão: 100)
+        /// Maximum connection pool size (default: 100)
         /// </summary>
         public int MaxConnectionsPerServer { get; set; } = 100;
 
         /// <summary>
-        /// Tempo de vida das conexões em segundos (padrão: 300 - 5 minutos)
+        /// Connection lifetime in seconds (default: 300 - 5 minutes)
         /// </summary>
         public int ConnectionLifetimeSeconds { get; set; } = 300;
 
         /// <summary>
-        /// Cria uma configuração padrão otimizada para HTTP/2
+        /// Creates a default configuration optimized for HTTP/2
         /// </summary>
-        /// <returns>Configuração HTTP otimizada</returns>
+        /// <returns>Optimized HTTP configuration</returns>
         public static HttpConfiguration CreateHttp2Default()
         {
             return new HttpConfiguration
@@ -61,9 +61,27 @@ namespace MercadoBitcoin.Client.Http
         }
 
         /// <summary>
-        /// Cria uma configuração para HTTP/1.1 (compatibilidade)
+        /// Creates a configuration optimized for HTTP/3 (QUIC)
         /// </summary>
-        /// <returns>Configuração HTTP 1.1</returns>
+        /// <returns>Optimized HTTP/3 configuration</returns>
+        public static HttpConfiguration CreateHttp3Default()
+        {
+            return new HttpConfiguration
+            {
+                HttpVersion = new Version(3, 0),
+                VersionPolicy = HttpVersionPolicy.RequestVersionOrLower,
+                TimeoutSeconds = 30,
+                EnableCompression = true,
+                EnableHttp2ServerPush = false, // HTTP/3 does not use push in the same way as H2
+                MaxConnectionsPerServer = 100,
+                ConnectionLifetimeSeconds = 300
+            };
+        }
+
+        /// <summary>
+        /// Creates a configuration for HTTP/1.1 (compatibility)
+        /// </summary>
+        /// <returns>HTTP 1.1 configuration</returns>
         public static HttpConfiguration CreateHttp11Fallback()
         {
             return new HttpConfiguration
@@ -79,20 +97,20 @@ namespace MercadoBitcoin.Client.Http
         }
 
         /// <summary>
-        /// Cria uma configuração otimizada para trading (baixa latência)
+        /// Creates a configuration optimized for trading (low latency)
         /// </summary>
-        /// <returns>Configuração HTTP para trading</returns>
+        /// <returns>HTTP configuration for trading</returns>
         public static HttpConfiguration CreateTradingOptimized()
         {
             return new HttpConfiguration
             {
                 HttpVersion = new Version(2, 0),
                 VersionPolicy = HttpVersionPolicy.RequestVersionOrLower,
-                TimeoutSeconds = 15, // Timeout mais baixo para trading
-                EnableCompression = false, // Desabilitar compressão para menor latência
+                TimeoutSeconds = 15, // Lower timeout for trading
+                EnableCompression = false, // Disable compression for lower latency
                 EnableHttp2ServerPush = true,
-                MaxConnectionsPerServer = 200, // Mais conexões para trading
-                ConnectionLifetimeSeconds = 600 // Conexões mais duradouras
+                MaxConnectionsPerServer = 200, // More connections for trading
+                ConnectionLifetimeSeconds = 600 // Longer lasting connections
             };
         }
     }

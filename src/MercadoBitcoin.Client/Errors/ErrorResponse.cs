@@ -1,4 +1,4 @@
-namespace MercadoBitcoin.Client
+namespace MercadoBitcoin.Client.Errors
 {
     public class ErrorResponse
     {
@@ -7,5 +7,11 @@ namespace MercadoBitcoin.Client
 
         [System.Text.Json.Serialization.JsonPropertyName("message")]
         public string Message { get; set; } = string.Empty;
+
+        public void Reset()
+        {
+            Code = string.Empty;
+            Message = string.Empty;
+        }
     }
 }

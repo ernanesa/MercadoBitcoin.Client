@@ -35,20 +35,20 @@ public abstract class TestBase : IDisposable
         DelayBetweenRequests = int.Parse(Configuration["TestSettings:DelayBetweenRequests"] ?? "1000");
         MaxRetries = int.Parse(Configuration["TestSettings:MaxRetries"] ?? "3");
 
-        // Autenticação automática se variáveis de ambiente estiverem presentes
+        // Automatic authentication if environment variables are present
         try
         {
             var loginEnv = Environment.GetEnvironmentVariable("MB_LOGIN");
             var passwordEnv = Environment.GetEnvironmentVariable("MB_PASSWORD");
             if (!string.IsNullOrWhiteSpace(loginEnv) && !string.IsNullOrWhiteSpace(passwordEnv))
             {
-                Console.WriteLine("[AUTH] Tentando autenticar com MB_LOGIN/MB_PASSWORD...");
-                // Uso síncrono controlado no construtor (não há contexto async aqui)
+                Console.WriteLine("[AUTH] Attempting to authenticate with MB_LOGIN/MB_PASSWORD...");
+                // Controlled synchronous usage in constructor (no async context here)
                 Client.AuthenticateAsync(loginEnv!, passwordEnv!).GetAwaiter().GetResult();
                 var token = Client.GetAccessToken();
-                Console.WriteLine($"[AUTH] Autenticado. Token length={token?.Length}");
+                Console.WriteLine($"[AUTH] Authenticated. Token length={token?.Length}");
 
-                // Ajustar automaticamente TestAccountId se estiver usando placeholder
+                // Automatically adjust TestAccountId if using placeholder
                 var placeholder = string.IsNullOrWhiteSpace(TestAccountId) || TestAccountId.Contains("test-account", StringComparison.OrdinalIgnoreCase) || TestAccountId.Length < 10;
                 if (placeholder)
                 {
@@ -59,27 +59,27 @@ public abstract class TestBase : IDisposable
                         if (first?.Id != null)
                         {
                             TestAccountId = first.Id;
-                            Console.WriteLine($"[AUTH] TestAccountId atualizado para id real: {TestAccountId}");
+                            Console.WriteLine($"[AUTH] TestAccountId updated to real id: {TestAccountId}");
                         }
                         else
                         {
-                            Console.WriteLine("[AUTH][WARN] Nenhuma conta retornada para atualizar TestAccountId.");
+                            Console.WriteLine("[AUTH][WARN] No accounts returned to update TestAccountId.");
                         }
                     }
                     catch (Exception exAcc)
                     {
-                        Console.WriteLine($"[AUTH][WARN] Falha ao obter contas para definir TestAccountId: {exAcc.Message}");
+                        Console.WriteLine($"[AUTH][WARN] Failed to get accounts to set TestAccountId: {exAcc.Message}");
                     }
                 }
             }
             else
             {
-                Console.WriteLine("[AUTH] Variáveis MB_LOGIN/MB_PASSWORD ausentes. Endpoints privados podem ser pulados.");
+                Console.WriteLine("[AUTH] MB_LOGIN/MB_PASSWORD variables missing. Private endpoints may be skipped.");
             }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[AUTH][WARN] Falha ao autenticar automaticamente: {ex.Message}");
+            Console.WriteLine($"[AUTH][WARN] Failed to authenticate automatically: {ex.Message}");
         }
     }
 
