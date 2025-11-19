@@ -5,7 +5,6 @@ using MercadoBitcoin.Client.Errors;
 using System;
 using System.Net.Http;
 using System.Threading.Tasks;
-using System.Linq;
 using System.Threading.RateLimiting;
 using Microsoft.Extensions.ObjectPool;
 
@@ -166,34 +165,6 @@ namespace MercadoBitcoin.Client
         }
 
         // We will expose the public and private methods here
-
-        private string? ConvertToString(object? value, System.Globalization.CultureInfo cultureInfo)
-        {
-            if (value == null)
-            {
-                return null;
-            }
-
-            if (value is System.Enum)
-            {
-                return value.ToString();
-            }
-            else if (value is bool)
-            {
-                return System.Convert.ToString(value, cultureInfo)?.ToLowerInvariant();
-            }
-            else if (value is byte[] bytes)
-            {
-                return System.Convert.ToBase64String(bytes);
-            }
-            else if (value.GetType().IsArray)
-            {
-                var array = ((System.Array)value).OfType<object?>();
-                return string.Join(",", System.Linq.Enumerable.Select(array, item => ConvertToString(item, cultureInfo)));
-            }
-
-            return System.Convert.ToString(value, cultureInfo);
-        }
 
         public void Dispose()
         {
