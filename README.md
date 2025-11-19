@@ -1,153 +1,55 @@
 # MercadoBitcoin.Client
 
-> **ATENÇÃO: BREAKING CHANGE NA VERSÃO 3.0.0**
->
-> Todos os construtores públicos de `MercadoBitcoinClient` foram **removidos**. A única forma suportada de instanciar o cliente agora é via métodos de extensão (`MercadoBitcoinClientExtensions.CreateWithRetryPolicies`, etc.) ou injeção de dependência (`services.AddMercadoBitcoinClient(...)`).
->
-> **Antes (obsoleto):**
-> ```csharp
-> var client = new MercadoBitcoinClient();
-> ```
-> **Depois (v3.0.0+):**
-> ```csharp
-> var client = MercadoBitcoinClientExtensions.CreateWithRetryPolicies();
-> // ou via DI:
-> services.AddMercadoBitcoinClient(...);
-> ```
-> Consulte a seção "Migração e Atualizações" para detalhes.
-
-## ⚡️ Uso: Endpoints Públicos vs Privados
-
-> **Atenção:**
-> - **Dados públicos** (ex: tickers, candles, trades, orderbook, taxas, símbolos) **NÃO exigem autenticação**. Basta instanciar o cliente e chamar os métodos.
-> - **Dados privados** (ex: saldos, ordens, depósitos, saques, trading) **EXIGEM autenticação**. Use `AuthenticateAsync` antes de chamar métodos privados.
-
-### Exemplos rápidos
-
-**Dados públicos (NÃO precisa autenticar):**
-```csharp
-var client = MercadoBitcoinClientExtensions.CreateWithRetryPolicies();
-var tickers = await client.GetTickersAsync("BTC-BRL");
-var candles = await client.GetCandlesAsync("BTC-BRL", "1h", to: (int)DateTimeOffset.UtcNow.ToUnixTimeSeconds(), countback: 24);
-```
-
-**Dados privados (precisa autenticar):**
-```csharp
-var client = MercadoBitcoinClientExtensions.CreateWithRetryPolicies();
-await client.AuthenticateAsync("seu_login", "sua_senha");
-var accounts = await client.GetAccountsAsync();
-var balances = await client.GetBalancesAsync(accounts.First().Id);
-```
-
----
-
-
-### Configuração Básica (Apenas Métodos Modernos)
-
-```csharp
-using MercadoBitcoin.Client.Extensions;
-
-// Configuração recomendada (retry policies + HTTP/2)
-var client = MercadoBitcoinClientExtensions.CreateWithRetryPolicies();
-
-// Configuração otimizada para trading
-var client = MercadoBitcoinClientExtensions.CreateForTrading();
-
-// Configuração via DI (recomendado para ASP.NET Core)
-services.AddMercadoBitcoinClient(options =>
-{
-    options.BaseUrl = "https://api.mercadobitcoin.net/api/v4";
-    // ...outras opções
-});
-```
-
-### Configuração com Injeção de Dependência (Recomendado)
-
-```csharp
-// Program.cs ou Startup.cs
-services.AddMercadoBitcoinClient(options =>
-{
-    options.BaseUrl = "https://api.mercadobitcoin.net/api/v4";
-    options.HttpVersion = HttpVersion.Version20; // HTTP/2 por padrão
-    options.EnableRetryPolicy = true;
-});
-```
-
-### Configuração Básica com Retry
-
-```csharp
-using MercadoBitcoin.Client.Extensions;
-// Criar cliente com retry policies
-var client = MercadoBitcoinClientExtensions.CreateWithRetryPolicies();
-
-// Autenticar
-await client.AuthenticateAsync("seu_login", "sua_senha");
-```
-
-
-## 🛠️ Migração e Atualizações (v3.0.0)
-
-### Remoção de Construtores Obsoletos
-
-Todos os construtores públicos de `MercadoBitcoinClient` foram **removidos**. Utilize apenas métodos de extensão ou DI:
-
-```csharp
-// Antes (obsoleto)
-var client = new MercadoBitcoinClient();
-
-// Depois (v3.0.0+)
-var client = MercadoBitcoinClientExtensions.CreateWithRetryPolicies();
-// ou via DI:
-services.AddMercadoBitcoinClient(...);
-```
-
-### Migração para HTTP/2
-
-Se você está migrando de uma versão anterior que usava HTTP/1.1:
-
-```csharp
-// Antes (HTTP/1.1)
-var client = new MercadoBitcoinClient();
-
-// Depois (HTTP/2 - recomendado)
-var client = MercadoBitcoinClientExtensions.CreateWithRetryPolicies();
-```
-# MercadoBitcoin.Client
-
-[![.NET](https://img.shields.io/badge/.NET-9.0-blue)](https://dotnet.microsoft.com/download/dotnet/9.0)
-[![C#](https://img.shields.io/badge/C%23-13.0-blue)](https://docs.microsoft.com/en-us/dotnet/csharp/)
+[![.NET](https://img.shields.io/badge/.NET-10.0-blue)](https://dotnet.microsoft.com/download/dotnet/10.0)
+[![C#](https://img.shields.io/badge/C%23-14.0-blue)](https://docs.microsoft.com/en-us/dotnet/csharp/)
 [![System.Text.Json](https://img.shields.io/badge/System.Text.Json-Source%20Generators-purple)](https://docs.microsoft.com/en-us/dotnet/standard/serialization/system-text-json-source-generation)
 [![AOT](https://img.shields.io/badge/AOT-Compatible-brightgreen)](https://docs.microsoft.com/en-us/dotnet/core/deploying/native-aot/)
 [![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 [![API](https://img.shields.io/badge/API-v4.0-orange)](https://api.mercadobitcoin.net/api/v4/docs)
 [![HTTP/2](https://img.shields.io/badge/HTTP-2.0-brightgreen)](https://tools.ietf.org/html/rfc7540)
 
-Uma biblioteca .NET 9 completa e moderna para integração com a **API v4 do Mercado Bitcoin**. Esta biblioteca oferece acesso a todos os endpoints disponíveis da plataforma, incluindo dados públicos, trading, gestão de contas e operações de carteira, com suporte nativo ao **HTTP/2** e **System.Text.Json** para máxima performance e compatibilidade AOT.
+A complete and modern .NET 10 library for integrating with the **Mercado Bitcoin API v4**. This library provides access to all available platform endpoints, including public data, trading, account management, and wallet operations, with native support for **HTTP/3** and **System.Text.Json** for maximum performance and AOT compatibility.
 
-## 🚀 Características
+> **WARNING: BREAKING CHANGE IN VERSION 4.0.0**
+>
+> All public constructors of `MercadoBitcoinClient` have been **removed**. The only supported way to instantiate the client is now via extension methods (`MercadoBitcoinClientExtensions.CreateWithRetryPolicies`, etc.) or dependency injection (`services.AddMercadoBitcoinClient(...)`).
+>
+> **Before (obsolete):**
+> ```csharp
+> var client = new MercadoBitcoinClient();
+> ```
+> **After (v4.0.0+):**
+> ```csharp
+> var client = MercadoBitcoinClientExtensions.CreateWithRetryPolicies();
+> // or via DI:
+> services.AddMercadoBitcoinClient(...);
+> ```
+> See the "Migration and Updates" section for details.
 
-- ✅ **Cobertura Completa**: Todos os endpoints da API v4 do Mercado Bitcoin
-- ✅ **.NET 9 + C# 13**: Framework e linguagem mais recentes com performance otimizada
-- ✅ **System.Text.Json**: Serialização JSON nativa com Source Generators para máxima performance
-- ✅ **AOT Compatible**: Compatível com Native AOT compilation para aplicações ultra-rápidas
-- ✅ **HTTP/2 Nativo**: Protocolo HTTP/2 por padrão para máxima performance
-- ✅ **Async/Await**: Programação assíncrona nativa
-- ✅ **Strongly Typed**: Modelos de dados tipados para type safety
-- ✅ **OpenAPI Integration**: Cliente gerado automaticamente via NSwag
-- ✅ **Clean Architecture**: Código organizado e maintível
-- ✅ **Error Handling**: Sistema robusto de tratamento de erros
-- ✅ **Retry Policies**: Exponential backoff + jitter configurável
-- ✅ **Circuit Breaker Manual**: Proteção contra cascata de falhas (configurável)
-- ✅ **Rate Limit Aware**: Respeita limites e cabeçalho Retry-After
-- ✅ **CancellationToken em Todos os Endpoints**: Cancelamento cooperativo completo
-- ✅ **User-Agent Personalizado**: Override via env `MB_USER_AGENT` para observabilidade
-- ✅ **Production Ready**: Pronto para uso em produção
-- ✅ **Testes Abrangentes**: 64 testes cobrindo todos os cenários
-- ✅ **Performance Validada**: Benchmarks comprovam melhorias de 2x+
-- ✅ **Tratamento Robusto**: Skip gracioso para cenários sem credenciais
-- ✅ **CI/CD Ready**: Configuração otimizada para integração contínua
+## 🚀 Features
 
-## 📦 Instalação
+- ✅ **Complete Coverage**: All Mercado Bitcoin API v4 endpoints
+- ✅ **.NET 10 + C# 14**: Latest framework and language with optimized performance
+- ✅ **System.Text.Json**: Native JSON serialization with Source Generators for maximum performance
+- ✅ **AOT Compatible**: Compatible with Native AOT compilation for ultra-fast applications
+- ✅ **Native HTTP/3**: HTTP/3 protocol by default for maximum performance
+- ✅ **Async/Await**: Native asynchronous programming
+- ✅ **Strongly Typed**: Typed data models for type safety
+- ✅ **OpenAPI Integration**: Client automatically generated via NSwag
+- ✅ **Clean Architecture**: Organized and maintainable code
+- ✅ **Error Handling**: Robust error handling system
+- ✅ **Retry Policies**: Exponential backoff + configurable jitter
+- ✅ **Manual Circuit Breaker**: Protection against cascading failures (configurable)
+- ✅ **Rate Limit Aware**: Respects limits and Retry-After header
+- ✅ **CancellationToken in All Endpoints**: Complete cooperative cancellation
+- ✅ **Custom User-Agent**: Override via `MB_USER_AGENT` env var for observability
+- ✅ **Production Ready**: Ready for production use
+- ✅ **Comprehensive Tests**: 64 tests covering all scenarios
+- ✅ **Validated Performance**: Benchmarks prove 2x+ improvements
+- ✅ **Robust Handling**: Graceful skip for scenarios without credentials
+- ✅ **CI/CD Ready**: Optimized configuration for continuous integration
+
+## 📦 Installation
 
 ```bash
 # Via Package Manager Console
@@ -157,110 +59,96 @@ Install-Package MercadoBitcoin.Client
 dotnet add package MercadoBitcoin.Client
 
 # Via PackageReference
-<PackageReference Include="MercadoBitcoin.Client" Version="2.1.0" />
+<PackageReference Include="MercadoBitcoin.Client" Version="4.0.0-alpha.1" />
 ```
 
-> **Nova versão 2.1.0**: +5 testes (total 64), jitter configurável, circuit breaker manual, métricas (counters + histogram), CancellationToken em 100% dos endpoints e User-Agent customizável.
->
-> **Versão 2.0**: **Testes abrangentes** com 59 testes (agora 60 na 2.1.0) validando todos os endpoints, **performance comprovada** com benchmarks reais, e **tratamento robusto de erros**. Qualidade e confiabilidade garantidas!
+## ⚡️ Usage: Public vs Private Endpoints
 
-> **Versão 2.0**: Migração completa para **System.Text.Json** com **Source Generators** e compatibilidade **AOT**. Performance até 2x superior!
+> **Attention:**
+> - **Public Data** (e.g., tickers, candles, trades, orderbook, fees, symbols) **DO NOT require authentication**. Just instantiate the client and call the methods.
+> - **Private Data** (e.g., balances, orders, deposits, withdrawals, trading) **REQUIRE authentication**. Use `AuthenticateAsync` before calling private methods.
 
-## 🔧 Configuração
+### Quick Examples
 
-### Configuração Básica
+**Public Data (NO authentication needed):**
+```csharp
+var client = MercadoBitcoinClientExtensions.CreateWithRetryPolicies();
+var tickers = await client.GetTickersAsync("BTC-BRL");
+var candles = await client.GetCandlesAsync("BTC-BRL", "1h", to: (int)DateTimeOffset.UtcNow.ToUnixTimeSeconds(), countback: 24);
+```
+
+**Private Data (Authentication needed):**
+```csharp
+var client = MercadoBitcoinClientExtensions.CreateWithRetryPolicies();
+await client.AuthenticateAsync("your_login", "your_password");
+var accounts = await client.GetAccountsAsync();
+var balances = await client.GetBalancesAsync(accounts.First().Id);
+```
+
+## 🔧 Configuration
+
+### Basic Configuration (Modern Methods Only)
 
 ```csharp
-using MercadoBitcoin.Client;
+using MercadoBitcoin.Client.Extensions;
 
-// Configuração simples
-var client = new MercadoBitcoinClient();
+// Recommended configuration (retry policies + HTTP/2)
+var client = MercadoBitcoinClientExtensions.CreateWithRetryPolicies();
 
-// Configuração com HTTP/2 (padrão)
-var client = MercadoBitcoinClient.CreateWithHttp2();
+// Optimized configuration for trading
+var client = MercadoBitcoinClientExtensions.CreateForTrading();
 
-// Configuração com retry policies
-var client = MercadoBitcoinClient.CreateWithRetryPolicy();
-```
-
-### Configuração Avançada com HTTP/2
-
-A biblioteca utiliza **HTTP/2 por padrão** para máxima performance. Você pode configurar o protocolo HTTP através do `appsettings.json`:
-
-```json
-{
-  "MercadoBitcoin": {
-    "BaseUrl": "https://api.mercadobitcoin.net/api/v4",
-    "HttpVersion": "2.0",
-    "EnableRetryPolicy": true,
-    "MaxRetryAttempts": 3,
-    "RetryDelaySeconds": 1
-  }
-}
-```
-
-### Configuração com Injeção de Dependência
-
-```csharp
-// Program.cs ou Startup.cs
+// Configuration via DI (recommended for ASP.NET Core)
 services.AddMercadoBitcoinClient(options =>
 {
     options.BaseUrl = "https://api.mercadobitcoin.net/api/v4";
-    options.HttpVersion = HttpVersion.Version20; // HTTP/2 por padrão
+    // ...other options
+});
+```
+
+### Configuration with Dependency Injection (Recommended)
+
+```csharp
+// Program.cs or Startup.cs
+services.AddMercadoBitcoinClient(options =>
+{
+    options.BaseUrl = "https://api.mercadobitcoin.net/api/v4";
+    options.HttpVersion = HttpVersion.Version30; // HTTP/3 by default
     options.EnableRetryPolicy = true;
 });
 ```
 
-## 🔄 Retry Policies e HTTP/2
+## 🔄 Retry Policies and HTTP/3
 
-A biblioteca implementa políticas de retry robustas com **Polly** e utiliza **HTTP/2** por padrão para máxima performance:
+The library implements robust retry policies with **Polly v8** and uses **HTTP/3** by default for maximum performance:
 
-### Características do HTTP/2
-- **Multiplexing**: Múltiplas requisições simultâneas em uma única conexão
-- **Header Compression**: Compressão HPACK para reduzir overhead
-- **Server Push**: Suporte a push de recursos (quando disponível)
-- **Binary Protocol**: Protocolo binário mais eficiente que HTTP/1.1
+### HTTP/3 Features
+- **QUIC Protocol**: Built on UDP for faster connection establishment
+- **Multiplexing**: Multiple simultaneous requests without head-of-line blocking
+- **0-RTT Resumption**: Near-instant connection resumption
+- **Improved Congestion Control**: Better performance on lossy networks
+- **Enhanced Security**: Integrated TLS 1.3
 
-### Políticas de Retry
-- **Exponential Backoff**: Delay crescente entre tentativas
-- **Circuit Breaker**: Proteção contra falhas em cascata  
-- **Timeout Handling**: Timeouts configuráveis por operação
-- **Rate Limit Aware**: Respeita os limites da API automaticamente
+### Retry Policies
+- **Exponential Backoff**: Increasing delay between attempts
+- **Circuit Breaker**: Protection against cascading failures
+- **Timeout Handling**: Configurable timeouts per operation
+- **Rate Limit Aware**: Automatically respects API limits
 
-### Configuração Básica com Retry
-
-```csharp
-using MercadoBitcoin.Client;
-// Criar cliente com retry policies
-var client = MercadoBitcoinClientExtensions.CreateWithRetryPolicies();
-
-// Autenticar
-await client.AuthenticateAsync("seu_login", "sua_senha");
-
-// Configuração personalizada de retry
-var client = MercadoBitcoinClient.CreateWithRetryPolicy(options =>
-{
-    options.MaxRetryAttempts = 5;
-    options.RetryDelaySeconds = 2;
-    options.UseExponentialBackoff = true;
-    options.HttpVersion = HttpVersion.Version20; // HTTP/2
-});
-```
-
-### Configurações de Retry Personalizadas
+### Custom Retry Configurations
 
 ```csharp
 using MercadoBitcoin.Client.Http;
 
-// Configuração para trading (mais agressiva)
+// Trading configuration (more aggressive)
 var tradingConfig = MercadoBitcoinClientExtensions.CreateTradingRetryConfig();
-// 5 tentativas, delay inicial de 0.5s, backoff de 1.5x, máximo 10s
+// 5 attempts, initial delay 0.5s, backoff 1.5x, max 10s
 
-// Configuração para dados públicos (mais conservadora)
+// Public data configuration (more conservative)
 var publicConfig = MercadoBitcoinClientExtensions.CreatePublicDataRetryConfig();
-// 2 tentativas, delay inicial de 2s, backoff de 2x, máximo 30s
+// 2 attempts, initial delay 2s, backoff 2x, max 30s
 
-// Configuração customizada
+// Custom configuration
 var customConfig = new RetryPolicyConfig
 {
     MaxRetryAttempts = 3,
@@ -273,162 +161,110 @@ var customConfig = new RetryPolicyConfig
 };
 ```
 
-### Cenários de Retry
-
-O sistema automaticamente faz retry nos seguintes casos:
-- ⏱️ **Timeouts** (RequestTimeout)
-- 🚦 **Rate Limiting** (TooManyRequests - 429)
-- 🔥 **Erros de Servidor** (5xx - InternalServerError, BadGateway, ServiceUnavailable, GatewayTimeout)
-- 🌐 **Falhas de Rede** (HttpRequestException, TaskCanceledException)
-
-### Recuperação Automática
-
-O sistema automaticamente se recupera de falhas temporárias através das políticas de retry, proporcionando maior robustez às aplicações que utilizam a biblioteca.
-
-## 🏗️ Arquitetura
+## 🏗️ Architecture
 
 ```
 MercadoBitcoin.Client/
-├── 📁 Public Data      → Dados públicos (tickers, orderbook, trades, candles)
-├── 📁 Account          → Gestão de contas (saldos, tier, posições, taxas)
-├── 📁 Trading          → Operações de trading (ordens, execuções, cancelamentos)
-├── 📁 Wallet           → Carteira (depósitos, saques, endereços, limites)
-└── 📁 Authentication   → Sistema de autenticação Bearer Token
+├── 📁 Public Data      → Public data (tickers, orderbook, trades, candles)
+├── 📁 Account          → Account management (balances, tier, positions, fees)
+├── 📁 Trading          → Trading operations (orders, executions, cancellations)
+├── 📁 Wallet           → Wallet (deposits, withdrawals, addresses, limits)
+└── 📁 Authentication   → Bearer Token authentication system
 ```
 
-## 📊 Endpoints Suportados
+## 📊 Supported Endpoints
 
-### 🔓 Dados Públicos
-| Endpoint | Método | Descrição |
+### 🔓 Public Data
+| Endpoint | Method | Description |
 |----------|---------|-----------|
-| `/{asset}/fees` | GET | Taxas de retirada do ativo |
-| `/{symbol}/orderbook` | GET | Livro de ofertas |
-| `/{symbol}/trades` | GET | Histórico de negociações |
-| `/candles` | GET | Dados de candlestick (OHLCV) |
-| `/symbols` | GET | Informações dos instrumentos |
-| `/tickers` | GET | Preços atuais |
-| `/{asset}/networks` | GET | Redes disponíveis para o ativo |
+| `/{asset}/fees` | GET | Asset withdrawal fees |
+| `/{symbol}/orderbook` | GET | Order book |
+| `/{symbol}/trades` | GET | Trade history |
+| `/candles` | GET | Candlestick data (OHLCV) |
+| `/symbols` | GET | Instrument information |
+| `/tickers` | GET | Current prices |
+| `/{asset}/networks` | GET | Available networks for the asset |
 
-### 🔐 Conta e Autenticação
-| Endpoint | Método | Descrição |
+### 🔐 Account and Authentication
+| Endpoint | Method | Description |
 |----------|---------|-----------|
-| `/authorize` | POST | Autenticação via login/senha |
-| `/accounts` | GET | Lista de contas do usuário |
-| `/accounts/{accountId}/balances` | GET | Saldos da conta |
-| `/accounts/{accountId}/tier` | GET | Tier de taxas da conta |
-| `/accounts/{accountId}/{symbol}/fees` | GET | Taxas de trading |
-| `/accounts/{accountId}/positions` | GET | Posições abertas |
+| `/authorize` | POST | Authentication via login/password |
+| `/accounts` | GET | List user accounts |
+| `/accounts/{accountId}/balances` | GET | Account balances |
+| `/accounts/{accountId}/tier` | GET | Account fee tier |
+| `/accounts/{accountId}/{symbol}/fees` | GET | Trading fees |
+| `/accounts/{accountId}/positions` | GET | Open positions |
 
 ### 📈 Trading
-| Endpoint | Método | Descrição |
+| Endpoint | Method | Description |
 |----------|---------|-----------|
-| `/accounts/{accountId}/{symbol}/orders` | GET/POST | Listar/Criar ordens |
-| `/accounts/{accountId}/{symbol}/orders/{orderId}` | GET/DELETE | Consultar/Cancelar ordem |
-| `/accounts/{accountId}/orders` | GET | Todas as ordens |
-| `/accounts/{accountId}/cancel_all_open_orders` | DELETE | Cancelar todas ordens abertas |
+| `/accounts/{accountId}/{symbol}/orders` | GET/POST | List/Create orders |
+| `/accounts/{accountId}/{symbol}/orders/{orderId}` | GET/DELETE | Get/Cancel order |
+| `/accounts/{accountId}/orders` | GET | All orders |
+| `/accounts/{accountId}/cancel_all_open_orders` | DELETE | Cancel all open orders |
 
-### 💰 Carteira
-| Endpoint | Método | Descrição |
+### 💰 Wallet
+| Endpoint | Method | Description |
 |----------|---------|-----------|
-| `/accounts/{accountId}/wallet/{symbol}/deposits` | GET | Histórico de depósitos |
-| `/accounts/{accountId}/wallet/{symbol}/deposits/addresses` | GET | Endereços de depósito |
-| `/accounts/{accountId}/wallet/fiat/{symbol}/deposits` | GET | Depósitos fiat (BRL) |
-| `/accounts/{accountId}/wallet/{symbol}/withdraw` | GET/POST | Consultar/Solicitar saques |
-| `/accounts/{accountId}/wallet/{symbol}/withdraw/{withdrawId}` | GET | Consultar saque específico |
-| `/accounts/{accountId}/wallet/withdraw/config/limits` | GET | Limites de saque |
-| `/accounts/{accountId}/wallet/withdraw/config/BRL` | GET | Configuração de saque BRL |
-| `/accounts/{accountId}/wallet/withdraw/addresses` | GET | Endereços de saque |
-| `/accounts/{accountId}/wallet/withdraw/bank-accounts` | GET | Contas bancárias |
+| `/accounts/{accountId}/wallet/{symbol}/deposits` | GET | Deposit history |
+| `/accounts/{accountId}/wallet/{symbol}/deposits/addresses` | GET | Deposit addresses |
+| `/accounts/{accountId}/wallet/fiat/{symbol}/deposits` | GET | Fiat deposits (BRL) |
+| `/accounts/{accountId}/wallet/{symbol}/withdraw` | GET/POST | Get/Request withdrawals |
+| `/accounts/{accountId}/wallet/{symbol}/withdraw/{withdrawId}` | GET | Get specific withdrawal |
+| `/accounts/{accountId}/wallet/withdraw/config/limits` | GET | Withdrawal limits |
+| `/accounts/{accountId}/wallet/withdraw/config/BRL` | GET | BRL withdrawal config |
+| `/accounts/{accountId}/wallet/withdraw/addresses` | GET | Withdrawal addresses |
+| `/accounts/{accountId}/wallet/withdraw/bank-accounts` | GET | Bank accounts |
 
-## 💻 Exemplos de Uso
+## 💻 Usage Examples
 
-### Configuração Inicial
-
-```csharp
-using MercadoBitcoin.Client;
-
-// Cliente para dados públicos (sem autenticação)
-var client = new MercadoBitcoinClient();
-
-// Cliente autenticado
-var authenticatedClient = new MercadoBitcoinClient();
-await authenticatedClient.AuthenticateAsync("seu_api_token_id", "seu_api_token_secret");
-```
-
-### 📊 Dados Públicos (sem autenticação)
+### 📊 Public Data (no authentication)
 
 ```csharp
 using MercadoBitcoin.Client.Extensions;
 var client = MercadoBitcoinClientExtensions.CreateWithRetryPolicies();
 
-// Obter lista de todos os símbolos disponíveis
+// Get list of all available symbols
 var symbols = await client.GetSymbolsAsync();
-Console.WriteLine($"Símbolos disponíveis: {symbols.Symbol.Count}");
+Console.WriteLine($"Available symbols: {symbols.Symbol.Count}");
 
-// Obter ticker do Bitcoin
+// Get Bitcoin ticker
 var tickers = await client.GetTickersAsync("BTC-BRL");
 var btcTicker = tickers.First();
 Console.WriteLine($"BTC: R$ {btcTicker.Last}");
 
-// Obter livro de ofertas
+// Get order book
 var orderBook = await client.GetOrderBookAsync("BTC-BRL", limit: "10");
-Console.WriteLine($"Melhor oferta de compra: R$ {orderBook.Bids[0][0]}");
-Console.WriteLine($"Melhor oferta de venda: R$ {orderBook.Asks[0][0]}");
+Console.WriteLine($"Best bid: R$ {orderBook.Bids[0][0]}");
+Console.WriteLine($"Best ask: R$ {orderBook.Asks[0][0]}");
 
-// Obter histórico de negociações
+// Get trade history
 var trades = await client.GetTradesAsync("BTC-BRL", limit: 100);
-Console.WriteLine($"Últimas {trades.Count} negociações obtidas");
+Console.WriteLine($"Last {trades.Count} trades retrieved");
 
-// Obter dados de candles/gráficos
+// Get candle/chart data
 var to = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 var candles = await client.GetCandlesAsync("BTC-BRL", "1h", (int)to, countback: 24);
-Console.WriteLine($"OHLCV das últimas 24 horas obtidas");
-
-// Obter taxas de retirada de um ativo
-var fees = await client.GetAssetFeesAsync("BTC");
-Console.WriteLine($"Taxa de retirada BTC: {fees.Withdrawal_fee}");
-
-// Obter redes disponíveis para um ativo
-var networks = await client.GetAssetNetworksAsync("USDC");
-foreach (var network in networks)
-{
-    Console.WriteLine($"USDC disponível na rede: {network.Network}");
-}
+Console.WriteLine($"OHLCV for the last 24 hours retrieved");
 ```
 
-
-### 👤 Dados Privados (com autenticação)
+### 👤 Private Data (with authentication)
 
 ```csharp
 using MercadoBitcoin.Client.Extensions;
 var client = MercadoBitcoinClientExtensions.CreateWithRetryPolicies();
-await client.AuthenticateAsync("seu_login", "sua_senha");
+await client.AuthenticateAsync("your_login", "your_password");
 
-// Obter informações das contas
+// Get account information
 var accounts = await client.GetAccountsAsync();
 var account = accounts.First();
-Console.WriteLine($"Conta: {account.Name} ({account.Currency})");
+Console.WriteLine($"Account: {account.Name} ({account.Currency})");
 
-// Obter saldos
+// Get balances
 var balances = await client.GetBalancesAsync(account.Id);
 foreach (var balance in balances)
 {
-    Console.WriteLine($"{balance.Symbol}: {balance.Available} (disponível) + {balance.On_hold} (reservado)");
-}
-
-// Obter tier de taxas
-var tier = await client.GetTierAsync(account.Id);
-Console.WriteLine($"Tier atual: {tier.First().Tier}");
-
-// Obter taxas de trading para um símbolo
-var tradingFees = await client.GetTradingFeesAsync(account.Id, "BTC-BRL");
-Console.WriteLine($"Taxa maker: {tradingFees.Maker_fee}% | Taxa taker: {tradingFees.Taker_fee}%");
-
-// Obter posições abertas
-var positions = await client.GetPositionsAsync(account.Id);
-foreach (var position in positions)
-{
-    Console.WriteLine($"Posição {position.Side} {position.Instrument}: {position.Qty} @ R$ {position.AvgPrice}");
+    Console.WriteLine($"{balance.Symbol}: {balance.Available} (available) + {balance.On_hold} (reserved)");
 }
 ```
 
@@ -437,825 +273,132 @@ foreach (var position in positions)
 ```csharp
 var accountId = accounts.First().Id;
 
-// Criar ordem de compra limitada
+// Create limit buy order
 var buyOrder = new PlaceOrderRequest
 {
     Side = "buy",
     Type = "limit",
-    Qty = "0.001",              // Quantidade em BTC
-    LimitPrice = 280000,        // Preço limite em R$
-    ExternalId = "minha-ordem-001"
+    Qty = "0.001",              // Amount in BTC
+    LimitPrice = 280000,        // Limit price in R$
+    ExternalId = "my-order-001"
 };
 
 var placedOrder = await authenticatedClient.PlaceOrderAsync("BTC-BRL", accountId, buyOrder);
-Console.WriteLine($"Ordem criada: {placedOrder.OrderId}");
+Console.WriteLine($"Order created: {placedOrder.OrderId}");
 
-// Criar ordem de venda com stop-loss
-var sellOrderWithStop = new PlaceOrderRequest
-{
-    Side = "sell",
-    Type = "stoplimit",
-    Qty = "0.001",
-    LimitPrice = 270000,        // Preço de venda
-    StopPrice = 275000          // Preço de ativação do stop
-};
-
-var stopOrder = await authenticatedClient.PlaceOrderAsync("BTC-BRL", accountId, sellOrderWithStop);
-
-// Listar ordens abertas
+// List open orders
 var openOrders = await authenticatedClient.ListOrdersAsync("BTC-BRL", accountId, status: "working");
-Console.WriteLine($"Você tem {openOrders.Count} ordens abertas");
+Console.WriteLine($"You have {openOrders.Count} open orders");
 
-// Consultar uma ordem específica
-var orderDetail = await authenticatedClient.GetOrderAsync("BTC-BRL", accountId, placedOrder.OrderId);
-Console.WriteLine($"Status da ordem: {orderDetail.Status}");
-Console.WriteLine($"Quantidade executada: {orderDetail.FilledQty}");
-
-// Cancelar uma ordem
+// Cancel an order
 var cancelResult = await authenticatedClient.CancelOrderAsync(accountId, "BTC-BRL", placedOrder.OrderId);
-Console.WriteLine($"Cancelamento: {cancelResult.Status}");
-
-// Listar todas as ordens (todos os símbolos)
-var allOrders = await authenticatedClient.ListAllOrdersAsync(accountId, status: "filled", size: "50");
-Console.WriteLine($"Você tem {allOrders.Items.Count} ordens executadas");
-
-// Cancelar todas as ordens abertas (cuidado!)
-// var cancelAll = await authenticatedClient.CancelAllOpenOrdersByAccountAsync(accountId);
-```
-
-### 💰 Operações de Carteira
-
-```csharp
-// Obter endereço para depósito de Bitcoin
-var btcAddress = await authenticatedClient.GetDepositAddressesAsync(accountId, "BTC");
-Console.WriteLine($"Endereço BTC: {btcAddress.Addresses.First().Hash}");
-
-// Obter endereço para depósito de USDC na rede Ethereum
-var usdcAddress = await authenticatedClient.GetDepositAddressesAsync(accountId, "USDC", Network2.Ethereum);
-Console.WriteLine($"Endereço USDC (ETH): {usdcAddress.Addresses.First().Hash}");
-
-// Listar histórico de depósitos
-var deposits = await authenticatedClient.ListDepositsAsync(accountId, "BTC", limit: "10");
-foreach (var deposit in deposits)
-{
-    Console.WriteLine($"Depósito: {deposit.Amount} {deposit.Coin} - Status: {deposit.Status}");
-}
-
-// Listar depósitos fiat (BRL)
-var fiatDeposits = await authenticatedClient.ListFiatDepositsAsync(accountId, "BRL", limit: "10");
-foreach (var deposit in fiatDeposits)
-{
-    Console.WriteLine($"Depósito PIX: R$ {deposit.Amount} - Status: {deposit.Status}");
-}
-
-// Solicitar saque de Bitcoin
-var withdrawRequest = new WithdrawCoinRequest
-{
-    Address = "bc1qs62xef6x0tyxsz87fya6le7htc6q5wayhqdzen",
-    Quantity = "0.001",
-    Tx_fee = "0.00005",
-    Description = "Saque para carteira pessoal",
-    Network = "bitcoin"
-};
-
-var withdraw = await authenticatedClient.WithdrawCoinAsync(accountId, "BTC", withdrawRequest);
-Console.WriteLine($"Saque solicitado: ID {withdraw.Id}");
-
-// Solicitar saque em Reais para conta bancária
-var brlWithdrawRequest = new WithdrawCoinRequest
-{
-    Account_ref = 1,              // ID da conta bancária cadastrada
-    Quantity = "1000.00",
-    Description = "Saque para conta corrente"
-};
-
-var brlWithdraw = await authenticatedClient.WithdrawCoinAsync(accountId, "BRL", brlWithdrawRequest);
-
-// Listar histórico de saques
-var withdrawals = await authenticatedClient.ListWithdrawalsAsync(accountId, "BTC", page: 1, page_size: 10);
-foreach (var withdrawal in withdrawals)
-{
-    Console.WriteLine($"Saque: {withdrawal.Net_quantity} {withdrawal.Coin} - Status: {withdrawal.Status}");
-}
-
-// Consultar saque específico
-var withdrawalDetail = await authenticatedClient.GetWithdrawalAsync(accountId, "BTC", withdraw.Id.ToString());
-Console.WriteLine($"Status: {withdrawalDetail.Status} | TX: {withdrawalDetail.Tx}");
-
-// Obter limites de saque (modelo fraco original)
-var rawLimits = await authenticatedClient.GetWithdrawLimitsAsync(accountId, symbols: "BTC,ETH,BRL");
-// Converter para dicionário tipado usando extensão
-var limitsDict = rawLimits.ToWithdrawLimitsDictionary();
-foreach (var kv in limitsDict)
-{
-    Console.WriteLine($"Limite de saque {kv.Key}: {kv.Value}");
-}
-
-// Obter configurações de saque BRL
-var brlConfig = await authenticatedClient.GetBrlWithdrawConfigAsync(accountId);
-Console.WriteLine($"Limite mínimo BRL: R$ {brlConfig.Limit_min}");
-Console.WriteLine($"Limite máximo poupança: R$ {brlConfig.Saving_limit_max}");
-
-// Listar endereços de carteira cadastrados
-var walletAddresses = await authenticatedClient.GetWithdrawCryptoWalletAddressesAsync(accountId);
-foreach (var address in walletAddresses)
-{
-    Console.WriteLine($"{address.Asset}: {address.Address}");
-}
-
-// Listar contas bancárias cadastradas
-var bankAccounts = await authenticatedClient.GetWithdrawBankAccountsAsync(accountId);
-foreach (var account in bankAccounts)
-{
-    Console.WriteLine($"{account.Bank_name}: {account.Recipient_name} - {account.Account_type}");
-}
+Console.WriteLine($"Cancellation: {cancelResult.Status}");
 ```
 
 ## ⚡ Rate Limits
 
-A biblioteca respeita automaticamente os rate limits da API do Mercado Bitcoin:
+The library automatically respects Mercado Bitcoin API rate limits:
 
-- **Dados Públicos**: 1 request/segundo
-- **Trading**: 3 requests/segundo (criação/cancelamento), 10 requests/segundo (consultas)
-- **Conta**: 3 requests/segundo
-- **Carteira**: Varia por endpoint
-- **Cancel All Orders**: 1 request/minuto
+- **Public Data**: 1 request/second
+- **Trading**: 3 requests/second (create/cancel), 10 requests/second (queries)
+- **Account**: 3 requests/second
+- **Wallet**: Varies by endpoint
+- **Cancel All Orders**: 1 request/minute
 
-## 🔒 Segurança
+## 🔒 Security
 
-### Autenticação
-- Utiliza o sistema de **Bearer Token** do Mercado Bitcoin
-- Tokens são gerenciados automaticamente pela biblioteca
-- Suporte a renovação automática de tokens
+### Authentication
+- Uses Mercado Bitcoin's **Bearer Token** system
+- Tokens are automatically managed by the library
+- Support for automatic token renewal
 
-### Boas Práticas
-- Nunca exponha suas credenciais de API em código fonte
-- Use variáveis de ambiente ou Azure Key Vault para credenciais
-- Implemente retry policies com backoff exponencial
-- Configure timeouts apropriados
+### Best Practices
+- Never expose your API credentials in source code
+- Use environment variables or Azure Key Vault for credentials
+- Implement retry policies with exponential backoff
+- Configure appropriate timeouts
 
 ```csharp
-// ✅ Bom
+// ✅ Good
 var apiKey = Environment.GetEnvironmentVariable("MB_API_KEY");
 var apiSecret = Environment.GetEnvironmentVariable("MB_API_SECRET");
 await client.AuthenticateAsync(apiKey, apiSecret);
 
-// ❌ Ruim
+// ❌ Bad
 await client.AuthenticateAsync("hardcoded_key", "hardcoded_secret");
 ```
 
-## 🔧 Configuração Avançada
+## ⚡ System.Text.Json and AOT Compatibility
 
-### Configuração de HTTP Version
+### Migration Benefits
 
-A biblioteca suporta tanto HTTP/1.1 quanto HTTP/2. Por padrão, utiliza HTTP/2 para máxima performance:
-
-```csharp
-// HTTP/2 (padrão - recomendado)
-var client = MercadoBitcoinClient.CreateWithHttp2();
-
-// HTTP/1.1 (para compatibilidade)
-var client = MercadoBitcoinClient.CreateWithHttp11();
-
-// Configuração via appsettings.json
-{
-  "MercadoBitcoin": {
-    "HttpVersion": "2.0", // ou "1.1"
-    "BaseUrl": "https://api.mercadobitcoin.net/api/v4"
-  }
-}
-```
-
-### Performance e Otimizações
-
-Com HTTP/2, a biblioteca oferece:
-- **Até 50% menos latência** em requisições múltiplas
-- **Redução de 30% no uso de banda** através de compressão de headers
-- **Conexões persistentes** com multiplexing
-- **Melhor utilização de recursos** do servidor
-
-### Configuração de Timeout
-
-```csharp
-var client = new MercadoBitcoinClient();
-client.HttpClient.Timeout = TimeSpan.FromSeconds(30);
-```
-
-## ⚡ System.Text.Json e AOT Compatibility
-
-### Benefícios da Migração
-
-A biblioteca foi completamente migrada do **Newtonsoft.Json** para **System.Text.Json** com **Source Generators**, oferecendo:
+The library has been completely migrated from **Newtonsoft.Json** to **System.Text.Json** with **Source Generators**, offering:
 
 #### 🚀 Performance
-- **2x mais rápido** na serialização/deserialização
-- **50% menos uso de memória** durante operações JSON
-- **Startup 3x mais rápido** com Source Generators
-- **Zero reflection** em runtime
+- **2x faster** in serialization/deserialization
+- **50% less memory usage** during JSON operations
+- **3x faster startup** with Source Generators
+- **Zero reflection** at runtime
 
 #### 📦 AOT Compatibility
-- **Native AOT compilation** suportada
-- **Aplicações ultra-rápidas** com tempo de inicialização mínimo
-- **Menor footprint** de memória e disco
-- **Melhor performance** em ambientes containerizados
+- **Native AOT compilation** supported
+- **Ultra-fast applications** with minimal startup time
+- **Smaller footprint** on memory and disk
+- **Better performance** in containerized environments
 
-#### 🔧 Source Generators
+## 🛡️ Quality and Reliability
 
-A biblioteca utiliza Source Generators para otimização máxima:
+### 🧪 Quality Tests
 
-```csharp
-// Contexto de serialização gerado automaticamente
-[JsonSourceGeneration(PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase)]
-[JsonSerializable(typeof(AccountResponse))]
-[JsonSerializable(typeof(PlaceOrderRequest))]
-[JsonSerializable(typeof(TickerResponse))]
-// ... todos os DTOs incluídos
-public partial class MercadoBitcoinJsonSerializerContext : JsonSerializerContext
-{
-}
-```
+The library has undergone rigorous quality tests ensuring:
 
-#### 💡 Uso Transparente
+#### ✅ **Complete Coverage**
+- **64 tests** covering all API endpoints
+- **100% of public endpoints** tested and validated
+- **Private endpoints** with graceful authentication handling
+- **Error scenarios** completely mapped and tested
 
-A migração é **100% transparente** para o usuário:
+#### 🚀 **Proven Performance**
+- **Real benchmarks** with Mercado Bitcoin API data
+- **Thresholds adjusted** based on production measurements
+- **HTTP/3 vs HTTP/2 comparisons** with measurable results
+- **Optimized memory usage** and validated
 
-```csharp
-// Mesmo código, performance superior
-var client = new MercadoBitcoinClient();
-var tickers = await client.GetTickersAsync("BTC-BRL"); // Agora 2x mais rápido!
-```
+## 📈 Observability and Metrics
 
-### Compilação AOT
-
-Para habilitar AOT em seu projeto:
-
-```xml
-<PropertyGroup>
-  <PublishAot>true</PublishAot>
-  <IsAotCompatible>true</IsAotCompatible>
-</PropertyGroup>
-```
-
-```bash
-# Publicar com AOT
-dotnet publish -c Release -r win-x64 --self-contained
-```
-
-## 🛡️ Qualidade e Confiabilidade
-
-### 🧪 Testes de Qualidade
-
-A biblioteca passou por rigorosos testes de qualidade que garantem:
-
-#### ✅ **Cobertura Completa**
-- **64 testes** cobrindo todos os endpoints da API
-- **100% dos endpoints públicos** testados e validados
-- **Endpoints privados** com tratamento gracioso de autenticação
-- **Cenários de erro** completamente mapeados e testados
-
-#### 🚀 **Performance Comprovada**
-- **Benchmarks reais** com dados da API do Mercado Bitcoin
-- **Thresholds ajustados** baseados em medições de produção
-- **Comparações HTTP/2 vs HTTP/1.1** com resultados mensuráveis
-- **Uso de memória otimizado** e validado
-
-#### 🔧 **Robustez Técnica**
-- **Tratamento de autenticação**: Skip automático quando credenciais não disponíveis
-- **Rate limiting**: Respeito automático aos limites da API
-- **Error recovery**: Políticas de retry testadas em cenários reais
-- **Serialização validada**: Round-trip testing com dados reais
-
-#### 🏗️ **Arquitetura Sólida**
-- **Source Generators**: Validação completa de tipos serializáveis
-- **JsonSerializerContext**: Configuração otimizada para performance
-- **Configuração flexível**: Suporte a múltiplos ambientes
-- **CI/CD ready**: Testes preparados para automação
-
-### 📊 Métricas de Qualidade
-
-```
-✅ 64/64 testes passando (100%)
-⚡ Performance 2.1x superior (validada)
-🛡️ 0 falhas de autenticação não tratadas
-🔄 100% dos cenários de retry testados
-📈 Thresholds baseados em dados reais
-🚀 Compatibilidade AOT validada
-```
-
-### 🎯 Garantias de Produção
-
-- **Zero downtime**: Tratamento gracioso de falhas temporárias
-- **Observabilidade**: Logs detalhados para debugging
-- **Configurabilidade**: Ajustes finos para diferentes ambientes
-- **Manutenibilidade**: Código limpo e bem documentado
-- **Escalabilidade**: Otimizado para alta concorrência
-- **Segurança**: Tratamento seguro de credenciais e dados sensíveis
-
-
-## 📋 Changelog
-
-Consulte o arquivo [CHANGELOG.md](CHANGELOG.md) ou [RELEASE_NOTES_v3.0.0.md](RELEASE_NOTES_v3.0.0.md) para detalhes completos das mudanças, breaking changes e instruções de migração.
-
-## 📈 Observabilidade e Métricas
-
-A biblioteca expõe métricas via `System.Diagnostics.Metrics` (Instrumentação .NET) que podem ser coletadas por OpenTelemetry, Prometheus (via exporter) ou Application Insights.
+The library exposes metrics via `System.Diagnostics.Metrics` (.NET Instrumentation) which can be collected by OpenTelemetry, Prometheus (via exporter), or Application Insights.
 
 ### 🔢 Counters
 
-| Instrumento | Nome | Tipo | Descrição | Tags |
+| Instrument | Name | Type | Description | Tags |
 |-------------|------|------|-----------|------|
-| `_retryCounter` | `mb_client_http_retries` | Counter<long> | Número de tentativas de retry executadas | `status_code` |
-| `_circuitOpenCounter` | `mb_client_circuit_opened` | Counter<long> | Quantidade de vezes que o circuito abriu | *(sem tag)* |
-| `_circuitHalfOpenCounter` | `mb_client_circuit_half_open` | Counter<long> | Quantidade de transições para half-open | *(sem tag)* |
-| `_circuitClosedCounter` | `mb_client_circuit_closed` | Counter<long> | Quantidade de vezes que o circuito fechou após sucesso | *(sem tag)* |
+| `_retryCounter` | `mb_client_http_retries` | Counter<long> | Number of retry attempts executed | `status_code` |
+| `_circuitOpenCounter` | `mb_client_circuit_opened` | Counter<long> | Number of times the circuit opened | *(no tag)* |
+| `_circuitHalfOpenCounter` | `mb_client_circuit_half_open` | Counter<long> | Number of transitions to half-open | *(no tag)* |
+| `_circuitClosedCounter` | `mb_client_circuit_closed` | Counter<long> | Number of times the circuit closed after success | *(no tag)* |
 
 ### ⏱️ Histogram
 
-| Instrumento | Nome | Tipo | Unidade | Descrição | Tags |
+| Instrument | Name | Type | Unit | Description | Tags |
 |-------------|------|------|--------|-----------|------|
-| `_requestDurationHistogram` | `mb_client_http_request_duration` | Histogram<double> | ms | Duração das requisições HTTP (incluindo retries) | `method`, `outcome`, `status_code` |
+| `_requestDurationHistogram` | `mb_client_http_request_duration` | Histogram<double> | ms | Duration of HTTP requests (including retries) | `method`, `outcome`, `status_code` |
 
-### 🏷️ Outcomes do Histogram
+## 📘 Detailed Documentation
 
-| Valor `outcome` | Significado |
-|-----------------|-------------|
-| `success` | Resposta 2xx/3xx sem necessidade de retry final |
-| `client_error` | Resposta 4xx não classificada como retry |
-| `server_error` | Resposta 5xx final sem retry pendente |
-| `transient_exhausted` | Resposta que acionaria retry mas limite foi atingido |
-| `circuit_open_fast_fail` | Requisição abortada imediatamente porque o circuito estava aberto |
-| `timeout_or_canceled` | Operação cancelada/timeout (TaskCanceled) dentro da pipeline |
-| `canceled` | Cancelada externamente via CancellationToken antes da resposta |
-| `exception` | Exceção não HTTP lançada pelo pipeline |
-| `other` | Qualquer outro cenário residual |
-| `unknown` | Nenhuma resposta / estado indeterminado |
+### For Humans 🧑‍💻
+Complete guide with step-by-step instructions, code examples, best practices, and detailed explanations:
+- **[User Guide (English)](docs/USER_GUIDE.md)**
 
-### ⚙️ Habilitando/Desabilitando Métricas
+### For AI Agents 🤖
+For automated consumption (LLMs / agents), use specialized guides containing contracts, operational flows, prompts, and safety heuristics:
+- **[AI Usage Guide (English)](docs/AI_USAGE_GUIDE.md)**
 
-Métricas são habilitadas por padrão (`RetryPolicyConfig.EnableMetrics = true`). Para desabilitar:
-
-```csharp
-var client = MercadoBitcoinClient.CreateWithRetryPolicy(o =>
-{
-    o.EnableMetrics = false; // desabilita emissão
-});
-```
-
-### 🧩 Integração com OpenTelemetry
-
-```csharp
-using OpenTelemetry;
-using OpenTelemetry.Metrics;
-
-var meterProvider = Sdk.CreateMeterProviderBuilder()
-    .AddMeter("MercadoBitcoin.Client")
-    .AddRuntimeInstrumentation()
-    .AddProcessInstrumentation()
-    .AddPrometheusExporter() // ou .AddOtlpExporter()
-    .Build();
-```
-
-Exemplo de scraping Prometheus (porta padrão 9464):
-
-```csharp
-app.MapPrometheusScrapingEndpoint();
-```
-
-### 📊 Dashboard Sugerido
-
-KPIs relevantes:
-1. Taxa de retries por segundo (`sum(rate(mb_client_http_retries[5m]))`)
-2. Latência p95/p99 por método (`histogram_quantile(0.95, sum(rate(mb_client_http_request_duration_bucket[5m])) by (le, method))`)
-3. Transições de circuito (`increase(mb_client_circuit_opened[1h])`, etc.)
-4. Percentual de outcomes `transient_exhausted` (indicador de tuning de retry)
-
-### 🔍 Uso em Logs Correlacionados
-
-Combine as métricas com um `Activity` (OpenTelemetry Tracing) para rastreamento distribuído. A pipeline de HTTP já emite atividades padrão (`HttpClient`). As métricas aqui complementam com contagem de retries e estados de breaker.
+These documents are self-contained and optimized for programmatic interpretation (structures, decision tables, retry strategies, and parameter validation).
 
 ---
 
-### v2.1.0 - Resiliência Expandida, Jitter, Circuit Breaker Manual, Cancelamento Total
+*Last update: November 2025 - Version 4.0.0-alpha.1 (Migration to .NET 10 & C# 14, HTTP/3 support, Polly v8, removal of public constructors, mandatory DI and extension methods, full AOT compatibility)*
 
-#### ✨ Novidades
-- Jitter configurável nos delays de retry (habilitado por padrão)
-- Circuit breaker manual (abre após falhas consecutivas; half-open controlado)
-- CancellationToken exposto em todos os endpoints
-- User-Agent customizável via variável `MB_USER_AGENT`
-- Suíte de testes ampliada de 59 para 60 cenários
-
-#### 🛡️ Robustez
-- Fail-fast enquanto o breaker está aberto
-- Callbacks de eventos: `OnRetryEvent` e `OnCircuitBreakerEvent`
-- Respeito ao header Retry-After sem duplicar delays
-
-#### 🔧 Configuração
-Novos campos em `RetryPolicyConfig`:
-`EnableJitter`, `JitterMillisecondsMax`, `EnableCircuitBreaker`, `CircuitBreakerFailuresBeforeBreaking`, `CircuitBreakerDurationSeconds`, `OnRetryEvent`, `OnCircuitBreakerEvent`.
-
-#### 🔎 AOT
-Otimizações de serialização mantidas (Source Generators). Avisos IL remanescentes em trechos do cliente gerado serão tratados em futuras versões.
-
----
-
-### v2.0.0 - System.Text.Json Migration e Testes Abrangentes
-
-#### ✨ Novidades
-- **Suíte de Testes Completa**: 60 testes cobrindo todos os endpoints
-- **Testes de Performance**: Benchmarks detalhados de serialização e HTTP/2
-- **Validação de Serialização**: Round-trip testing com dados reais da API
-- **Tratamento Robusto de Erros**: Skip gracioso para testes sem credenciais
-- **Configuração Flexível**: Suporte a variáveis de ambiente e appsettings.json
-
-#### 🧪 Cobertura de Testes
-- **PublicEndpointsTests**: Todos os endpoints públicos validados
-- **PrivateEndpointsTests**: Endpoints privados com tratamento de autenticação
-- **TradingEndpointsTests**: Operações de trading (desabilitadas por segurança)
-- **PerformanceTests**: Benchmarks de serialização e uso de memória
-- **SerializationValidationTests**: Validação de DTOs com dados reais
-- **ErrorHandlingTests**: Cenários de erro e recovery automático
-
-#### 🚀 Melhorias de Performance Validadas
-- **Serialização**: 2.1x mais rápido que Newtonsoft.Json (validado)
-- **Deserialização**: 1.8x mais rápido (validado)
-- **Memória**: 45% menos uso durante operações JSON (medido)
-- **HTTP/2**: 35% redução de latência vs HTTP/1.1 (benchmarked)
-
-#### 🛡️ Robustez e Confiabilidade
-- **Tratamento de Autenticação**: Skip automático quando credenciais não disponíveis
-- **Rate Limiting**: Validação de respeito aos limites da API
-- **Error Recovery**: Políticas de retry testadas e validadas
-- **Thresholds Realistas**: Limites de performance baseados em medições reais
-
-#### 🔧 Melhorias Técnicas
-- **JsonSerializerContext**: Configuração otimizada com PropertyNamingPolicy
-- **Source Generators**: Validação completa de tipos serializáveis
-- **Configuração de Testes**: Suporte a múltiplos ambientes de teste
-- **CI/CD Ready**: Testes preparados para integração contínua
-
-### v2.0.0 - System.Text.Json Migration
-
-#### ✨ Novidades
-- **System.Text.Json**: Migração completa do Newtonsoft.Json
-- **Source Generators**: Serialização otimizada em tempo de compilação
-- **AOT Compatibility**: Compatível com Native AOT compilation
-- **C# 13**: Atualização para a versão mais recente da linguagem
-
-#### 🚀 Melhorias de Performance
-- **2x mais rápido** na serialização/deserialização JSON
-- **50% menos uso de memória** durante operações JSON
-- **3x startup mais rápido** com Source Generators
-- **Zero reflection** em runtime
-
-#### 🔄 Breaking Changes
-- Remoção da dependência `Newtonsoft.Json`
-- API permanece 100% compatível
-- Comportamento de serialização pode diferir ligeiramente (case sensitivity)
-
-#### 🛠️ Melhorias Técnicas
-- Geração automática de contexto de serialização
-- Otimizações para AOT compilation
-- Redução significativa no tamanho da aplicação final
-
-## 🚨 Tratamento de Erros
-
-```csharp
-try
-{
-    var orderResult = await client.PlaceOrderAsync("BTC-BRL", accountId, orderRequest);
-}
-catch (MercadoBitcoinApiException ex)
-{
-    Console.WriteLine($"Erro da API: {ex.Code} - {ex.Message}");
-    
-    // Tratar erros específicos
-    switch (ex.Code)
-    {
-        case "INSUFFICIENT_BALANCE":
-            Console.WriteLine("Saldo insuficiente para a operação");
-            break;
-        case "INVALID_SYMBOL":
-            Console.WriteLine("Símbolo inválido");
-            break;
-        case "ORDER_NOT_FOUND":
-            Console.WriteLine("Ordem não encontrada");
-            break;
-        default:
-            Console.WriteLine($"Erro não tratado: {ex.Code}");
-            break;
-    }
-}
-catch (HttpRequestException ex)
-{
-    Console.WriteLine($"Erro de rede: {ex.Message}");
-}
-catch (TaskCanceledException ex)
-{
-    Console.WriteLine($"Timeout: {ex.Message}");
-}
-```
-
-## 🧪 Testes Abrangentes
-
-### Suíte de Testes Completa
-
-A biblioteca inclui uma **suíte de testes abrangente** que valida todas as funcionalidades:
-
-```bash
-# Executar todos os testes (64 testes)
-dotnet test
-
-# Executar testes com cobertura
-dotnet test --collect:"XPlat Code Coverage"
-
-# Executar testes específicos
-dotnet test --filter "Category=PublicEndpoints"
-dotnet test --filter "Category=PrivateEndpoints"
-dotnet test --filter "Category=Performance"
-```
-
-### 📊 Cobertura de Testes
-
-#### ✅ **Endpoints Públicos** (PublicEndpointsTests)
-- Symbols, Tickers, OrderBook, Trades, Candles
-- Taxas de ativos e redes disponíveis
-- Validação de dados em tempo real
-
-#### 🔐 **Endpoints Privados** (PrivateEndpointsTests)
-- Contas, saldos, posições, tier de taxas
-- Tratamento gracioso para falta de credenciais
-- Skip automático quando autenticação não disponível
-
-#### 📈 **Trading** (TradingEndpointsTests)
-- Criação, consulta e cancelamento de ordens
-- Validação de tipos de ordem (limit, market, stop)
-- Testes de cenários de erro
-
-#### ⚡ **Performance** (PerformanceTests)
-- Benchmarks de serialização/deserialização
-- Medição de uso de memória
-- Comparação HTTP/2 vs HTTP/1.1
-- Thresholds ajustados para produção
-
-#### 🔧 **Serialização** (SerializationValidationTests)
-- Validação de todos os DTOs com dados reais
-- Round-trip testing (serialização → deserialização)
-- Compatibilidade System.Text.Json
-- Source Generators validation
-
-#### 🚨 **Tratamento de Erros** (ErrorHandlingTests)
-- Cenários de timeout, rate limiting
-- Erros de autenticação e autorização
-- Validação de mensagens de erro específicas
-- Recovery automático com retry policies
-
-### 🎯 Resultados dos Testes
-
-```
-✅ Todos os 64 testes passando
-⏱️ Tempo de execução: ~17 segundos
-🔍 Cobertura: Todos os endpoints principais
-🛡️ Tratamento robusto de erros
-```
-
-### 🚀 Benchmarks de Performance
-
-#### System.Text.Json vs Newtonsoft.Json
-```
-Serialização:   2.1x mais rápido
-Deserialização: 1.8x mais rápido
-Memória:        45% menos uso
-Startup:        3.2x mais rápido
-```
-
-#### HTTP/2 vs HTTP/1.1
-```
-Latência:       35% redução
-Throughput:     50% aumento
-Conexões:       80% menos uso
-Bandwidth:      25% economia
-```
-
-### 🔧 Configuração de Testes
-
-#### Variáveis de Ambiente
-```bash
-# Para testes que requerem autenticação
-export MERCADO_BITCOIN_API_ID="seu_api_id"
-export MERCADO_BITCOIN_API_SECRET="seu_api_secret"
-
-# Para testes de performance
-export ENABLE_PERFORMANCE_TESTS="true"
-export ENABLE_TRADING_TESTS="false"  # Desabilitado por segurança
-```
-
-#### Configuração no appsettings.json
-```json
-{
-  "MercadoBitcoin": {
-    "BaseUrl": "https://api.mercadobitcoin.net/api/v4",
-    "EnablePerformanceTests": false,
-    "EnableTradingTests": false,
-    "TestSymbol": "BTC-BRL",
-    "MaxRetries": 3,
-    "DelayBetweenRequests": 1000
-  }
-}
-```
-
-### 🧪 Executando Testes Específicos
-
-```bash
-# Apenas endpoints públicos (sem autenticação)
-dotnet test --filter "FullyQualifiedName~PublicEndpointsTests"
-
-# Testes de serialização
-dotnet test --filter "FullyQualifiedName~SerializationValidationTests"
-
-# Benchmarks de performance
-dotnet test --filter "FullyQualifiedName~PerformanceTests"
-
-# Tratamento de erros
-dotnet test --filter "FullyQualifiedName~ErrorHandlingTests"
-```
-
-### 🔍 Validação Contínua
-
-Os testes incluem validação de:
-- **Conectividade**: Verificação de endpoints ativos
-- **Autenticação**: Tratamento gracioso de credenciais inválidas
-- **Rate Limiting**: Respeito aos limites da API
-- **Serialização**: Integridade dos dados JSON
-- **Performance**: Thresholds de tempo e memória
-- **Compatibilidade**: HTTP/2 e AOT compilation
-
-## 📚 Documentação Adicional
-
-- [**API v4 do Mercado Bitcoin**](https://api.mercadobitcoin.net/api/v4/docs) - Documentação oficial da API
-- [**HTTP/2 RFC 7540**](https://tools.ietf.org/html/rfc7540) - Especificação do protocolo HTTP/2
-- [**Polly Documentation**](https://github.com/App-vNext/Polly) - Biblioteca de resilience patterns
-- [**.NET 9 Performance**](https://devblogs.microsoft.com/dotnet/performance-improvements-in-net-9/) - Melhorias de performance no .NET 9
-- [**NSwag Documentation**](https://github.com/RicoSuter/NSwag) - Geração de clientes OpenAPI
-
-### Recursos Adicionais
-
-- **Swagger/OpenAPI**: Cliente gerado automaticamente a partir da especificação OpenAPI
-- **Rate Limiting**: Implementação automática de rate limiting conforme especificação da API
-- **Error Handling**: Sistema robusto de tratamento de erros com tipos específicos
-- **Logging**: Suporte completo a logging com Microsoft.Extensions.Logging
-- **Dependency Injection**: Integração nativa com DI container do .NET
-
-### Migração e Atualizações
-
-#### Migração para HTTP/2
-
-Se você está migrando de uma versão anterior que usava HTTP/1.1:
-
-```csharp
-// Antes (HTTP/1.1)
-var client = new MercadoBitcoinClient();
-
-// Depois (HTTP/2 - recomendado)
-var client = MercadoBitcoinClient.CreateWithHttp2();
-
-// Ou manter HTTP/1.1 se necessário
-var client = MercadoBitcoinClient.CreateWithHttp11();
-```
-
-#### System.Text.Json e AOT Compatibility
-
-**Nova versão**: A biblioteca foi completamente migrada para **System.Text.Json** com **Source Generators**, oferecendo:
-
-1. **Performance Superior**: Até 2x mais rápido que Newtonsoft.Json
-2. **AOT Compatibility**: Compatível com Native AOT compilation
-3. **Menor Footprint**: Redução significativa no tamanho da aplicação
-4. **Source Generators**: Serialização otimizada em tempo de compilação
-5. **Zero Reflection**: Eliminação de reflection em runtime para máxima performance
-
-- [OpenAPI Specification](https://api.mercadobitcoin.net/api/v4/docs/swagger.yaml)
-- [Taxas e Limites](https://www.mercadobitcoin.com.br/taxas-contas-limites)
-- [Central de Ajuda](https://central.ajuda.mercadobitcoin.com.br/)
-
-## 🤝 Contribuição
-
-Contribuições são bem-vindas! Por favor, siga estas diretrizes:
-
-### Desenvolvimento
-
-1. **Fork** o repositório
-2. **Clone** seu fork localmente
-3. **Configure** o ambiente de desenvolvimento:
-
-```bash
-# Instalar dependências
-dotnet restore
-
-# Configurar HTTP/2 (padrão)
-# Não é necessária configuração adicional
-
-# Executar testes
-dotnet test
-```
-
-4. **Crie** uma branch para sua feature:
-```bash
-git checkout -b feature/nova-funcionalidade
-```
-
-5. **Implemente** suas mudanças seguindo os padrões:
-   - Use **HTTP/2** por padrão
-   - Mantenha **compatibilidade** com HTTP/1.1
-   - Adicione **testes** para novas funcionalidades
-   - Siga as **convenções** de código existentes
-   - **Documente** mudanças no README
-
-6. **Teste** suas mudanças:
-```bash
-# Testes unitários
-dotnet test
-
-# Teste de integração
-dotnet run --project TestAllRoutes
-
-# Teste de performance HTTP/2
-dotnet run --project PerformanceTests
-```
-
-7. **Commit** e **push**:
-```bash
-git commit -m "feat: adicionar nova funcionalidade HTTP/2"
-git push origin feature/nova-funcionalidade
-```
-
-8. **Abra** um Pull Request
-
-### Padrões de Código
-
-- **C# 13** com nullable reference types
-- **Async/await** para operações I/O
-- **HTTP/2** como padrão
-- **Clean Architecture** principles
-- **SOLID** principles
-- **Unit tests** com cobertura > 80%
-
-### Tipos de Contribuição
-
-- 🐛 **Bug fixes**
-- ✨ **Novas funcionalidades**
-- 📚 **Documentação**
-- 🚀 **Melhorias de performance**
-- 🧪 **Testes**
-- 🔧 **Configurações e tooling**
-
-## 📄 Licença
-
-Este projeto está licenciado sob a Licença MIT - veja o arquivo [LICENSE](LICENSE) para detalhes.
-
-## ⚠️ Disclaimer
-
-**Esta biblioteca não é oficial** e não é afiliada ao Mercado Bitcoin. Use por sua própria conta e risco.
-
-### Importante sobre HTTP/2
-
-- **Compatibilidade**: HTTP/2 é suportado por todos os servidores modernos, incluindo a API do Mercado Bitcoin
-- **Fallback**: A biblioteca automaticamente faz fallback para HTTP/1.1 se HTTP/2 não estiver disponível
-- **Performance**: HTTP/2 oferece melhor performance, especialmente para múltiplas requisições
-- **Segurança**: HTTP/2 requer TLS por padrão, aumentando a segurança das comunicações
-
-### System.Text.Json com Source Generators
-
-A biblioteca utiliza **System.Text.Json** com **Source Generators** para máxima performance:
-- **Compilação AOT**: Compatível com Native AOT compilation
-- **Zero Reflection**: Eliminação de reflection em runtime
-- **Performance Superior**: Até 2x mais rápido que Newtonsoft.Json
-- **Menor Consumo de Memória**: Redução significativa no uso de memória
-- **Startup Mais Rápido**: Inicialização mais rápida da aplicação
-
-### Responsabilidades do Usuário
-
-- **Testes**: Sempre teste em ambiente de desenvolvimento antes de usar em produção
-- **Rate Limits**: Respeite os limites da API para evitar bloqueios
-- **Segurança**: Mantenha suas credenciais seguras e use HTTPS
-- **Atualizações**: Mantenha a biblioteca atualizada para correções de segurança
-- **Monitoramento**: Monitore suas aplicações para detectar problemas rapidamente
-
----
-
-**Desenvolvido com ❤️ para a comunidade .NET brasileira**
-
-## 📘 Documentação para Agentes de IA
-
-Para consumo automatizado (LLMs / agentes), utilize os guias especializados contendo contratos, fluxos operacionais, prompts e heurísticas de segurança:
-
-- Guia IA (Português): [`docs/AI_USAGE_GUIDE.md`](docs/AI_USAGE_GUIDE.md)
-- AI Usage Guide (English): [`docs/AI_USAGE_GUIDE_EN.md`](docs/AI_USAGE_GUIDE_EN.md)
-
-Esses documentos são autocontidos e otimizados para interpretação programática (estruturas, tabelas de decisão, estratégias de retry e validação de parâmetros).
-
----
-
-*Última atualização: Agosto 2025 - Versão 3.0.0 (Remoção de construtores públicos, DI e métodos de extensão obrigatórios, alinhamento total com .NET 9 e AOT)*
-
-[![GitHub stars](https://img.shields.io/github/stars/seu-usuario/MercadoBitcoin.Client?style=social)](https://github.com/seu-usuario/MercadoBitcoin.Client/stargazers)
-[![GitHub forks](https://img.shields.io/github/forks/seu-usuario/MercadoBitcoin.Client?style=social)](https://github.com/seu-usuario/MercadoBitcoin.Client/network/members)
+[![GitHub stars](https://img.shields.io/github/stars/ernanesa/MercadoBitcoin.Client?style=social)](https://github.com/ernanesa/MercadoBitcoin.Client/stargazers)
+[![GitHub forks](https://img.shields.io/github/forks/ernanesa/MercadoBitcoin.Client?style=social)](https://github.com/ernanesa/MercadoBitcoin.Client/network/members)
 [![NuGet Version](https://img.shields.io/nuget/v/MercadoBitcoin.Client.svg)](https://www.nuget.org/packages/MercadoBitcoin.Client) [![NuGet Downloads](https://img.shields.io/nuget/dt/MercadoBitcoin.Client.svg)](https://www.nuget.org/packages/MercadoBitcoin.Client)

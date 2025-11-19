@@ -1,328 +1,352 @@
-# Guia de Uso Orientado para IA
+# AI-Oriented Usage Guide (English)
 
-Este documento é autocontido e foi elaborado para que **outros agentes de IA** possam compreender, navegar e utilizar a biblioteca `MercadoBitcoin.Client` de forma segura, eficiente e contextualizada. Inclui modelos de raciocínio, prompts recomendados, mapas de métodos, contratos de entrada/saída e estratégias de recuperação de erro.
+This document is self-contained and crafted so that **autonomous AI agents / LLM tools** can safely and efficiently operate the `MercadoBitcoin.Client` .NET library. It includes method maps, reasoning patterns, prompt templates, error handling strategies, decision tables, and output contracts.
 
-> Objetivo primário: permitir que um agente planeje e execute operações de leitura de dados públicos, negociação (trading), gestão de conta e carteira usando esta lib .NET sem ambiguidade.
-
----
-## 1. Visão Geral Concisa
-- Namespace raiz: `MercadoBitcoin.Client`
-- Cliente principal: `MercadoBitcoinClient` (**instanciado apenas via métodos de extensão ou DI a partir da v3.0.0**)
-- Comunicação: HTTPS sobre HTTP/2 (default), JSON, REST.
-- Serialização: `System.Text.Json` com Source Generators (contexto `MercadoBitcoinJsonSerializerContext`).
-- Estratégia de autenticação: `AuthenticateAsync(login, password)` gera e injeta token Bearer.
-- Requisições públicas não exigem token; privadas exigem.
-- Retry e resiliência: `RetryHandler` com Polly + backoff exponencial, jitter e circuit breaker manual.
-- Jitter: habilitado por padrão para evitar sincronização entre clientes concorrentes.
-- Circuit Breaker: abre após falhas consecutivas configuráveis, half-open com probe único.
-- Métricas: counters (retries, estados de circuito) + histogram de latência (`mb_client_http_request_duration`).
-- Cancelamento: todos os endpoints aceitam `CancellationToken` (propagar para operações longas).
-- User-Agent customizável: variável de ambiente `MB_USER_AGENT`.
-- Suite de Testes: 64 cenários cobrindo públicos, privados, performance, serialização e resiliência.
-- Versão atual documentada: 3.0.0 (Remoção de construtores públicos, métodos de extensão/DI obrigatórios).
+> Primary Goal: Enable an AI agent to plan and execute public data retrieval, trading, account management and wallet operations through this client with minimal ambiguity.
 
 ---
-## 2. Estrutura Lógica (Mapa Mental)
+## 1. Quick Overview
+- Root namespace: `MercadoBitcoin.Client`
+- Main client class: `MercadoBitcoinClient`
+- Protocol: HTTPS over HTTP/2 (default) with `SocketsHttpHandler` optimization.
+- Serialization: `System.Text.Json` (Source Generators), context `MercadoBitcoinJsonSerializerContext`
+- Auth: `AuthenticateAsync(login, password)` issues Bearer token
+- Public endpoints require no token; private endpoints require Bearer
+- Resilience: Retry via `RetryHandler` + Polly controlled by `RetryPolicyConfig`
+ - Circuit Breaker: Manual lightweight breaker (consecutive failure threshold + half-open probe)
+ - Jitter: Enabled by default to de-sync concurrent clients
+ - Metrics: Native `System.Diagnostics.Metrics` counters + latency histogram (opt-out via `EnableMetrics`)
+ - Cancellation: Every public and private endpoint exposes `CancellationToken`
+ - User-Agent Override: Env var `MB_USER_AGENT` (observability / traffic segregation)
+ - Test Suite: 64 scenarios (public, private, serialization, performance, resilience)
+ - Version: 3.0.0 (HTTP/2 Optimization, Batching, SIMD)
+
+---
+## 2. Logical Structure
 ```
-MercadoBitcoinClient (instanciado via métodos de extensão ou DI)
- ├── Autenticação: AuthenticateAsync
- ├── Dados Públicos: (GetSymbols, GetTickers, GetOrderBook, GetTrades, GetCandles*, GetAssetFees, GetAssetNetworks)
- ├── Contas: GetAccounts, GetBalances, GetTier, GetTradingFees, GetPositions
- ├── Trading: PlaceOrder, ListOrders, GetOrder, CancelOrder, ListAllOrders, CancelAllOpenOrders
- ├── Carteira: ListDeposits, GetDepositAddresses, ListFiatDeposits, WithdrawCoin, ListWithdrawals,
- │             GetWithdrawal, GetWithdrawLimits, GetBrlWithdrawConfig,
- │             GetWithdrawCryptoWalletAddresses, GetWithdrawBankAccounts
- └── Extensões/Candles Tipados: GetCandlesTypedAsync / GetRecentCandlesTypedAsync
+ MercadoBitcoinClient
+ ├── Public Data (No Auth)
+ │   ├── GetTickersAsync (Batching supported)
+ │   ├── GetOrderBookAsync
+ │   ├── GetTradesAsync
+ │   ├── GetCandlesAsync / GetRecentCandlesTypedAsync (SIMD ready)
+ │   ├── GetSymbolsAsync
+ │   ├── GetAssetFeesAsync
+ │   └── GetAssetNetworksAsync
+ ├── Account (Auth Required)
+ │   ├── GetAccountsAsync
+ │   ├── GetBalancesAsync
+ │   ├── GetTierAsync
+ │   ├── GetTradingFeesAsync
+ │   └── GetPositionsAsync
+ ├── Trading (Auth Required)
+ │   ├── PlaceOrderAsync
+ │   ├── CancelOrderAsync
+ │   ├── ListOrdersAsync / ListAllOrdersAsync
+ │   └── CancelAllOpenOrdersByAccountAsync
+ └── Wallet (Auth Required)
+     ├── GetDepositAddressesAsync
+     ├── ListDepositsAsync / ListFiatDepositsAsync
+     ├── WithdrawCoinAsync
+     ├── ListWithdrawalsAsync / GetWithdrawalAsync
+     ├── GetWithdrawLimitsAsync
+     ├── GetBrlWithdrawConfigAsync
+     ├── GetWithdrawCryptoWalletAddresses
+     └── GetWithdrawBankAccounts
 ```
 
 ---
-## 3. Princípios de Uso para um Agente de IA
-1. Sempre identificar se a operação é pública ou privada antes de invocar.
-2. Autenticar **uma vez** antes de acessar rotas privadas; reutilizar a instância do cliente.
-3. Validar parâmetros críticos (ex.: símbolo `BASE-QUOTE`, resolução de candle) antes de chamar para reduzir retries desnecessários.
-4. Manter um cache leve de símbolos (`/symbols`) para validações internas de coerência.
-5. Implementar fallback de janelas de candles: se `from > to`, o método já faz swap — não duplicar lógica.
-6. Em trading, registrar `externalId` (se fornecido) para idempotência lógica.
-7. Tratar erros via captura de `MercadoBitcoinApiException` e mapear `ErrorResponse.Code` para estratégia de correção.
-8. Evitar spam de chamadas sequenciais: respeitar rate limits (delay mínimo de ~1000 ms se incerteza sobre limites dinâmicos).
-9. Propagar `CancellationToken` para permitir que fluxos de decisão reajam rápido a nova estratégia.
-10. Usar métricas (taxa de retries, opens de circuito, p95 de latência) como sinais para tuning adaptativo.
+## 3. AI Usage Principles
+1. Determine if target operation is public vs private before calling.
+2. Authenticate once before any private operations; reuse client.
+3. **Batching**: Always use `IEnumerable<string>` overloads for `GetTickersAsync` and `GetSymbolsAsync` when querying multiple assets.
+4. **SIMD Analysis**: When analyzing candles, use `CandleMathExtensions` (`CalculateAverageClose`, `CalculateMaxHigh`) for vectorized performance.
+5. Maintain a local cache of `/symbols` for validation and normalization.
+6. Rely on built-in window swap (from > to) in candle methods—do not duplicate.
+7. For trading, optionally store `ExternalId` for logical idempotency.
+8. Catch `MercadoBitcoinApiException` and branch by `ErrorResponse.Code` for recovery decisions.
+9. Respect soft rate limit pacing (≥1s between public bursts if uncertain).
+10. Prefer graceful cancellation (propagate upstream token) instead of force abort if adjusting strategy mid-flight.
+11. Observe metrics (retry rate spikes, circuit transitions, latency p95 growth) to adapt behavior (dynamic backoff tuning).
 
 ---
-### 3.1 Componentes de Resiliência
-| Componente | Propósito | Principais Campos | Consideração IA |
-|------------|----------|-------------------|-----------------|
-| Retry (Polly) | Recuperar falhas transitórias | `MaxRetryAttempts`, `BaseDelaySeconds`, `BackoffMultiplier`, `MaxDelaySeconds`, `EnableJitter` | Reduzir tentativas se p95 aumentar muito |
-| Circuit Breaker | Fail-fast após falhas consecutivas | `CircuitBreakerFailuresBeforeBreaking`, `CircuitBreakerDurationSeconds` | Quando aberto: suspender operações não críticas |
-| Jitter | Desincronizar bursts | `JitterMillisecondsMax` | Aumentar em ambientes de alta concorrência |
-| Respeito Retry-After | Evitar penalização | `RespectRetryAfterHeader` | Priorizar header sobre cálculo local |
-| Métricas | Observabilidade & tuning | `EnableMetrics` | Necessário para laço adaptativo |
+## 3.1 Resilience Components (Deep Dive)
+| Component | Purpose | Key Tunables | AI Considerations |
+|-----------|---------|--------------|-------------------|
+| Retry (Polly WaitAndRetryAsync) | Recover transient/network/server faults | `MaxRetryAttempts`, `BaseDelaySeconds`, `BackoffMultiplier`, `MaxDelaySeconds`, `EnableJitter`, `JitterMillisecondsMax`, flags for `RetryOnTimeout` / `RetryOnRateLimit` / `RetryOnServerErrors` | Back off earlier if latency baseline worsens; disable server-error retry if performing idempotent analysis only. |
+| Manual Circuit Breaker | Fast-fail after N consecutive retry-eligible failures | `EnableCircuitBreaker`, `CircuitBreakerFailuresBeforeBreaking`, `CircuitBreakerDurationSeconds` | When breaker opens, treat system as degraded; reduce request frequency; schedule health probe after open duration. |
+| Retry-After Honor | Align with server throttling | `RespectRetryAfterHeader` | If header delay > computed backoff, override to avoid double delay. |
+| Metrics | Feedback loop & observability | `EnableMetrics` | Use histogram outcome distribution to decide tuning. |
 
-### Campos de `RetryPolicyConfig`
-| Campo | Tipo | Default | Descrição |
-|-------|------|---------|----------|
-| MaxRetryAttempts | int | 3 | Número de tentativas extras |
-| BaseDelaySeconds | double | 1.0 | Atraso inicial |
-| BackoffMultiplier | double | 2.0 | Fator exponencial |
-| MaxDelaySeconds | double | 30 | Teto de atraso |
-| RetryOnTimeout | bool | true | Incluir timeouts |
-| RetryOnRateLimit | bool | true | Incluir 429 |
-| RetryOnServerErrors | bool | true | Incluir 5xx |
-| RespectRetryAfterHeader | bool | true | Honra cabeçalho 429 |
-| EnableCircuitBreaker | bool | true | Habilita breaker |
-| CircuitBreakerFailuresBeforeBreaking | int | 8 | Falhas antes de abrir |
-| CircuitBreakerDurationSeconds | int | 30 | Janela aberto |
-| EnableJitter | bool | true | Ativa jitter |
-| JitterMillisecondsMax | int | 250 | Jitter máximo |
-| EnableMetrics | bool | true | Emite métricas |
-| OnRetryEvent | Action<RetryEvent>? | null | Callback retry |
-| OnCircuitBreakerEvent | Action<CircuitBreakerEvent>? | null | Callback breaker |
+### RetryPolicyConfig Field Reference
+| Property | Type | Default | Description | AI Adaptive Guidance |
+|----------|------|---------|-------------|----------------------|
+| MaxRetryAttempts | int | 3 | Attempts after initial call (total tries = attempts) | Increase to 5 only if success probability improves and latency SLO not violated |
+| BaseDelaySeconds | double | 1.0 | First backoff slice | Lower (0.3–0.5) for ultra low-lat public price fetch bursts |
+| BackoffMultiplier | double | 2.0 | Exponential growth factor | Consider 1.5 if traffic constant & jitter adequate |
+| MaxDelaySeconds | double | 30 | Ceiling per attempt | Cap ≤ 10 for latency sensitive UX flows |
+| RetryOnTimeout | bool | true | Includes 408/TaskCanceled (timeout) | Disable if upstream already aggressively times out |
+| RetryOnRateLimit | bool | true | Retries 429 with optional Retry-After | Keep true; rely on header respect |
+| RetryOnServerErrors | bool | true | Retries 5xx (recoverable) | For non-idempotent operations ensure server semantics safe |
+| RespectRetryAfterHeader | bool | true | Honor server pacing hint | ALWAYS for fairness |
+| EnableCircuitBreaker | bool | true | Enables consecutive-failure breaker | Disable only in test harness fuzzing |
+| CircuitBreakerFailuresBeforeBreaking | int | 8 | Threshold to open | Lower (5) under severe systemic outage detection |
+| CircuitBreakerDurationSeconds | int | 30 | Open window before half-open probe | Extend (60) if repeated flapping observed |
+| EnableJitter | bool | true | Randomize delays (0..JitterMax) | Keep true unless deterministic benchmarking |
+| JitterMillisecondsMax | int | 250 | Max jitter added | Increase (500+) in high concurrency clusters |
+| EnableMetrics | bool | true | Expose instruments | Essential for autonomous tuning |
+| OnCircuitBreakerEvent | Action<CircuitBreakerEvent>? | null | Breaker state change hook | Trigger adaptive throttling tasks |
+| Closed | Normal ops | Count failures; success resets | Normal pacing |
+| HalfOpen | Open duration elapsed & single probe in-flight | First success closes, failure re-opens | Send ONE probe; gate parallel calls |
 
-### Métricas Disponíveis
-| Nome | Tipo | Tags | Descrição |
-|------|------|------|-----------|
-| mb_client_http_retries | Counter<long> | status_code | Contagem de retries |
-| mb_client_circuit_opened | Counter<long> | (sem) | Aberturas de circuito |
-| mb_client_circuit_half_open | Counter<long> | (sem) | Transições half-open |
-| mb_client_circuit_closed | Counter<long> | (sem) | Fechamentos pós-sucesso |
-| mb_client_http_request_duration | Histogram<double> | method, outcome, status_code | Latência total (incluindo retries) |
+### Metrics Instruments
+Meter Name: `MercadoBitcoin.Client` VersionTag: `3.0.0`
 
-Valores de `outcome` (histogram): success, client_error, server_error, transient_exhausted, circuit_open_fast_fail, timeout_or_canceled, canceled, exception, other, unknown.
+| Name | Type | Unit | Tags | Description |
+|------|------|------|------|-------------|
+| mb_client_http_retries | Counter<long> | retries | status_code | Increment per retry attempt executed |
+| mb_client_circuit_opened | Counter<long> | - | - | Circuit opened transitions |
+| mb_client_circuit_half_open | Counter<long> | - | - | Half-open probes initiated |
+| mb_client_circuit_closed | Counter<long> | - | - | Circuit closed after success |
+| mb_client_http_request_duration | Histogram<double> | ms | method, outcome, status_code | End-to-end duration including retries |
 
-### Heurísticas Adaptativas (Sinais → Ação)
-| Sinal | Condição | Ajuste Sugerido |
-|-------|----------|----------------|
-| Pico de retries | retries/s > baseline*1.3 | Reduzir `MaxRetryAttempts` ou aumentar base delay |
-| Muitos circuit opens | >2 em 5min | Aumentar `CircuitBreakerDurationSeconds` e diminuir fan-out |
-| Latência p95 alta | p95 > 1.5x baseline | Reduzir concorrência, otimizar lotes |
-| Transient exhausted alto | >10% outcomes | Aumentar backoff ou investigar upstream |
+Outcome Classification (histogram tag `outcome`): success, client_error, server_error, transient_exhausted, circuit_open_fast_fail, timeout_or_canceled, canceled, exception, other, unknown.
 
-### Cancelamento
-Propagar tokens para: abortar buscas de candles longas, cessar intensificação de retry e liberar recursos antecipadamente.
+Latency Budgeting: Monitor p95 & p99; if p95 > (baseline * 1.5) adjust `BackoffMultiplier` downward or reduce `MaxRetryAttempts`.
+### Environment Variables
+| Variable | Purpose | Example |
+|----------|---------|---------|
+| MB_USER_AGENT | Override User-Agent value (suffix or replace) | `MyBot/1.0 (+team)` |
+| MB_API_KEY / MB_API_SECRET (if used) | Credential provisioning (if alternative auth flows) | (secret) |
+| ENABLE_PERFORMANCE_TESTS | Enable perf tests in test suite | true |
+| ENABLE_TRADING_TESTS | Allow trading mutations | false |
+| MB_TRACE_HTTP | Enable detailed HTTP logging to Console | 1 |
 
-### Variáveis de Ambiente
-| Variável | Uso |
-|---------|-----|
-| MB_USER_AGENT | Customização de User-Agent |
-| ENABLE_PERFORMANCE_TESTS | Ativa testes de performance |
-| ENABLE_TRADING_TESTS | Libera testes que mutam estado (cuidado) |
+### Cancellation Strategy
+- Always pass a single root `CancellationToken` through stacked operations.
+- For time-bounded workflows, compose: `using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));`
+- Avoid arbitrary `Thread.Abort` equivalents—rely on cooperative cancellation to keep metrics consistent.
 
-### Considerações AOT
-- Manter referência ao contexto `MercadoBitcoinJsonSerializerContext`.
-- Evitar reflexão dinâmica customizada adicional.
-- Futuro: substituir trechos gerados que ainda emitem warnings IL.
+### Adaptive Heuristics (AI Control Loop)
+| Signal | Condition | Adjustment |
+|--------|-----------|------------|
+| Retry Rate Spike | retries/sec > historical p95 * 1.3 | Lower MaxRetryAttempts or widen base delay |
+| Circuit Opens | > 2 opens in 5 min | Enter degraded mode: widen delays, reduce request fan-out |
+| Latency Degradation | p95 > 1.5 × baseline & outcome=success stable | Reduce concurrency or enable symbol batching |
+| Transient Exhausted Rise | outcome=transient_exhausted proportion > 10% | Investigate upstream; temporarily raise delay/backoff |
+| Timeout Or Canceled > Normal | >10% of histogram samples | Shorten client timeout or detect network saturation |
 
----
-## 4. Tabela de Métodos Principais (Contrato Sintético)
-| Método | Público/Privado | Entrada Básica | Saída | Observações IA |
-|--------|-----------------|----------------|-------|----------------|
-| AuthenticateAsync(login, password) | Privado | string, string | (void) | Obtém token Bearer; chamar antes de endpoints privados. |
-| GetSymbolsAsync(symbols?) | Público | string? (lista CSV) | `ListSymbolInfoResponse` | Use para validar símbolos. |
-| GetTickersAsync(symbols) | Público | string CSV | List<TickerResponse> | Requer nomes exatamente `BASE-QUOTE`. |
-| GetOrderBookAsync(symbol, limit?) | Público | string, string? | OrderBookResponse | `limit` string numérica (até 1000). |
-| GetTradesAsync(symbol, tid?, since?, from?, to?, limit?) | Público | filtros int? | ICollection<TradeResponse> | Combine filtros com parcimônia. |
-| GetCandlesAsync(symbol, resolution, to, from?, countback?) | Público | symbol, timeframe, int(s) | ListCandlesResponse | `countback` prioriza sobre `from`. |
-| GetCandlesTypedAsync(...) | Público | idem | IReadOnlyList<CandleData> | Já expande em objetos amigáveis. |
-| GetAccountsAsync() | Privado | - | ICollection<AccountResponse> | Primeiro passo após autenticar. |
-| GetBalancesAsync(accountId) | Privado | string | ICollection<CryptoBalanceResponse> | Filtra por conta. |
-| GetTradingFeesAsync(accountId, symbol) | Privado | string, string | GetMarketFeesResponse | Monitorar fee maker/taker. |
-| PlaceOrderAsync(symbol, accountId, payload) | Privado | PlaceOrderRequest | PlaceOrderResponse | Preencher tipo, side, qty ou cost. |
-| CancelOrderAsync(accountId, symbol, orderId, async?) | Privado | ids + bool? | CancelOrderResponse | Se async=false aguarda pooling interno. |
-| ListOrdersAsync(symbol, accountId, filtros...) | Privado | strings | ICollection<OrderResponse> | Retorna ordens do par. |
-| ListAllOrdersAsync(accountId, filtros...) | Privado | strings | ListAllOrdersResponse | Todos os pares. |
-| CancelAllOpenOrdersByAccountAsync(accountId, has_executions?, symbol?) | Privado | string + filtros | ICollection<CancelOpenOrdersResponse> | Cuidado: ação massiva. |
-| WithdrawCoinAsync(accountId, symbol, payload) | Privado | WithdrawCoinRequest | Withdraw | Verificar confiabilidade de destino. |
-| ListWithdrawalsAsync(accountId, symbol, page?, page_size?, from?) | Privado | paging ints | ICollection<Withdraw> | Auditar histórico. |
-| GetWithdrawLimitsAsync(accountId, symbols?) | Privado | filtros | Response (dinâmico) | Interpretar como mapa símbolo→quantidade. |
+### AOT Considerations for Agents
+- JSON Source Generation reduces reflection, but generated REST client still emits some dynamic patterns; prefer using provided DTOs only.
+- If trimming, keep reference to `MercadoBitcoinJsonSerializerContext` alive (static field or direct usage) so linker does not remove metadata.
 
----
-## 5. Notas Sobre Parâmetros Sensíveis
-- `symbol` deve seguir formato `BASE-QUOTE` (maiúsculo). Há normalização, mas IA deve tentar enviar já normalizado.
-- `resolution` (documentado): `1m, 15m, 1h, 3h, 1d, 1w, 1M`. O cliente aceita adicionais (`5m, 30m, 4h, 6h, 12h`), porém podem gerar 400. IA: preferir apenas resoluções documentadas a menos que haja confirmação posterior.
-- `PlaceOrderRequest`: ou definir `Qty` OU `Cost` (no caso de market buy). Não enviar ambos conflitantes.
-- `WithdrawCoinRequest`: Para fiat usar `Account_ref`; para cripto usar `Address`, `Tx_fee`, possivelmente `Network`.
-
----
-## 6. Fluxos Recomendados (Playbooks para IA)
-### 6.1. Consulta de Preço Agregada
-1. Chamar `GetSymbolsAsync()` e armazenar conjunto.
-2. Verificar se `BTC-BRL` ∈ símbolos.
-3. Chamar `GetTickersAsync("BTC-BRL")`.
-4. (Opcional) Chamar `GetOrderBookAsync("BTC-BRL", limit:"50")` para spread.
-5. Consolidar: último preço, melhor bid/ask, volume 24h.
-
-### 6.2. Preparar Ordem de Compra Limitada
-1. Autenticar.
-2. `GetAccountsAsync()` → selecionar `accountId`.
-3. Validar saldo com `GetBalancesAsync(accountId)` (checar BRL disponível para `qty * preco`).
-4. Construir `PlaceOrderRequest { Side="buy", Type="limit", Qty="0.001", LimitPrice=VALOR }`.
-5. `PlaceOrderAsync("BTC-BRL", accountId, request)`.
-6. Persistir `OrderId` para monitorar execução com `GetOrderAsync`.
-
-### 6.3. Cancelar Todas as Ordens Abertas de um Par
-1. Autenticar.
-2. `ListOrdersAsync(symbol, accountId, status:"working")`.
-3. Se count > threshold (ex. > 0), avaliar se ação massiva é desejada.
-4. Chamar `CancelAllOpenOrdersByAccountAsync(accountId, symbol:symbol)`.
-5. Confirmar cancelamento individual com `ListOrdersAsync` novamente.
-
-### 6.4. Rolling Update de Candles Tipados
-1. Definir timeframe (ex. `1h`).
-2. Capturar `to = now` e `countback = 24`.
-3. Chamar `GetRecentCandlesTypedAsync(symbol, timeframe, countback)`.
-4. Calcular métricas (EMA, volatilidade) externamente.
-5. Agendar próxima chamada a cada fechamento de candle (alinhar a boundary temporal).
-
-### 6.5. Auditoria de Saques Recentes
-1. Autenticar.
-2. `ListWithdrawalsAsync(accountId, "BTC", page:1, page_size:50)`.
-3. Filtrar status ≠ concluído para acompanhamento.
-4. Se necessário, `GetWithdrawalAsync(accountId, "BTC", withdrawId)` para detalhar.
-
----
-## 7. Estratégia de Tratamento de Erros (IA)
-| Código (ErrorResponse.Code) | Ação Recomendada |
-|-----------------------------|------------------|
-| INVALID_SYMBOL | Validar via `GetSymbolsAsync` e sugerir correção. |
-| INSUFFICIENT_BALANCE | Reduzir `Qty` ou abortar. |
-| ORDER_NOT_FOUND | Revalidar `orderId` (pode já ter sido finalizada). |
-| REQUEST_RATE_EXCEEDED / 429 | Aguardar (ex. 1–2s) + aplicar backoff exponencial. |
-| API_UNAVAILABLE | Retry com atraso crescente (ex. 5s, 15s, 30s). |
-| INVALID_PARAMETER | Log + revisar coerência de campos. |
-| FORBIDDEN / INVALID_ACCESS | Reautenticar (token expirado ou incorreto). |
-| MISSING_FIELD | Revisar payload; IA deve validar obrigatórios antes. |
-
-Padrão de captura sugerido:
+### Safe Trading Guidelines (Expanded)
+| Check | Rationale | Enforcement |
+|-------|-----------|------------|
+| Spread Threshold | Avoid unfavorable fills | Abort or adjust limit price |
+| Recent Volatility | Detect spike regime | Shrink order size |
+| Balance Sufficiency | Prevent rejects | Pre-calc cost vs available |
+| Retry Bound | Avoid cascaded duplication | Ensure idempotent `ExternalId` where applicable |
+| Circuit State | System instability | Pause non-essential trading when open |
+### Telemetry-Driven Dynamic Config Pseudocode
 ```csharp
-try {
-    // chamada
-} catch (MercadoBitcoinApiException ex) {
-    switch (ex.ErrorResponse?.Code) {
-        case "REQUEST_RATE_EXCEEDED": await Task.Delay(1200); /* retry */ break;
-        case "INVALID_SYMBOL": /* refresh symbols e corrigir */ break;
-        default: /* log analítico e possivelmente escalar */ break;
-    }
+void Adapt(RetryPolicyConfig cfg, MetricsSnapshot snap)
+{
+  if (snap.RetryRatePerSecond > snap.BaselineRetryRate * 1.3)
+    cfg.BackoffMultiplier = Math.Min(3.0, cfg.BackoffMultiplier + 0.2);
+  if (snap.CircuitOpensLast5Min > 2)
+    cfg.CircuitBreakerDurationSeconds = Math.Min(120, cfg.CircuitBreakerDurationSeconds + 15);
+  if (snap.P95LatencyMs > snap.BaselineP95LatencyMs * 1.5)
+    cfg.MaxRetryAttempts = Math.Max(2, cfg.MaxRetryAttempts - 1);
 }
 ```
 
 ---
-## 8. Prompt Patterns (Templates prontos para outra IA)
-### 8.1. Obter Candles Seguros
-"Dado o cliente `MercadoBitcoinClient`, recupere os últimos N candles válidos no timeframe X apenas usando resoluções documentadas. Se a resolução pedida não for suportada, faça fallback para '1h'. Em caso de erro de símbolo, recarregue símbolos e tente uma vez mais. Retorne JSON com campos: symbol, resolution, candles[]."
-
-### 8.2. Criar Ordem com Verificação de Saldo
-"Autentique se necessário; valide saldo fiat suficiente para (qty * limitPrice). Se insuficiente, reduza qty até caber. Publique ordem limit e retorne objeto: {requestedQty, placedQty, orderId, limitPrice}."
-
-### 8.3. Cancelar Ordem com Retentativa
-"Dado accountId e orderId, tente cancelar. Se status final não for 'cancelled' e não houver erro terminal, repetir consulta a cada 500ms até 5 vezes antes de devolver status final." 
-
-### 8.4. Detecção de Divergência de Spread
-"Calcule spread percentual = (bestAsk - bestBid) / bestBid. Se > limiar, produza recomendação 'ALTA_VOLATILIDADE'. Caso contrário 'NORMAL'."
-
-### 8.5. Auditoria de Execução Parcial
-"Recupere ordem. Se status = working e FilledQty > 0, compute fillRatio = FilledQty / Qty. Classifique: <25% 'LOW_FILL', 25–75% 'MID_FILL', >75% 'NEAR_COMPLETE'."
-
-### 8.6. Monitoramento de Latência (Telemetria)
-"Para cada chamada de dados públicos, logue timestamp início/fim, calcule ms. Se média de 5 últimas > baseline*1.5, emitir alerta 'LATENCY_DEGRADATION'."
-
-### 8.7. Refresh Inteligente de Símbolos
-"Atualize cache local de símbolos apenas se requisição anterior a /symbols tiver > 10 minutos ou se um INVALID_SYMBOL tiver ocorrido."
-
-### 8.8. Fallback de Rate Limit
-"Ao receber REQUEST_RATE_EXCEEDED ou status 429, aplicar delay exponencial base 750ms * 2^(tentativa-1) com jitter ±100ms. Interromper após 5 tentativas e devolver 'RATE_LIMIT_ABORT'."
-
-### 8.9. Normalização de Entrada de Usuário
-"Converter entradas de símbolo (case-insensitive) para formato padronizado 'BASE-QUOTE'; validar existência e corrigir variantes (ex. 'btcbrl' -> 'BTC-BRL')."
-
-### 8.10. Extração de Métricas de Candle
-"Para candles retornados, compute: avgVolume, highRange = max(High)-min(Low), bodyRatio = |Close-Open| / (High-Low). Enriquecer resposta." 
 
 ---
-## 9. Regras Operacionais para IA
-- Não emitir ordens market sem antes verificar volatilidade (usar spread + último candle). 
-- Limitar simultaneamente a 1 operação de cancelamento em massa cada 60s.
-- Não solicitar candles com `countback > 500` para evitar latência (ajustar chunking se necessário).
-- Para reconciliação de ordens, preferir `ListOrdersAsync` com filtros de janela temporal em vez de varredura completa.
-- Sempre logar (internamente) parâmetros usados em PlaceOrder para auditoria futura.
+## 4. Method Contract Table
+| Method | Scope | Key Inputs | Output | AI Note |
+|--------|-------|-----------|--------|---------|
+| AuthenticateAsync(login, password) | Private | string, string | void | Issues Bearer token. |
+| GetSymbolsAsync(symbols?) | Public | optional CSV or IEnumerable | `ListSymbolInfoResponse` | Cache for validation. |
+| GetTickersAsync(symbols) | Public | CSV or IEnumerable | List<TickerResponse> | **Use IEnumerable overload for batching.** |
+| GetOrderBookAsync(symbol, limit?) | Public | string, string? | OrderBookResponse | Limit ≤ 1000 (string). |
+| GetTradesAsync(symbol, tid?, since?, from?, to?, limit?) | Public | filters | ICollection<TradeResponse> | Combine filters sparingly. |
+| GetCandlesAsync(symbol, resolution, to, from?, countback?) | Public | timing ints | ListCandlesResponse | `countback` overrides `from`. |
+| GetCandlesTypedAsync(...) | Public | same | IReadOnlyList<CandleData> | Normalized typed result. |
+| GetAccountsAsync() | Private | - | ICollection<AccountResponse> | First after auth. |
+| GetBalancesAsync(accountId) | Private | string | ICollection<CryptoBalanceResponse> | Audit funds. |
+| GetTradingFeesAsync(accountId, symbol) | Private | string,string | GetMarketFeesResponse | Maker/Taker fees. |
+| PlaceOrderAsync(symbol, accountId, payload) | Private | PlaceOrderRequest | PlaceOrderResponse | Provide qty OR cost. |
+| CancelOrderAsync(accountId, symbol, orderId, async?) | Private | ids + bool? | CancelOrderResponse | async=false waits internal poll. |
+| ListOrdersAsync(symbol, accountId, filters...) | Private | strings | ICollection<OrderResponse> | Symbol-specific. |
+| ListAllOrdersAsync(accountId, filters...) | Private | strings | ListAllOrdersResponse | All symbols. |
+| CancelAllOpenOrdersByAccountAsync(accountId, hasExec?, symbol?) | Private | string+filters | ICollection<CancelOpenOrdersResponse> | Mass action. |
+| WithdrawCoinAsync(accountId, symbol, payload) | Private | WithdrawCoinRequest | Withdraw | Address vs bank selection. |
+| ListWithdrawalsAsync(accountId, symbol, page?, size?, from?) | Private | paging ints | ICollection<Withdraw> | Historical review. |
+| GetWithdrawLimitsAsync(accountId, symbols?) | Private | filters | Response (dynamic) | Treat as symbol→quantity map. |
 
 ---
-## 10. Considerações Específicas do Cliente
-- O wrapper adiciona resoluções extras — IA deve **opt-in explícito** só após teste de uma requisição de controle (ex: tentar '5m' e aceitar apenas se não houver 400).
-- Método `GetWithdrawLimitsAsync` retorna tipo gerado pobre (`Response`) — sugerido pós-processar JSON cru (se o ajuste ainda não foi implementado) ou tratar propriedades desconhecidas como mapa lógico.
-- `CancelAllOpenOrdersByAccountAsync` envolve risco operacional: IA deve confirmar número de ordens > 0 antes de chamar.
+## 5. Parameter Notes
+- `symbol`: Must be `BASE-QUOTE` uppercase; library attempts normalization but AI should supply normalized value.
+- `resolution` (document spec): `1m, 15m, 1h, 3h, 1d, 1w, 1M`. Library accepts additional values (`5m, 30m, 4h, 6h, 12h`) which may 400—prefer documented first.
+- `PlaceOrderRequest`: Provide `Qty` OR (for market buy) `Cost` (quote currency). Avoid conflicting dual specification.
+- `WithdrawCoinRequest`: For fiat use `Account_ref`; for crypto use `Address`, `Tx_fee`, maybe `Network`.
 
 ---
-## 11. Pseudocódigo Exemplificativo (IA Trading Seguro)
+## 6. Recommended Flows (Playbooks)
+### 6.1 Aggregated Price Snapshot (Batching)
+1. Cache symbols. 2. Validate target symbols. 3. Call `GetTickersAsync(IEnumerable<string>)` with all symbols. 4. Process results in parallel.
+
+### 6.2 Prepare Limit Buy Order
+1. Authenticate. 2. GetAccounts → accountId. 3. Balances → ensure BRL coverage. 4. Build PlaceOrderRequest. 5. PlaceOrderAsync. 6. Persist OrderId.
+
+### 6.3 Mass Cancel for One Symbol
+1. Authenticate. 2. ListOrders (status=working). 3. Confirm >0. 4. CancelAllOpenOrders. 5. Re-list.
+
+### 6.4 Rolling Candle Update (SIMD)
+1. Call `GetRecentCandlesTypedAsync(symbol, timeframe, countback)`.
+2. Use `candles.CalculateAverageClose()` and `candles.CalculateMaxHigh()` for fast analysis.
+
+### 6.5 Withdraw Audit
+List withdrawals, refine by page/time; detail specific with GetWithdrawal.
+
+---
+## 7. Error Handling Strategy (Decision Table)
+| Code | Action |
+|------|--------|
+| INVALID_SYMBOL | Refresh symbols + retry once. |
+| INSUFFICIENT_BALANCE | Reduce qty or abort. |
+| ORDER_NOT_FOUND | Re-check order list (may be completed). |
+| REQUEST_RATE_EXCEEDED / 429 | Backoff (exp + jitter) then retry. |
+| API_UNAVAILABLE | Progressive backoff (5s, 15s, 30s). |
+| INVALID_PARAMETER | Sanitize & correct input. |
+| FORBIDDEN / INVALID_ACCESS | Re-authenticate. |
+| MISSING_FIELD | Rebuild payload with required fields. |
+
+Catch pattern:
 ```csharp
-async Task<string> SafeLimitBuyAsync(MercadoBitcoinClient c, string symbol, decimal desiredQty, decimal limitPrice){
-    var accounts = await c.GetAccountsAsync();
-    var accountId = accounts.First().Id;
-    var balances = await c.GetBalancesAsync(accountId);
-    var fiat = balances.First(b => b.Symbol == "BRL");
-    var costNeeded = desiredQty * limitPrice;
-    var available = decimal.Parse(fiat.Available, CultureInfo.InvariantCulture);
-    if (costNeeded > available){
-        desiredQty = Math.Floor((available / limitPrice) * 100000000m)/100000000m; // ajustar 8 casas
+try { /* call */ }
+catch (MercadoBitcoinApiException ex) {
+  switch (ex.ErrorResponse?.Code) {
+    case "REQUEST_RATE_EXCEEDED": await Task.Delay(1200); /* retry */ break;
+    case "INVALID_SYMBOL": /* refresh symbol set */ break;
+    default: /* structured log */ break;
+  }
+}
+```
+
+---
+## 8. Prompt Templates
+### 8.1 Safe Candles Retrieval
+"Fetch last N candles for symbol S at timeframe T (fallback to 1h if unsupported). Validate symbol first. Return JSON {symbol,resolution,candles[]} with numeric fields."
+
+### 8.2 Balance-Aware Limit Order
+"Authenticate if needed; ensure available BRL >= qty*price else downscale qty. Submit limit buy; respond with {requestedQty, placedQty, orderId}."
+
+### 8.3 Resilient Cancel
+"Attempt cancel; poll order until status terminal or max 5 polls spaced 500ms. Return final status." 
+
+### 8.4 Spread Classification
+"Compute (ask-bid)/bid. If > threshold label 'WIDE_SPREAD', else 'NORMAL'."
+
+### 8.5 Partial Fill Analysis
+"For order retrieve fill ratio=FilledQty/Qty. Classify LOW(<25%), MID(25-75%), HIGH(>75%)."
+
+### 8.6 Latency Monitor
+"Record round-trip times; if moving average of last 5 > baseline*1.5 emit 'LATENCY_DEGRADATION'."
+
+### 8.7 Symbol Cache Refresh
+"Refresh symbols only if last fetch > 10 minutes or INVALID_SYMBOL encountered."
+
+### 8.8 Rate Limit Backoff
+"On 429 apply exponential delay base 750ms *2^(n-1) ±100ms jitter; abort after 5 attempts with 'RATE_LIMIT_ABORT'."
+
+### 8.9 Symbol Normalization
+"Convert free-form symbol (e.g. btcbrl) to BTC-BRL; validate exists before proceeding." 
+
+### 8.10 Candle Metrics
+"Augment candles with avgVolume, volatility range (maxH-minL), body ratio |C-O|/(H-L)."
+
+---
+## 9. Operational Guardrails
+- Do not place market orders without evaluating spread & volatility.
+- Limit mass cancel to once per 60 seconds.
+- Avoid `countback > 500` for candles (chunk if needed).
+- Prefer filtered time windows when scanning historical orders.
+- Always log structured payloads for trading actions.
+
+---
+## 10. Special Client Notes
+- Extra candle resolutions accepted—but treat as experimental: probe once, then cache success flag.
+- `GetWithdrawLimitsAsync` returns weak model (`Response`); parse raw JSON if enhanced method not available.
+- `CancelAllOpenOrdersByAccountAsync` = high-risk: enumerate active first.
+
+---
+## 11. Example Pseudocode (Safe Limit Buy)
+```csharp
+async Task<string> SafeLimitBuyAsync(MercadoBitcoinClient c, string symbol, decimal qty, decimal limitPrice){
+    var acct = (await c.GetAccountsAsync()).First();
+    var bals = await c.GetBalancesAsync(acct.Id);
+    var fiat = bals.First(b => b.Symbol == "BRL");
+    var avail = decimal.Parse(fiat.Available, CultureInfo.InvariantCulture);
+    var needed = qty * limitPrice;
+    if (needed > avail) {
+        qty = Math.Floor((avail / limitPrice) * 100000000m)/100000000m;
     }
-    if (desiredQty <= 0) throw new InvalidOperationException("Saldo insuficiente");
-    var req = new PlaceOrderRequest{ Side="buy", Type="limit", Qty=desiredQty.ToString(CultureInfo.InvariantCulture), LimitPrice=(double)limitPrice };
-    var r = await c.PlaceOrderAsync(symbol, accountId, req);
+    if (qty <= 0) throw new InvalidOperationException("Insufficient balance");
+    var req = new PlaceOrderRequest { Side="buy", Type="limit", Qty=qty.ToString(CultureInfo.InvariantCulture), LimitPrice=(double)limitPrice };
+    var r = await c.PlaceOrderAsync(symbol, acct.Id, req);
     return r.OrderId;
 }
 ```
 
 ---
-## 12. Checklist de Boas Práticas para Agentes
-| Item | Verificar | Status (exemplo) |
-|------|-----------|------------------|
-| Cache de símbolos carregado | >=1 símbolo válido | OK |
-| Autenticação ativa | Token definido antes de privados | OK |
-| Respeito de Rate Limit | <=1 req/s (público) | OK |
-| Validação de parâmetros | symbol/timeframe revisados | OK |
-| Reexecução idempotente | externalId em PlaceOrder (opcional) | PENDENTE |
-| Logs internos | parâmetros críticos registrados | OK |
+## 12. Best Practice Checklist
+| Item | Goal | Example Status |
+|------|------|----------------|
+| Symbol cache loaded | >0 symbols | OK |
+| Auth before private | Token set | OK |
+| Rate pacing | <= guideline | OK |
+| Param validation | symbol/resolution | OK |
+| Idempotency (externalId) | Avoid duplicates | PENDING |
+| Logging | Structured order payload | OK |
 
 ---
-## 13. Glossário Rápido
-- **Symbol**: Par de negociação `BASE-QUOTE` (ex. `BTC-BRL`).
-- **Resolution**: Janela temporal do candle (ex. `1h`).
-- **OrderId**: Identificador único alfanumérico retornado em criação de ordem.
-- **AccountId**: Id da conta obtida em `GetAccountsAsync`.
-- **Working**: Ordem ativa não totalmente executada.
-- **Filled**: Ordem completamente executada.
+## 13. Glossary
+- **Symbol**: Trading pair `BASE-QUOTE`.
+- **Resolution**: Candle timeframe.
+- **OrderId**: Unique alphanumeric order identifier.
+- **AccountId**: Identifier from GetAccounts.
+- **Working**: Order open/partially filled.
+- **Filled**: Fully executed order.
 
 ---
-## 14. Estratégia de Evolução (Sugestões à IA)
-1. Wrapper tipado para limites de saque.
-2. Tuner automático de retry baseado em métricas (closed loop).
-3. Eliminar warnings AOT substituindo chamadas genéricas de serialização.
-4. Estratégia ativa de rate limiting (token bucket configurável).
-5. Batching inteligente para múltiplos símbolos.
-6. Streaming/WebSocket (reduzir polling).
-7. Detecção de anomalia em padrões de outcome/latência.
-8. Escalonamento de tamanho de ordem por volatilidade EMA.
+## 14. Evolution Suggestions
+1. Strongly typed withdraw limits wrapper (Dictionary adapter or generated model).
+2. Automated adaptive retry tuner (close loop using metrics histogram + counters).
+3. Replace dynamic JSON calls in generated client with explicit SourceGen context to eliminate AOT warnings.
+4. Pluggable rate-limit strategy (token bucket / leaky bucket abstraction) on top of current passive respect.
+5. Smart batching for high-frequency symbol queries.
+6. Optional WebSocket streaming (future) to reduce polling load.
+7. ML-based anomaly detection on latency & outcome classification trends.
+8. Exponential moving average volatility gating for order size scaling.
 
 ---
-## 15. Saída de Referência (Formato JSON Recomendado)
-Exemplo consolidado de resposta que a IA pode produzir ao compor múltiplos dados:
+## 15. Reference Output Schema
 ```json
 {
   "symbol": "BTC-BRL",
   "ticker": { "last": 275000.15, "high": 278500.00, "low": 270100.00, "volume": 84.12 },
   "orderbook": { "bestBid": 274900.00, "bestAsk": 275100.00, "spreadPct": 0.00073 },
-  "recentCandles": {
-    "resolution": "1h",
-    "count": 24,
-    "avgVolume": 1.72,
-    "volatility": 0.0312
-  },
+  "recentCandles": { "resolution": "1h", "count": 24, "avgVolume": 1.72, "volatility": 0.0312 },
   "riskFlags": ["SPREAD_NORMAL"],
   "timestampUtc": "2025-08-27T12:34:56Z"
 }
 ```
 
 ---
-## 16. Conclusão
-Este guia provê contexto operacional, padrões de prompts, contratos de métodos e heurísticas de segurança para que uma outra IA possa integrar-se eficientemente ao ecossistema MercadoBitcoin via esta biblioteca. Expandir ou adaptar conforme surgirem novos endpoints ou mudanças de política.
+## 16. Conclusion
+This guide supplies operational context, prompt patterns, method contracts, and safety heuristics enabling an autonomous AI agent to leverage the MercadoBitcoin API via this library. Extend or refine as new endpoints or policies emerge.
 
-> FIM – Documento autocontido (v2.1.0: resiliência + observabilidade + heurísticas adaptativas) para consumo automatizado por agentes inteligentes.
+> END – Self-contained document for intelligent agent consumption (v3.0.0 augmented: HTTP/2 + Batching + SIMD).
