@@ -110,46 +110,6 @@ namespace MercadoBitcoin.Client.Examples
         }
 
         /// <summary>
-        /// Example 4: Configuration via appsettings.json
-        /// </summary>
-        public static async Task ConfigurationExample()
-        {
-            var configuration = new ConfigurationBuilder()
-                .AddJsonFile("appsettings.json", optional: true)
-                .Build();
-
-            // Read HTTP configuration from appsettings
-            var httpSection = configuration.GetSection("MercadoBitcoin:Http");
-            var httpConfig = new HttpConfiguration();
-            httpSection.Bind(httpConfig);
-
-            // Read retry configuration from appsettings
-            var retrySection = configuration.GetSection("MercadoBitcoin:Retry");
-            var retryConfig = new RetryPolicyConfig();
-            retrySection.Bind(retryConfig);
-
-            var client = MercadoBitcoinClientExtensions.CreateWithHttp2(retryConfig, httpConfig);
-
-            try
-            {
-                var tickers = await client.GetTickersAsync("BRLBTC");
-                var ticker = System.Linq.Enumerable.FirstOrDefault(tickers);
-                if (ticker != null)
-                {
-                    Console.WriteLine($"Day Summary - Volume: {ticker.Vol}");
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error: {ex.Message}");
-            }
-            finally
-            {
-                client.Dispose();
-            }
-        }
-
-        /// <summary>
         /// Example 5: Dependency Injection with HTTP/2
         /// </summary>
         public static void DependencyInjectionExample(IServiceCollection services, IConfiguration configuration)
