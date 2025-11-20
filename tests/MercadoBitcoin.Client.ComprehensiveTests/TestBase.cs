@@ -17,6 +17,9 @@ public abstract class TestBase : IDisposable
 
     protected TestBase()
     {
+        // NOTE: This configuration loading is specific to the TEST PROJECT.
+        // The library itself does not depend on appsettings.json or .env files.
+        // We use this here to load credentials for integration tests.
         Configuration = new ConfigurationBuilder()
             .SetBasePath(Directory.GetCurrentDirectory())
             .AddJsonFile("appsettings.json", optional: false)

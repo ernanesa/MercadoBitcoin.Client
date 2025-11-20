@@ -87,36 +87,58 @@ var balances = await client.GetBalancesAsync(accounts.First().Id);
 
 ## 🔧 Configuration
 
-### Basic Configuration (Modern Methods Only)
+### Basic Configuration (Code-Only)
+
+The library is designed to be configured entirely via code, without relying on external configuration files like `appsettings.json` or `.env`.
 
 ```csharp
 using MercadoBitcoin.Client.Extensions;
+using MercadoBitcoin.Client.Http;
 
-// Recommended configuration (retry policies + HTTP/2)
+// 1. Simplest usage (default settings)
 var client = MercadoBitcoinClientExtensions.CreateWithRetryPolicies();
 
-// Optimized configuration for trading
-var client = MercadoBitcoinClientExtensions.CreateForTrading();
-
-// Configuration via DI (recommended for ASP.NET Core)
-services.AddMercadoBitcoinClient(options =>
+// 2. Custom Retry Policy (Code-based)
+var retryConfig = new RetryPolicyConfig
 {
-    options.BaseUrl = "https://api.mercadobitcoin.net/api/v4";
-    // ...other options
-});
+    MaxRetryAttempts = 3,
+    BaseDelaySeconds = 1.0,
+    RetryOnRateLimit = true
+};
+var clientWithRetry = MercadoBitcoinClientExtensions.CreateWithRetryPolicies(retryConfig);
+
+// 3. Advanced Configuration (HTTP settings + Retry)
+var httpConfig = new HttpConfiguration 
+{ 
+    TimeoutSeconds = 60,
+    HttpVersion = new Version(2, 0) 
+};
+var advancedClient = MercadoBitcoinClientExtensions.CreateWithHttp2(retryConfig, httpConfig);
 ```
 
-### Configuration with Dependency Injection (Recommended)
+### Configuration with Dependency Injection (ASP.NET Core)
+
+For applications using Dependency Injection, you can configure the client in your `Program.cs` or `Startup.cs`. You can pass values directly or load them from any source you prefer.
 
 ```csharp
-// Program.cs or Startup.cs
+// Program.cs
 services.AddMercadoBitcoinClient(options =>
 {
+    // You can hardcode values, read from environment variables, 
+    // or use any other configuration source.
     options.BaseUrl = "https://api.mercadobitcoin.net/api/v4";
-    options.HttpVersion = HttpVersion.Version30; // HTTP/3 by default
-    options.EnableRetryPolicy = true;
+    options.HttpConfiguration.TimeoutSeconds = 45;
+    
+    // Example: Reading from Environment Variables manually
+    var envTimeout = Environment.GetEnvironmentVariable("MB_TIMEOUT");
+    if (!string.IsNullOrEmpty(envTimeout) && int.TryParse(envTimeout, out int timeout))
+    {
+        options.HttpConfiguration.TimeoutSeconds = timeout;
+    }
 });
 ```
+
+> **Note:** The library does **not** automatically read `appsettings.json` or `.env` files. If you wish to use them, you must read the values in your application and pass them to the `AddMercadoBitcoinClient` method or the client factory methods.
 
 ## 🔄 Retry Policies and HTTP/3
 
