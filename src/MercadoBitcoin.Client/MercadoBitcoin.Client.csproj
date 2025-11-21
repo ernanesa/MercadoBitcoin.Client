@@ -9,7 +9,7 @@
     
     <!-- NuGet Package Metadata -->
     <PackageId>MercadoBitcoin.Client</PackageId>
-    <Version>4.0.0</Version>
+    <Version>4.0.1</Version>
     <Authors>Ernane Sa</Authors>
     <Company>Open Source</Company>
     <Description>A complete .NET 10 client library for MercadoBitcoin API v4 with native HTTP/2 and optional HTTP/3 support, using System.Text.Json with source generators. Access to all public &amp; private endpoints: trading, wallet, account. Features: resilient retry (Polly v8), cancellation tokens everywhere, custom User-Agent, native metrics (System.Diagnostics.Metrics counters + latency histogram), comprehensive test suite, clean architecture, AOT compatibility, Source Generators.</Description>
