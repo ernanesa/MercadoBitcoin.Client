@@ -1,68 +1,73 @@
 # Changelog
 
+## [4.0.1] - 2025-11-21
+### Patch
+- Version bump for release.
+- No code changes since 4.0.0-alpha.1; update only for stable release.
+
 ## [4.0.0-alpha.1] - 2025-11-20
 ### Breaking Changes
-- Migração da biblioteca para **.NET 10** e **C# 14** (`net10.0`).
-- Remoção dos construtores públicos de conveniência de `MercadoBitcoinClient`; uso recomendado agora apenas via métodos de extensão (`MercadoBitcoinClientExtensions.CreateWithRetryPolicies`, `CreateWithHttp2`, `CreateForTrading`, etc.) ou DI (`services.AddMercadoBitcoinClient(...)`).
-- Padronização da configuração via `MercadoBitcoinClientOptions`, `HttpConfiguration` e `RetryPolicyConfig`.
-- HTTP/2 passa a ser o protocolo padrão nas factories; HTTP/3 é suportado via configuração explícita.
+- Migration of the library to **.NET 10** and **C# 14** (`net10.0`).
+- Removal of public convenience constructors from `MercadoBitcoinClient`; recommended usage now only via extension methods (`MercadoBitcoinClientExtensions.CreateWithRetryPolicies`, `CreateWithHttp2`, `CreateForTrading`, etc.) or DI (`services.AddMercadoBitcoinClient(...)`).
+- Standardization of configuration via `MercadoBitcoinClientOptions`, `HttpConfiguration`, and `RetryPolicyConfig`.
+- HTTP/2 is now the default protocol in factories; HTTP/3 is supported via explicit configuration.
 
-### Melhorias
-- Suporte opcional a **HTTP/3 (QUIC)** via `HttpConfiguration.CreateHttp3Default()`.
-- Novas configurações de retry baseadas em Polly v8 (`CreateTradingRetryConfig`, `CreatePublicDataRetryConfig`).
-- Extensões SIMD (`CandleMathExtensions`) para análise de candles de alta performance.
-- Novas métricas via `System.Diagnostics.Metrics` e `RateLimiterMetrics` para acompanhar retries e rate limiting.
-- Documentação expandida: `README.md` revisado, `docs/USER_GUIDE.md` e `docs/AI_USAGE_GUIDE.md`.
+### Improvements
+- Optional support for **HTTP/3 (QUIC)** via `HttpConfiguration.CreateHttp3Default()`.
+- New retry configurations based on Polly v8 (`CreateTradingRetryConfig`, `CreatePublicDataRetryConfig`).
+- SIMD extensions (`CandleMathExtensions`) for high-performance candle analysis.
+- New metrics via `System.Diagnostics.Metrics` and `RateLimiterMetrics` to monitor retries and rate limiting.
+- Expanded documentation: revised `README.md`, `docs/USER_GUIDE.md`, and `docs/AI_USAGE_GUIDE.md`.
 
-### Notas
-- Versão marcada como **alpha**, indicada para testes e validação antes da 4.0.0 estável.
-- Consulte `RELEASE_NOTES_v4.0.0-alpha.1.md` para detalhes de migração.
+### Notes
+- Version marked as **alpha**, intended for testing and validation before the stable 4.0.0 release.
+- See `RELEASE_NOTES_v4.0.0-alpha.1.md` for migration details.
 
 ## [3.0.0] - 2025-08-27
 ### Breaking Changes
-- Todos os construtores públicos de `MercadoBitcoinClient` foram removidos. Instanciação agora apenas via métodos de extensão (`MercadoBitcoinClientExtensions.CreateWithRetryPolicies`, etc.) ou DI (`services.AddMercadoBitcoinClient`).
-- Métodos legados como `CreateLegacyHttpClient` e construtores diretos foram removidos.
-- Alinhamento total com práticas modernas do .NET 9, AOT e DI.
-- Documentação e exemplos atualizados para refletir a nova abordagem.
-- Preparação para futuras extensões e suporte a novas features da API Mercado Bitcoin.
+- All public constructors of `MercadoBitcoinClient` have been removed. Instantiation is now only via extension methods (`MercadoBitcoinClientExtensions.CreateWithRetryPolicies`, etc.) or DI (`services.AddMercadoBitcoinClient`).
+- Legacy methods such as `CreateLegacyHttpClient` and direct constructors have been removed.
+- Full alignment with modern .NET 9, AOT, and DI practices.
+- Documentation and examples updated to reflect the new approach.
+- Preparation for future extensions and support for new features of the Mercado Bitcoin API.
 
-### Melhorias
-- Documentação revisada e exemplos atualizados.
-- Release notes detalhados em RELEASE_NOTES_v3.0.0.md.
+### Improvements
+- Revised documentation and updated examples.
+- Detailed release notes in RELEASE_NOTES_v3.0.0.md.
 
 ## [2.1.1] - 2025-06-10
 ### Patch
-- Compatibilidade AOT aprimorada (TypeInfoResolver, DTOs extras no JsonSerializerContext).
-- Correção de erros de deserialização JSON em builds AOT.
-- Ajuste de threshold de memória nos testes.
-- Todos os 64 testes passando.
+- Improved AOT compatibility (TypeInfoResolver, extra DTOs in JsonSerializerContext).
+- Fixed JSON deserialization errors in AOT builds.
+- Memory threshold adjustment in tests.
+- All 64 tests passing.
 
 ## [2.1.0] - 2025-05-01
 ### Minor
-- Jitter configurável em backoff.
-- Circuit breaker manual.
-- CancellationToken em 100% dos endpoints.
-- User-Agent customizável via env.
-- Métricas nativas: counters e histogram de latência.
-- Test suite expandida: 64 cenários.
+- Configurable jitter in backoff.
+- Manual circuit breaker.
+- CancellationToken in 100% of endpoints.
+- Customizable User-Agent via environment variable.
+- Native metrics: counters and latency histogram.
+- Expanded test suite: 64 scenarios.
 
 ## [2.0.1] - 2024-12-15
 ### Patch
-- Correção de tratamento de erros no AuthHttpClient.
-- Cobertura de testes ampliada.
-- Otimização de uso de memória.
+- Fixed error handling in AuthHttpClient.
+- Expanded test coverage.
+- Memory usage optimization.
 
 ## [2.0.0] - 2024-11-01
 ### Major (BREAKING CHANGES)
-- Migração completa para System.Text.Json com Source Generators.
-- Suporte total a AOT.
-- .NET 9 e C# 13.
-- HTTP/2 nativo.
-- Testes abrangentes.
-- Remoção de dependência do Newtonsoft.Json.
-- Mudança de snake_case nos nomes JSON.
-- Melhorias de performance e arquitetura.
+- Complete migration to System.Text.Json with Source Generators.
+- Full AOT support.
+- .NET 9 and C# 13.
+- Native HTTP/2.
+- Comprehensive tests.
+- Removal of Newtonsoft.Json dependency.
+- Change to snake_case in JSON names.
+- Performance and architecture improvements.
 
 ---
 
-Consulte também `RELEASE_NOTES_v3.0.0.md` e `RELEASE_NOTES_v4.0.0-alpha.1.md` para detalhes de migração e exemplos.
+See also `RELEASE_NOTES_v3.0.0.md` and `RELEASE_NOTES_v4.0.0-alpha.1.md` for migration details and examples.
