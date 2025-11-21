@@ -18,33 +18,37 @@ namespace MercadoBitcoin.Client
         private static readonly JsonSerializerOptions JsonSerializerOptions = MercadoBitcoinJsonSerializerContext.Default.Options;
 
         public AuthHttpClient(RetryPolicyConfig? retryConfig = null, HttpConfiguration? httpConfig = null)
-            : this(new Internal.Security.TokenStore(), retryConfig, httpConfig)
+            : this(new Internal.Security.TokenStore(), retryConfig, httpConfig, true)
         {
         }
 
-        internal AuthHttpClient(Internal.Security.TokenStore? tokenStore, RetryPolicyConfig? retryConfig = null, HttpConfiguration? httpConfig = null)
+        internal AuthHttpClient(Internal.Security.TokenStore? tokenStore, RetryPolicyConfig? retryConfig, HttpConfiguration? httpConfig, bool useEmbeddedRetry)
         {
             _tokenStore = tokenStore ?? new Internal.Security.TokenStore();
             _httpConfig = httpConfig ?? HttpConfiguration.CreateHttp2Default();
             _traceHttp = Environment.GetEnvironmentVariable("MB_TRACE_HTTP") == "1";
 
-            // Create the retry handler with HTTP configuration
-            var retryHandler = new RetryHandler(retryConfig, _httpConfig);
-            InnerHandler = retryHandler;
+            if (useEmbeddedRetry)
+            {
+                // Create the retry handler with HTTP configuration
+                var retryHandler = new RetryHandler(retryConfig, _httpConfig);
+                InnerHandler = retryHandler;
+            }
         }
 
         /// <summary>
         /// Constructor for use with IHttpClientFactory (DI)
         /// </summary>
+        [Microsoft.Extensions.DependencyInjection.ActivatorUtilitiesConstructor]
         public AuthHttpClient(Internal.Security.TokenStore tokenStore, Microsoft.Extensions.Options.IOptions<Configuration.MercadoBitcoinClientOptions> options)
-            : this(tokenStore, options?.Value?.RetryPolicyConfig, options?.Value?.HttpConfiguration)
+            : this(tokenStore, options?.Value?.RetryPolicyConfig, options?.Value?.HttpConfiguration, false) // Disable embedded retry for DI
         {
         }
 
         /// <summary>
         /// Default constructor
         /// </summary>
-        public AuthHttpClient() : this(null, null, null)
+        public AuthHttpClient() : this(null, null, null, true)
         {
         }
 

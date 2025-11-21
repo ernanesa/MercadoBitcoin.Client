@@ -36,20 +36,11 @@ namespace MercadoBitcoin.Client.Http
         {
             var response = await base.SendAsync(request, cancellationToken);
 
-            if (response.StatusCode == HttpStatusCode.Unauthorized && !string.IsNullOrEmpty(_options.ApiLogin) && !string.IsNullOrEmpty(_options.ApiPassword))
+            if ((response.StatusCode == HttpStatusCode.Unauthorized || response.StatusCode == HttpStatusCode.Forbidden) && !string.IsNullOrEmpty(_options.ApiLogin) && !string.IsNullOrEmpty(_options.ApiPassword))
             {
-                // Release the response content to avoid memory leaks
-                response.Dispose();
-
                 await _semaphore.WaitAsync(cancellationToken);
                 try
                 {
-                    // Check if token was refreshed by another thread while we were waiting
-                    // We can't easily check the token value itself without tracking it, 
-                    // but we can try the request again if we want, or just proceed to refresh.
-                    // Optimization: We could track the last refresh time or token hash.
-                    // For now, we'll just refresh. The API rate limit for auth is generous enough for occasional race conditions.
-
                     // Perform Authentication
                     var authRequest = new AuthorizeRequest
                     {
@@ -57,9 +48,11 @@ namespace MercadoBitcoin.Client.Http
                         Password = _options.ApiPassword
                     };
 
-                    var authUri = new Uri(new Uri(_options.BaseUrl), "authorize");
+                    var baseUrl = _options.BaseUrl;
+                    if (!baseUrl.EndsWith("/")) baseUrl += "/";
+                    var authUri = new Uri(new Uri(baseUrl), "authorize");
                     
-                    // Use a separate client to avoid infinite loops and handler interference
+                    // Use a separate client to avoid infinite loops and handler recursion
                     using var authResponse = await _internalClient.PostAsJsonAsync(authUri, authRequest, MercadoBitcoinJsonSerializerContext.Default.AuthorizeRequest, cancellationToken);
 
                     if (authResponse.IsSuccessStatusCode)
@@ -69,16 +62,22 @@ namespace MercadoBitcoin.Client.Http
                         {
                             _tokenStore.AccessToken = authResult.Access_token;
 
+                            // Release the failed response content before retrying
+                            response.Dispose();
+
                             // Retry the original request
-                            // We need to clone the request because it might have been already sent
                             var newRequest = await CloneHttpRequestMessageAsync(request);
+                            
+                            // Manually add the token because we are downstream of AuthHttpClient
+                            newRequest.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _tokenStore.AccessToken);
+
                             return await base.SendAsync(newRequest, cancellationToken);
                         }
                     }
                 }
-                catch (Exception)
+                catch
                 {
-                    // Log or ignore, return original 401 if auth fails
+                    // Ignore authentication exceptions to allow the original 401/403 to propagate if retry fails
                 }
                 finally
                 {

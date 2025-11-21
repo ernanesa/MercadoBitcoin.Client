@@ -117,12 +117,22 @@ namespace MercadoBitcoin.Client
             // Manual composition of the HTTP pipeline
             var tokenStore = new Internal.Security.TokenStore();
             
-            // 1. AuthHttpClient (Inner-most delegating handler, adds token)
-            _authHandler = new AuthHttpClient(tokenStore, clientOptions.RetryPolicyConfig, clientOptions.HttpConfiguration);
+            // 1. AuthenticationHandler (Inner logic handler, handles 401)
+            var authenticationHandler = new AuthenticationHandler(tokenStore, clientOptions);
+
+            // 2. AuthHttpClient (Outer handler, adds token, contains RetryHandler)
+            // Pass true to enable embedded retry logic for standalone client
+            _authHandler = new AuthHttpClient(tokenStore, clientOptions.RetryPolicyConfig, clientOptions.HttpConfiguration, true);
             
-            // 2. AuthenticationHandler (Outer delegating handler, handles 401)
-            var authHandler = new AuthenticationHandler(tokenStore, clientOptions);
-            authHandler.InnerHandler = _authHandler;
+            // Wire: AuthHttpClient -> RetryHandler -> AuthenticationHandler
+            if (_authHandler.InnerHandler is DelegatingHandler retryHandler)
+            {
+                retryHandler.InnerHandler = authenticationHandler;
+            }
+            else
+            {
+                _authHandler.InnerHandler = authenticationHandler;
+            }
 
             // 3. SocketsHttpHandler (Bottom)
             var socketsHandler = new SocketsHttpHandler
@@ -132,18 +142,10 @@ namespace MercadoBitcoin.Client
                 MaxConnectionsPerServer = 20
             };
             
-            // Wire up the chain: AuthHandler -> AuthHttpClient -> RetryHandler -> SocketsHttpHandler
-            // Note: AuthHttpClient wraps RetryHandler internally.
-            if (_authHandler.InnerHandler is DelegatingHandler retryHandler)
-            {
-                retryHandler.InnerHandler = socketsHandler;
-            }
-            else
-            {
-                _authHandler.InnerHandler = socketsHandler;
-            }
+            // Wire: AuthenticationHandler -> SocketsHttpHandler
+            authenticationHandler.InnerHandler = socketsHandler;
 
-            _httpClient = new HttpClient(authHandler)
+            _httpClient = new HttpClient(_authHandler)
             {
                 BaseAddress = new Uri(clientOptions.BaseUrl),
                 Timeout = TimeSpan.FromSeconds(clientOptions.TimeoutSeconds)

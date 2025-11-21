@@ -57,13 +57,25 @@ namespace Microsoft.Extensions.DependencyInjection
             // For simplicity in v4.0, we use Singleton as the client is typically singleton.
             services.TryAddSingleton<TokenStore>();
 
+            // Register Options as Singleton for injection into Client constructor
+            services.TryAddSingleton(sp => sp.GetRequiredService<IOptions<MercadoBitcoinClientOptions>>().Value);
+            
+            // Register dependencies for RetryHandler
+            services.TryAddSingleton<RetryPolicyConfig>(sp => sp.GetRequiredService<IOptions<MercadoBitcoinClientOptions>>().Value.RetryPolicyConfig ?? new RetryPolicyConfig());
+            services.TryAddSingleton<HttpConfiguration>(sp => sp.GetRequiredService<IOptions<MercadoBitcoinClientOptions>>().Value.HttpConfiguration ?? HttpConfiguration.CreateHttp2Default());
+
             // Register Handlers
             services.TryAddTransient<AuthenticationHandler>();
+            // Explicitly register RetryHandler with factory to avoid constructor ambiguity
+            services.TryAddTransient<RetryHandler>(sp => new RetryHandler(
+                sp.GetRequiredService<IOptions<MercadoBitcoinClientOptions>>()
+            ));
             
-            // AuthHttpClient needs to be Transient as it's a DelegatingHandler in the pipeline?
-            // Yes, HttpClientFactory creates new instances of handlers for each client (or reuses them if they are not stateful, but DelegatingHandler is stateful regarding InnerHandler).
-            // However, AuthHttpClient holds the TokenStore reference.
-            services.TryAddTransient<AuthHttpClient>();
+            // AuthHttpClient needs to be Transient. Explicitly use the constructor we want.
+            services.TryAddTransient<AuthHttpClient>(sp => new AuthHttpClient(
+                sp.GetRequiredService<TokenStore>(),
+                sp.GetRequiredService<IOptions<MercadoBitcoinClientOptions>>()
+            ));
 
             // Register the Client
             var builder = services.AddHttpClient<MercadoBitcoinClient>((sp, client) =>
@@ -83,9 +95,11 @@ namespace Microsoft.Extensions.DependencyInjection
                 };
             })
             // Add Handlers in order: Outer -> Inner
-            // Request: AuthHandler -> AuthHttpClient -> Network
-            .AddHttpMessageHandler<AuthenticationHandler>()
-            .AddHttpMessageHandler<AuthHttpClient>();
+            // Request flow: AuthHttpClient -> RetryHandler -> AuthenticationHandler -> Network
+            // Response flow: Network -> AuthenticationHandler (handles 401) -> RetryHandler -> AuthHttpClient (adds token) -> Client
+            .AddHttpMessageHandler<AuthHttpClient>()
+            .AddHttpMessageHandler<RetryHandler>()
+            .AddHttpMessageHandler<AuthenticationHandler>();
 
             return builder;
         }
