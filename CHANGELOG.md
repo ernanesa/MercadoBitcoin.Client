@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.0.2] - 2025-11-21
+### Patch
+- Full English translation of all documentation and comments.
+- Fixed minor warnings and unused fields.
+- Clean packaging (removed missing RELEASE_NOTES files).
+- Ready for stable production use.
+
 ## [4.0.1] - 2025-11-21
 ### Patch
 - Version bump for release.
