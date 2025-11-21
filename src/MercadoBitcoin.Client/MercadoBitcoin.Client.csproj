@@ -74,8 +74,6 @@
   <ItemGroup>
     <None Include="..\..\README.md" Pack="true" PackagePath="\" />
     <None Include="..\..\CHANGELOG.md" Pack="true" PackagePath="\" />
-    <None Include="..\..\RELEASE_NOTES_v3.0.0.md" Pack="true" PackagePath="\" />
-    <None Include="..\..\RELEASE_NOTES_v4.0.0-alpha.1.md" Pack="true" PackagePath="\" />
     <None Include="..\..\docs\USER_GUIDE.md" Pack="true" PackagePath="docs\" />
     <None Include="..\..\docs\AI_USAGE_GUIDE.md" Pack="true" PackagePath="docs\" />
   </ItemGroup>
