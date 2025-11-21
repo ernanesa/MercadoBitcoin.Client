@@ -1,5 +1,23 @@
 # Changelog
 
+## [4.0.0-alpha.1] - 2025-11-20
+### Breaking Changes
+- Migração da biblioteca para **.NET 10** e **C# 14** (`net10.0`).
+- Remoção dos construtores públicos de conveniência de `MercadoBitcoinClient`; uso recomendado agora apenas via métodos de extensão (`MercadoBitcoinClientExtensions.CreateWithRetryPolicies`, `CreateWithHttp2`, `CreateForTrading`, etc.) ou DI (`services.AddMercadoBitcoinClient(...)`).
+- Padronização da configuração via `MercadoBitcoinClientOptions`, `HttpConfiguration` e `RetryPolicyConfig`.
+- HTTP/2 passa a ser o protocolo padrão nas factories; HTTP/3 é suportado via configuração explícita.
+
+### Melhorias
+- Suporte opcional a **HTTP/3 (QUIC)** via `HttpConfiguration.CreateHttp3Default()`.
+- Novas configurações de retry baseadas em Polly v8 (`CreateTradingRetryConfig`, `CreatePublicDataRetryConfig`).
+- Extensões SIMD (`CandleMathExtensions`) para análise de candles de alta performance.
+- Novas métricas via `System.Diagnostics.Metrics` e `RateLimiterMetrics` para acompanhar retries e rate limiting.
+- Documentação expandida: `README.md` revisado, `docs/USER_GUIDE.md` e `docs/AI_USAGE_GUIDE.md`.
+
+### Notas
+- Versão marcada como **alpha**, indicada para testes e validação antes da 4.0.0 estável.
+- Consulte `RELEASE_NOTES_v4.0.0-alpha.1.md` para detalhes de migração.
+
 ## [3.0.0] - 2025-08-27
 ### Breaking Changes
 - Todos os construtores públicos de `MercadoBitcoinClient` foram removidos. Instanciação agora apenas via métodos de extensão (`MercadoBitcoinClientExtensions.CreateWithRetryPolicies`, etc.) ou DI (`services.AddMercadoBitcoinClient`).
@@ -47,4 +65,4 @@
 
 ---
 
-Consulte também RELEASE_NOTES_v3.0.0.md para detalhes de migração e exemplos.
+Consulte também `RELEASE_NOTES_v3.0.0.md` e `RELEASE_NOTES_v4.0.0-alpha.1.md` para detalhes de migração e exemplos.

@@ -12,8 +12,8 @@
     <Version>4.0.0-alpha.1</Version>
     <Authors>Ernane Sa</Authors>
     <Company>Open Source</Company>
-    <Description>A complete .NET 10 client library for MercadoBitcoin API v4 with native HTTP/3 support and System.Text.Json. Access to all public &amp; private endpoints: trading, wallet, account. Features: HTTP/3 by default, resilient retry (Polly v8), cancellation tokens everywhere, custom User-Agent, native metrics (System.Diagnostics.Metrics counters + latency histogram), comprehensive test suite, clean architecture, AOT compatibility, Source Generators.</Description>
-    <PackageTags>mercadobitcoin;bitcoin;cryptocurrency;trading;api;client;dotnet;http3;performance;polly;systemtextjson;aot;sourcegenerators;net10;csharp14</PackageTags>
+    <Description>A complete .NET 10 client library for MercadoBitcoin API v4 with native HTTP/2 and optional HTTP/3 support, using System.Text.Json with source generators. Access to all public &amp; private endpoints: trading, wallet, account. Features: resilient retry (Polly v8), cancellation tokens everywhere, custom User-Agent, native metrics (System.Diagnostics.Metrics counters + latency histogram), comprehensive test suite, clean architecture, AOT compatibility, Source Generators.</Description>
+    <PackageTags>mercadobitcoin;bitcoin;cryptocurrency;trading;api;client;dotnet;http2;http3;performance;polly;systemtextjson;aot;sourcegenerators;net10;csharp14</PackageTags>
     <PackageProjectUrl>https://github.com/ernanesa/MercadoBitcoin.Client</PackageProjectUrl>
     <RepositoryUrl>https://github.com/ernanesa/MercadoBitcoin.Client</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
@@ -74,6 +74,10 @@
   <ItemGroup>
     <None Include="..\..\README.md" Pack="true" PackagePath="\" />
     <None Include="..\..\CHANGELOG.md" Pack="true" PackagePath="\" />
+    <None Include="..\..\RELEASE_NOTES_v3.0.0.md" Pack="true" PackagePath="\" />
+    <None Include="..\..\RELEASE_NOTES_v4.0.0-alpha.1.md" Pack="true" PackagePath="\" />
+    <None Include="..\..\docs\USER_GUIDE.md" Pack="true" PackagePath="docs\" />
+    <None Include="..\..\docs\AI_USAGE_GUIDE.md" Pack="true" PackagePath="docs\" />
   </ItemGroup>
 
   <Target Name="NSwag" BeforeTargets="PrepareForBuild">
