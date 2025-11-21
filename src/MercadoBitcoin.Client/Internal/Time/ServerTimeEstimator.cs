@@ -15,7 +15,7 @@ namespace MercadoBitcoin.Client.Internal.Time
         private readonly HttpClient _httpClient;
         private readonly ILogger? _logger;
         private TimeSpan _timeOffset = TimeSpan.Zero;
-        private bool _isSynchronized = false;
+
         private readonly object _lock = new();
 
         public ServerTimeEstimator(HttpClient httpClient, ILogger? logger)
@@ -52,7 +52,7 @@ namespace MercadoBitcoin.Client.Internal.Time
                 // O header 'Date' é padrão HTTP e reflete o relógio do servidor
                 var sw = Stopwatch.StartNew();
                 var request = new HttpRequestMessage(HttpMethod.Head, "https://api.mercadobitcoin.net/api/v4/symbols");
-                
+
                 // Evita cache para garantir timestamp real
                 request.Headers.CacheControl = new System.Net.Http.Headers.CacheControlHeaderValue { NoCache = true };
 
@@ -63,7 +63,7 @@ namespace MercadoBitcoin.Client.Internal.Time
                 {
                     var serverDate = response.Headers.Date.Value;
                     var localNow = DateTimeOffset.UtcNow;
-                    
+
                     // O 'Date' HTTP tem precisão de segundos. Adicionamos metade do RTT (Round Trip Time) para ajustar a latência.
                     var latencyAdjustment = TimeSpan.FromMilliseconds(sw.ElapsedMilliseconds / 2);
                     var estimatedServerTime = serverDate.Add(latencyAdjustment);
@@ -71,16 +71,15 @@ namespace MercadoBitcoin.Client.Internal.Time
                     lock (_lock)
                     {
                         _timeOffset = estimatedServerTime - localNow;
-                        _isSynchronized = true;
                     }
 
-                    _logger?.LogInformation("Relógio sincronizado. Offset: {Offset}ms. Latência: {Latency}ms", 
+                    _logger?.LogInformation("Relógio sincronizado. Offset: {Offset}ms. Latência: {Latency}ms",
                         _timeOffset.TotalMilliseconds, sw.ElapsedMilliseconds);
                 }
             }
             catch (Exception ex)
             {
-                _logger?.LogWarning(ex, "Falha ao sincronizar tempo com o servidor. Usando horário local.");
+                _logger?.LogWarning(ex, "Failed to synchronize time with server. Using local time.");
                 // Em caso de falha, mantemos o offset anterior ou Zero (fallback seguro)
             }
         }
