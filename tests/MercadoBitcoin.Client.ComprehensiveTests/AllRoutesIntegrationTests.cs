@@ -1,0 +1,301 @@
+using Xunit;
+using Xunit.Abstractions;
+using MercadoBitcoin.Client;
+using MercadoBitcoin.Client.Configuration;
+using MercadoBitcoin.Client.Extensions;
+using MercadoBitcoin.Client.Generated;
+using System;
+using System.Threading.Tasks;
+using System.Linq;
+using FluentAssertions;
+
+namespace MercadoBitcoin.Client.ComprehensiveTests
+{
+    /// <summary>
+    /// Comprehensive integration tests for ALL Mercado Bitcoin API routes.
+    /// Tests use REAL API credentials and make actual HTTP calls.
+    /// </summary>
+    [Collection("Sequential")]
+    public class AllRoutesIntegrationTests : IDisposable
+    {
+        private readonly ITestOutputHelper _output;
+        private readonly MercadoBitcoinClient _client;
+        private readonly string _testSymbol = "BTC-BRL";
+        private string? _testAccountId;
+
+        public AllRoutesIntegrationTests(ITestOutputHelper output)
+        {
+            _output = output;
+
+            // Use provided credentials with fallback
+            var apiId = Environment.GetEnvironmentVariable("MB_API_ID");
+            var apiSecret = Environment.GetEnvironmentVariable("MB_API_SECRET");
+
+            var options = new MercadoBitcoinClientOptions
+            {
+                ApiLogin = apiId,
+                ApiPassword = apiSecret,
+                BaseUrl = "https://api.mercadobitcoin.net",
+                TimeoutSeconds = 30,
+                RetryPolicyConfig = MercadoBitcoinClientExtensions.CreateTradingRetryConfig()
+            };
+
+            _client = new MercadoBitcoinClient(options);
+            
+            // Synchronize time immediately
+            _client.SynchronizeTimeAsync().GetAwaiter().GetResult();
+            _output.WriteLine($"✅ [INIT] Time synchronized. Timestamp: {_client.GetCurrentTimestamp()}");
+
+            // Get account ID for private tests
+            try
+            {
+                var accounts = _client.AccountsAsync().GetAwaiter().GetResult();
+                _testAccountId = accounts.FirstOrDefault()?.Id;
+                _output.WriteLine($"✅ [INIT] Account ID: {_testAccountId}");
+            }
+            catch (Exception ex)
+            {
+                _output.WriteLine($"⚠️ [INIT] Could not fetch account: {ex.Message}");
+            }
+        }
+
+        #region Beast Mode Features
+
+        [Fact]
+        public async Task BeastMode_TimeSynchronization_ShouldCalculateOffset()
+        {
+            // Act
+            await _client.SynchronizeTimeAsync();
+            var correctedTime = _client.GetCurrentTimestamp();
+            var localTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+
+            // Assert
+            var diff = Math.Abs(correctedTime - localTime);
+            _output.WriteLine($"✅ Time offset: {diff} seconds");
+            diff.Should().BeLessThan(10, "Time synchronization should be accurate");
+        }
+
+        [Fact]
+        public async Task BeastMode_Http2Multiplexing_ShouldExecuteSimultaneously()
+        {
+            // Arrange
+            var symbols = new[] { "BTC-BRL", "ETH-BRL", "USDT-BRL" };
+            var tasks = symbols.Select(s => _client.OrderbookAsync(s, null)).ToList();
+
+            // Act
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            var results = await _client.ExecuteBatchAsync(tasks);
+            sw.Stop();
+
+            // Assert
+            results.Should().HaveCount(3);
+            results.All(r => r != null).Should().BeTrue();
+            _output.WriteLine($"✅ HTTP/2 Batch execution: {sw.ElapsedMilliseconds}ms for {results.Count()} requests");
+        }
+
+        #endregion
+
+        #region Public Endpoints (Open Client - No Auth)
+
+        [Fact]
+        public async Task Public_Orderbook_ShouldReturnBidsAndAsks()
+        {
+            // Act
+            var orderBook = await _client.OrderbookAsync(_testSymbol, null);
+
+            // Assert
+            orderBook.Should().NotBeNull();
+            orderBook.Bids.Should().NotBeEmpty();
+            orderBook.Asks.Should().NotBeEmpty();
+            
+            var bestBid = orderBook.Bids.First();
+            var bestAsk = orderBook.Asks.First();
+            
+            _output.WriteLine($"✅ OrderBook: Best Bid={bestBid.FirstOrDefault()}, Best Ask={bestAsk.FirstOrDefault()}");
+        }
+
+        [Fact]
+        public async Task Public_Trades_ShouldReturnRecentTrades()
+        {
+            // Act
+            var trades = await _client.TradesAsync(_testSymbol, null, null, null, null);
+
+            // Assert
+            trades.Should().NotBeNull();
+            trades.Should().NotBeEmpty();
+            
+            var firstTrade = trades.First();
+            _output.WriteLine($"✅ Latest trade: Price={firstTrade.Price}, Amount={firstTrade.Amount}, Side={firstTrade.Side}");
+        }
+
+        [Fact]
+        public async Task Public_Fees_ShouldReturnWithdrawFees()
+        {
+            // Act
+            var fees = await _client.FeesAsync("BTC", null);
+
+            // Assert
+            fees.Should().NotBeNull();
+            fees.Asset.Should().Be("BTC");
+            fees.Withdraw_fee.Should().NotBeNullOrEmpty();
+            
+            _output.WriteLine($"✅ BTC Withdraw Fee: {fees.Withdraw_fee}");
+        }
+
+        #endregion
+
+        #region Private Endpoints (Authenticated)
+
+        [Fact]
+        public async Task Private_Accounts_ShouldReturnUserAccounts()
+        {
+            // Act
+            var accounts = await _client.AccountsAsync();
+
+            // Assert
+            accounts.Should().NotBeNull();
+            accounts.Should().NotBeEmpty();
+            
+            var firstAccount = accounts.First();
+            firstAccount.Id.Should().NotBeNullOrWhiteSpace();
+            
+            _output.WriteLine($"✅ Found {accounts.Count()} account(s). First ID: {firstAccount.Id}");
+        }
+
+        [Fact]
+        public async Task Private_Balances_ShouldReturnAccountBalances()
+        {
+            // Arrange
+            _testAccountId.Should().NotBeNullOrWhiteSpace("Account ID must be available");
+
+            // Act
+            var balances = await _client.BalancesAsync(_testAccountId);
+
+            // Assert
+            balances.Should().NotBeNull();
+            _output.WriteLine($"✅ Found {balances.Count()} balance entries");
+            
+            foreach (var balance in balances.Take(5))
+            {
+                _output.WriteLine($"   {balance.Symbol}: Available={balance.Available}, Total={balance.Total}");
+            }
+        }
+
+        [Fact]
+        public async Task Private_Orders_ShouldReturnUserOrders()
+        {
+            // Arrange
+            _testAccountId.Should().NotBeNullOrWhiteSpace("Account ID must be available");
+
+            // Act
+            var orders = await _client.OrdersAsync(
+                accountId: _testAccountId,
+                symbol: _testSymbol,
+                status: null,
+                id_from: null,
+                id_to: null,
+                limit: null,
+                start_date: null,
+                end_date: null,
+                has_fills: null);
+
+            // Assert
+            orders.Should().NotBeNull();
+            _output.WriteLine($"✅ Found {orders.Count()} orders for {_testSymbol}");
+        }
+
+        [Fact]
+        public async Task Private_OrderById_ShouldReturnOrderDetails()
+        {
+            // Arrange
+            _testAccountId.Should().NotBeNullOrWhiteSpace("Account ID must be available");
+            
+            // Get any existing order first
+            var orders = await _client.OrdersAsync(_testAccountId, null, null, null, null, 1, null, null, null);
+            
+            if (!orders.Any())
+            {
+                _output.WriteLine("⚠️ No orders found to test OrderById. Skipping.");
+                return;
+            }
+
+            var testOrderId = orders.First().Id;
+
+            // Act
+            var order = await _client.Order2Async(_testAccountId, testOrderId.ToString());
+
+            // Assert
+            order.Should().NotBeNull();
+            order.Id.Should().Be(testOrderId);
+            _output.WriteLine($"✅ Order Details: ID={order.Id}, Symbol={order.Symbol}, Status={order.Status}");
+        }
+
+        [Fact]
+        public async Task Private_Fills_ShouldReturnTradeExecutions()
+        {
+            // Arrange
+            _testAccountId.Should().NotBeNullOrWhiteSpace("Account ID must be available");
+
+            // Act
+            var fills = await _client.FillsAsync(
+                accountId: _testAccountId,
+                symbol: _testSymbol,
+                id_from: null,
+                id_to: null,
+                limit: 10,
+                start_date: null,
+                end_date: null);
+
+            // Assert
+            fills.Should().NotBeNull();
+            _output.WriteLine($"✅ Found {fills.Count()} fills (executed trades) for {_testSymbol}");
+        }
+
+        [Fact]
+        public async Task Private_Deposits_ShouldReturnDepositHistory()
+        {
+            // Arrange
+            _testAccountId.Should().NotBeNullOrWhiteSpace("Account ID must be available");
+
+            // Act
+            var deposits = await _client.DepositsAsync(
+                accountId: _testAccountId,
+                id_from: null,
+                id_to: null,
+                limit: 10,
+                start_date: null,
+                end_date: null);
+
+            // Assert
+            deposits.Should().NotBeNull();
+            _output.WriteLine($"✅ Found {deposits.Count()} deposit(s)");
+        }
+
+        [Fact]
+        public async Task Private_Withdrawals_ShouldReturnWithdrawalHistory()
+        {
+            // Arrange
+            _testAccountId.Should().NotBeNullOrWhiteSpace("Account ID must be available");
+
+            // Act
+            var withdrawals = await _client.WithdrawalsAsync(
+                accountId: _testAccountId,
+                id_from: null,
+                id_to: null,
+                limit: 10,
+                start_date: null,
+                end_date: null);
+
+            // Assert
+            withdrawals.Should().NotBeNull();
+            _output.WriteLine($"✅ Found {withdrawals.Count()} withdrawal(s)");
+        }
+
+        #endregion
+
+        public void Dispose()
+        {
+            _client?.Dispose();
+        }
+    }
+}

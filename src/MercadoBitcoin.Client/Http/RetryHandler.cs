@@ -23,10 +23,10 @@ namespace MercadoBitcoin.Client.Http
         private readonly HttpConfiguration _httpConfig;
 
         // Metrics
-        private static readonly Meter _meter = new("MercadoBitcoin.Client", "4.0.0");
-        private static readonly Counter<long> _retryCounter = _meter.CreateCounter<long>("mb_client_http_retries", "retries", "Number of retry attempts");
+        private static readonly Meter _meter = new(Diagnostics.MercadoBitcoinDiagnostics.MeterName, Diagnostics.MercadoBitcoinDiagnostics.MeterVersion);
+        private static readonly Counter<long> _retryCounter = _meter.CreateCounter<long>(Diagnostics.MercadoBitcoinDiagnostics.RetryCounter, "retries", "Number of retry attempts");
         private static readonly Histogram<double> _requestDurationHistogram = _meter.CreateHistogram<double>(
-            "mb_client_http_request_duration",
+            Diagnostics.MercadoBitcoinDiagnostics.RequestDurationHistogram,
             unit: "ms",
             description: "Duration (in ms) of HTTP requests including retries");
 

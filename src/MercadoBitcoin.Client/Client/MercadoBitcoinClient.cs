@@ -1,180 +1,204 @@
 using MercadoBitcoin.Client.Generated;
 using MercadoBitcoin.Client.Http;
 using MercadoBitcoin.Client.Internal.RateLimiting;
+using MercadoBitcoin.Client.Internal.Time;
 using MercadoBitcoin.Client.Errors;
+using MercadoBitcoin.Client.Configuration;
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Net.Http;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.RateLimiting;
 using Microsoft.Extensions.ObjectPool;
+using System.Text.Json;
 
 namespace MercadoBitcoin.Client
-
 {
-    using System.Text.Json;
-
     public partial class MercadoBitcoinClient : IDisposable
     {
         private static readonly ObjectPool<ErrorResponse> _errorResponsePool = new DefaultObjectPoolProvider().Create<ErrorResponse>();
         private readonly TokenBucketRateLimiter _rateLimiter;
-        private readonly MercadoBitcoin.Client.Generated.Client _generatedClient;
-        private readonly AuthHttpClient _authHandler;
-        private readonly MercadoBitcoin.Client.Generated.OpenClient _openClient;
+        private readonly AuthHttpClient? _authHandler;
         private readonly HttpClient _httpClient;
+        private readonly MercadoBitcoin.Client.Generated.Client _generatedClient;
+        private readonly MercadoBitcoin.Client.Generated.OpenClient _openClient;
+        private readonly ServerTimeEstimator _timeEstimator;
 
         /// <summary>
         /// Constructor for use with DI, allowing real injection of configuration options.
         /// </summary>
-        /// <param name="httpClient">HttpClient managed by IHttpClientFactory</param>
-        /// <param name="authHandler">Authentication handler</param>
-        /// <param name="options">Injected configuration options</param>
-        public MercadoBitcoinClient(HttpClient httpClient, AuthHttpClient authHandler, Microsoft.Extensions.Options.IOptions<Configuration.MercadoBitcoinClientOptions> options)
+        /// <param name="httpClient">HttpClient configured by IHttpClientFactory</param>
+        /// <param name="options">Configuration options</param>
+        public MercadoBitcoinClient(HttpClient httpClient, MercadoBitcoinClientOptions options)
         {
             _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
-            _authHandler = authHandler ?? throw new ArgumentNullException(nameof(authHandler));
-            var clientOptions = options?.Value ?? new Configuration.MercadoBitcoinClientOptions();
-            _rateLimiter = RateLimiterFactory.CreateTokenBucket(clientOptions.RequestsPerSecond);
-            _generatedClient = new MercadoBitcoin.Client.Generated.Client(_httpClient) { BaseUrl = clientOptions.BaseUrl };
-            _openClient = new MercadoBitcoin.Client.Generated.OpenClient(_httpClient) { BaseUrl = clientOptions.BaseUrl };
-            if (!_httpClient.DefaultRequestHeaders.UserAgent.TryParseAdd(Environment.GetEnvironmentVariable("MB_USER_AGENT")
-                ?? $"MercadoBitcoin.Client/{GetLibraryVersion()} (.NET {Environment.Version.Major}.{Environment.Version.Minor})"))
+            var clientOptions = options ?? new MercadoBitcoinClientOptions();
+
+            if (string.IsNullOrWhiteSpace(clientOptions.BaseUrl))
             {
-                // silent fallback
+                throw new ArgumentException("BaseUrl cannot be null or empty.", nameof(clientOptions.BaseUrl));
             }
-        }
 
-        /// <summary>
-        /// Maps ApiException from the generated client to rich MercadoBitcoin exceptions.
-        /// </summary>
-        private static Exception MapApiException(Exception exception)
-        {
-            if (exception is MercadoBitcoinApiException)
-                return exception;
-            if (exception is Generated.ApiException apiException)
+            _rateLimiter = new TokenBucketRateLimiter(new TokenBucketRateLimiterOptions
             {
-                string errorCode = string.Empty;
-                string errorMessage = apiException.Message;
+                TokenLimit = clientOptions.RateLimiterConfig.PermitLimit,
+                QueueLimit = clientOptions.RateLimiterConfig.QueueLimit,
+                ReplenishmentPeriod = clientOptions.RateLimiterConfig.ReplenishmentPeriod,
+                TokensPerPeriod = clientOptions.RateLimiterConfig.TokensPerPeriod,
+                AutoReplenishment = clientOptions.RateLimiterConfig.AutoReplenishment
+            });
 
-                if (!string.IsNullOrWhiteSpace(apiException.Response))
-                {
-                    // Use pooled object for parsing to avoid allocation
-                    var errorResponse = _errorResponsePool.Get();
-                    try
-                    {
-                        errorResponse.Reset();
-                        // Manual parsing or using JsonSerializer on the pooled object?
-                        // JsonSerializer.Deserialize creates a new object.
-                        // We use JsonDocument to parse without allocating the target object, then populate.
-                        using (var doc = JsonDocument.Parse(apiException.Response))
-                        {
-                            if (doc.RootElement.TryGetProperty("code", out var codeProp))
-                                errorResponse.Code = codeProp.GetString() ?? string.Empty;
-                            if (doc.RootElement.TryGetProperty("message", out var msgProp))
-                                errorResponse.Message = msgProp.GetString() ?? string.Empty;
-                        }
+            // Initialize ServerTimeEstimator
+            _timeEstimator = new ServerTimeEstimator(_httpClient, null);
 
-                        errorCode = errorResponse.Code;
-                        if (!string.IsNullOrWhiteSpace(errorResponse.Message))
-                        {
-                            errorMessage = errorResponse.Message;
-                        }
-                    }
-                    catch
-                    {
-                        // Fallback: use default values
-                        errorCode = $"HTTP_{apiException.StatusCode}";
-                    }
-                    finally
-                    {
-                        _errorResponsePool.Return(errorResponse);
-                    }
-                }
-                else
-                {
-                    errorCode = $"HTTP_{apiException.StatusCode}";
-                }
-
-                var code = apiException.StatusCode;
-                if (code == 401 || code == 403)
-                    return new MercadoBitcoinUnauthorizedException(apiException.Message, errorCode, errorMessage);
-                if (code == 400)
-                    return new MercadoBitcoinValidationException(apiException.Message, errorCode, errorMessage);
-                if (code == 429)
-                    return new MercadoBitcoinRateLimitException(apiException.Message, errorCode, errorMessage);
-
-                return new MercadoBitcoinApiException(apiException.Message, errorCode, errorMessage);
-            }
-            return exception;
-        }
-
-        /// <summary>
-        /// Constructor for use with IHttpClientFactory (DI)
-        /// </summary>
-        /// <param name="httpClient">HttpClient managed by IHttpClientFactory</param>
-        /// <param name="authHandler">Authentication handler</param>
-        public MercadoBitcoinClient(HttpClient httpClient, AuthHttpClient authHandler)
-        {
-            _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
-            _authHandler = authHandler ?? throw new ArgumentNullException(nameof(authHandler));
-
-
-            // Always uses default options (can be expanded for DI in the future)
-            var options = new Configuration.MercadoBitcoinClientOptions();
-            _rateLimiter = RateLimiterFactory.CreateTokenBucket(options.RequestsPerSecond);
-            _generatedClient = new MercadoBitcoin.Client.Generated.Client(_httpClient) { BaseUrl = options.BaseUrl };
-            _openClient = new MercadoBitcoin.Client.Generated.OpenClient(_httpClient) { BaseUrl = options.BaseUrl };
-
-            if (!_httpClient.DefaultRequestHeaders.UserAgent.TryParseAdd(Environment.GetEnvironmentVariable("MB_USER_AGENT")
-                ?? $"MercadoBitcoin.Client/{GetLibraryVersion()} (.NET {Environment.Version.Major}.{Environment.Version.Minor})"))
+            // Configure JSON Serialization (Default)
+            var jsonOptions = new JsonSerializerOptions
             {
-                // silent fallback
-            }
-        }
-
-        // ...existing code...
-
-        public async Task AuthenticateAsync(string login, string password)
-        {
-
-
-            var authorizeRequest = new AuthorizeRequest
-            {
-                Login = login,
-                Password = password
+                PropertyNameCaseInsensitive = true,
+                DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull,
+                PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
+                WriteIndented = false
             };
 
-            try
+            // Add FastDecimalConverter
+            jsonOptions.Converters.Add(new Internal.Converters.FastDecimalConverter());
+
+            // Combine internal context with user provided context if any
+            var internalContext = MercadoBitcoinJsonSerializerContext.Default;
+            if (clientOptions.JsonSerializerContext != null)
             {
-                using var lease = await _rateLimiter.AcquireAsync(1);
-                if (!lease.IsAcquired)
-                {
-                    throw new MercadoBitcoinRateLimitException("Rate limit exceeded (client-side).", new ErrorResponse { Code = "CLIENT_RATE_LIMIT", Message = "Rate limit exceeded (client-side)." });
-                }
-                var response = await _generatedClient.AuthorizeAsync(authorizeRequest);
-                _authHandler.SetAccessToken(response.Access_token);
-                // basic format validation
-                if (string.IsNullOrWhiteSpace(response.Access_token))
-                {
-                    throw new MercadoBitcoinApiException("Empty access token returned by API", new ErrorResponse { Code = "AUTHORIZE|EMPTY_TOKEN", Message = "Empty access token" });
-                }
+                jsonOptions.TypeInfoResolver = System.Text.Json.Serialization.Metadata.JsonTypeInfoResolver.Combine(
+                    clientOptions.JsonSerializerContext,
+                    internalContext
+                );
             }
-            catch (Exception exception)
+            else
             {
-                throw MapApiException(exception);
+                jsonOptions.TypeInfoResolver = internalContext;
             }
+
+            // Apply custom configuration
+            clientOptions.ConfigureJsonOptions?.Invoke(jsonOptions);
+
+            _generatedClient = new MercadoBitcoin.Client.Generated.Client(_httpClient) { BaseUrl = clientOptions.BaseUrl };
+            _generatedClient.SetSerializerOptions(jsonOptions);
+
+            _openClient = new MercadoBitcoin.Client.Generated.OpenClient(_httpClient) { BaseUrl = clientOptions.BaseUrl };
+            _openClient.SetSerializerOptions(jsonOptions);
         }
 
-        // We will expose the public and private methods here
+        /// <summary>
+        /// Manual constructor for standalone usage (without DI).
+        /// </summary>
+        /// <param name="clientOptions">Configuration options</param>
+        public MercadoBitcoinClient(MercadoBitcoinClientOptions clientOptions)
+        {
+            if (clientOptions == null)
+            {
+                throw new ArgumentNullException(nameof(clientOptions));
+            }
+
+            if (string.IsNullOrWhiteSpace(clientOptions.BaseUrl))
+            {
+                throw new ArgumentException("BaseUrl cannot be null or empty.", nameof(clientOptions.BaseUrl));
+            }
+
+            _rateLimiter = new TokenBucketRateLimiter(new TokenBucketRateLimiterOptions
+            {
+                TokenLimit = clientOptions.RateLimiterConfig.PermitLimit,
+                QueueLimit = clientOptions.RateLimiterConfig.QueueLimit,
+                ReplenishmentPeriod = clientOptions.RateLimiterConfig.ReplenishmentPeriod,
+                TokensPerPeriod = clientOptions.RateLimiterConfig.TokensPerPeriod,
+                AutoReplenishment = clientOptions.RateLimiterConfig.AutoReplenishment
+            });
+
+            // Manual composition of the HTTP pipeline
+            var tokenStore = new Internal.Security.TokenStore();
+            
+            // 1. AuthHttpClient (Inner-most delegating handler, adds token)
+            _authHandler = new AuthHttpClient(tokenStore, clientOptions.RetryPolicyConfig, clientOptions.HttpConfiguration);
+            
+            // 2. AuthenticationHandler (Outer delegating handler, handles 401)
+            var authHandler = new AuthenticationHandler(tokenStore, clientOptions);
+            authHandler.InnerHandler = _authHandler;
+
+            // 3. SocketsHttpHandler (Bottom)
+            var socketsHandler = new SocketsHttpHandler
+            {
+                PooledConnectionLifetime = TimeSpan.FromMinutes(2),
+                PooledConnectionIdleTimeout = TimeSpan.FromMinutes(1),
+                MaxConnectionsPerServer = 20
+            };
+            
+            // Wire up the chain: AuthHandler -> AuthHttpClient -> RetryHandler -> SocketsHttpHandler
+            // Note: AuthHttpClient wraps RetryHandler internally.
+            if (_authHandler.InnerHandler is DelegatingHandler retryHandler)
+            {
+                retryHandler.InnerHandler = socketsHandler;
+            }
+            else
+            {
+                _authHandler.InnerHandler = socketsHandler;
+            }
+
+            _httpClient = new HttpClient(authHandler)
+            {
+                BaseAddress = new Uri(clientOptions.BaseUrl),
+                Timeout = TimeSpan.FromSeconds(clientOptions.TimeoutSeconds)
+            };
+
+            // Initialize ServerTimeEstimator
+            _timeEstimator = new ServerTimeEstimator(_httpClient, null);
+
+            // Configure JSON Serialization (Default)
+            var jsonOptions = new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true,
+                DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull,
+                PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
+                WriteIndented = false
+            };
+
+            // Add FastDecimalConverter
+            jsonOptions.Converters.Add(new Internal.Converters.FastDecimalConverter());
+
+            // Combine internal context with user provided context if any
+            var internalContext = MercadoBitcoinJsonSerializerContext.Default;
+            if (clientOptions.JsonSerializerContext != null)
+            {
+                jsonOptions.TypeInfoResolver = System.Text.Json.Serialization.Metadata.JsonTypeInfoResolver.Combine(
+                    clientOptions.JsonSerializerContext,
+                    internalContext
+                );
+            }
+            else
+            {
+                jsonOptions.TypeInfoResolver = internalContext;
+            }
+
+            // Apply custom configuration
+            clientOptions.ConfigureJsonOptions?.Invoke(jsonOptions);
+
+            _generatedClient = new MercadoBitcoin.Client.Generated.Client(_httpClient) { BaseUrl = clientOptions.BaseUrl };
+            _generatedClient.SetSerializerOptions(jsonOptions);
+
+            _openClient = new MercadoBitcoin.Client.Generated.OpenClient(_httpClient) { BaseUrl = clientOptions.BaseUrl };
+            _openClient.SetSerializerOptions(jsonOptions);
+        }
 
         public void Dispose()
         {
             GC.SuppressFinalize(this);
+            _httpClient?.Dispose();
+            _rateLimiter?.Dispose();
         }
 
         /// <summary>
         /// Returns the current access token (for diagnostics / debug only).
         /// </summary>
-        public string? GetAccessToken() => _authHandler.GetAccessToken();
+        public string? GetAccessToken() => _authHandler?.GetAccessToken();
 
         private static string GetLibraryVersion()
         {
@@ -187,5 +211,45 @@ namespace MercadoBitcoin.Client
                 return "unknown";
             }
         }
+
+        private Exception MapApiException(Exception ex)
+        {
+            if (ex is ApiException apiEx)
+            {
+                return new MercadoBitcoinException(apiEx.Message, apiEx.StatusCode, apiEx.Response, apiEx.Headers, apiEx);
+            }
+            return new MercadoBitcoinException(ex.Message, 0, null, null, ex);
+        }
+
+        /// <summary>
+        /// Força uma sincronização de relógio com o servidor do MB.
+        /// Recomendado chamar na inicialização da aplicação.
+        /// </summary>
+        public Task SynchronizeTimeAsync(CancellationToken ct = default) => _timeEstimator.SynchronizeAsync(ct);
+
+        /// <summary>
+        /// [BEAST MODE] Executa múltiplas tarefas em paralelo (HTTP/2 Multiplexing).
+        /// Dispara todas as requisições simultaneamente sem aguardar sequencialmente.
+        /// </summary>
+        /// <typeparam name="T">Tipo do resultado esperado</typeparam>
+        /// <param name="tasks">Coleção de tarefas a executar</param>
+        /// <returns>Resultados na ordem de conclusão (ou aguarda todas)</returns>
+        public async Task<IEnumerable<T>> ExecuteBatchAsync<T>(IEnumerable<Task<T>> tasks)
+        {
+            // Materializa a lista para disparar as tasks imediatamente (Hot Tasks)
+            var taskList = tasks.ToList();
+                        // Aguarda todas completarem (Sucesso ou Falha)
+            // Em HTTP/2, isso envia múltiplos frames na mesma conexão TCP
+            await Task.WhenAll(taskList);
+
+            // Retorna os resultados das que tiveram sucesso (ou lança a primeira exceção se preferir fail-fast)
+            // Aqui optamos por retornar tudo, assumindo que o caller tratará exceções individuais se necessário
+            return taskList.Select(t => t.Result);
+        }
+
+        /// <summary>
+        /// Método auxiliar para obter o timestamp corrigido para assinaturas (uso interno/avançado).
+        /// </summary>
+        public long GetCurrentTimestamp() => _timeEstimator.GetCorrectedUnixTimeSeconds();
     }
 }

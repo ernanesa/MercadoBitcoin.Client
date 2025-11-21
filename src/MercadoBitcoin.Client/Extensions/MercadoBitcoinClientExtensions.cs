@@ -3,9 +3,6 @@ using MercadoBitcoin.Client.Configuration;
 using MercadoBitcoin.Client.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
-using Polly;
-using Polly.Extensions.Http;
-using System.Net.Http;
 
 namespace MercadoBitcoin.Client.Extensions
 {
@@ -22,21 +19,12 @@ namespace MercadoBitcoin.Client.Extensions
         public static MercadoBitcoinClient CreateWithRetryPolicies(
             RetryPolicyConfig? retryConfig = null)
         {
-            // Use default configuration if not provided
-            retryConfig ??= new RetryPolicyConfig();
-            var httpConfig = HttpConfiguration.CreateHttp2Default();
-
-            // Create a single AuthHttpClient (DelegatingHandler) and build HttpClient with it
-            var authHandler = new AuthHttpClient(retryConfig, httpConfig);
-            var httpClient = new HttpClient(authHandler, disposeHandler: false)
+            var options = new MercadoBitcoinClientOptions
             {
-                BaseAddress = new Uri("https://api.mercadobitcoin.net/api/v4"),
-                Timeout = TimeSpan.FromSeconds(httpConfig.TimeoutSeconds),
-                DefaultRequestVersion = httpConfig.HttpVersion,
-                DefaultVersionPolicy = httpConfig.VersionPolicy
+                RetryPolicyConfig = retryConfig ?? new RetryPolicyConfig(),
+                HttpConfiguration = HttpConfiguration.CreateHttp2Default()
             };
-
-            return new MercadoBitcoinClient(httpClient, authHandler);
+            return new MercadoBitcoinClient(options);
         }
 
         /// <summary>
@@ -67,30 +55,21 @@ namespace MercadoBitcoin.Client.Extensions
             RetryPolicyConfig? retryConfig = null,
             HttpConfiguration? httpConfig = null)
         {
-            // Use default configuration optimized for HTTP/2
-            retryConfig ??= new RetryPolicyConfig
+            var options = new MercadoBitcoinClientOptions
             {
-                MaxRetryAttempts = 3,
-                BaseDelaySeconds = 0.5, // HTTP/2 allows faster retry
-                BackoffMultiplier = 1.5,
-                MaxDelaySeconds = 15.0,
-                RetryOnTimeout = true,
-                RetryOnRateLimit = true,
-                RetryOnServerErrors = true
+                RetryPolicyConfig = retryConfig ?? new RetryPolicyConfig
+                {
+                    MaxRetryAttempts = 3,
+                    BaseDelaySeconds = 0.5,
+                    BackoffMultiplier = 1.5,
+                    MaxDelaySeconds = 15.0,
+                    RetryOnTimeout = true,
+                    RetryOnRateLimit = true,
+                    RetryOnServerErrors = true
+                },
+                HttpConfiguration = httpConfig ?? HttpConfiguration.CreateHttp2Default()
             };
-
-            httpConfig ??= HttpConfiguration.CreateHttp2Default();
-
-            // Create single handler + shared HttpClient
-            var authHandler = new AuthHttpClient(retryConfig, httpConfig);
-            var httpClient = new HttpClient(authHandler, disposeHandler: false)
-            {
-                BaseAddress = new Uri("https://api.mercadobitcoin.net/api/v4"),
-                Timeout = TimeSpan.FromSeconds(httpConfig.TimeoutSeconds),
-                DefaultRequestVersion = httpConfig.HttpVersion,
-                DefaultVersionPolicy = httpConfig.VersionPolicy
-            };
-            return new MercadoBitcoinClient(httpClient, authHandler);
+            return new MercadoBitcoinClient(options);
         }
 
         /// <summary>
@@ -133,60 +112,6 @@ namespace MercadoBitcoin.Client.Extensions
             var publicRetryConfig = retryConfig ?? CreatePublicDataRetryConfig();
             var httpConfig = HttpConfiguration.CreateHttp2Default();
             return CreateWithHttp2(publicRetryConfig, httpConfig);
-        }
-
-        /// <summary>
-        /// Registers MercadoBitcoinClient in the DI container with IHttpClientFactory integration
-        /// </summary>
-        /// <param name="services">Service collection</param>
-        /// <param name="configureOptions">Client options configuration</param>
-        /// <returns>IServiceCollection for chaining</returns>
-        public static IServiceCollection AddMercadoBitcoinClient(
-            this IServiceCollection services,
-            Action<MercadoBitcoinClientOptions> configureOptions)
-        {
-            if (services == null)
-                throw new ArgumentNullException(nameof(services));
-            if (configureOptions == null)
-                throw new ArgumentNullException(nameof(configureOptions));
-
-            // Register options
-            services.Configure(configureOptions);
-
-            // Register AuthHttpClient with scoped lifecycle using options
-            services.AddScoped<AuthHttpClient>(sp =>
-            {
-                var options = sp.GetRequiredService<IOptions<MercadoBitcoinClientOptions>>().Value;
-                return new AuthHttpClient(options.RetryPolicyConfig, options.HttpConfiguration);
-            });
-
-            // Register RetryHandler with scoped lifecycle using options
-            services.AddScoped<RetryHandler>(sp =>
-            {
-                var options = sp.GetRequiredService<IOptions<MercadoBitcoinClientOptions>>().Value;
-                return new RetryHandler(options.RetryPolicyConfig, options.HttpConfiguration);
-            });
-
-            // Register MercadoBitcoinClient using AddHttpClient for IHttpClientFactory integration
-            services.AddHttpClient<MercadoBitcoinClient>((serviceProvider, httpClient) =>
-            {
-                var options = serviceProvider.GetRequiredService<IOptions<MercadoBitcoinClientOptions>>().Value;
-
-                // Configure HttpClient based on options
-                httpClient.BaseAddress = new Uri(options.BaseUrl);
-                httpClient.Timeout = TimeSpan.FromSeconds(options.HttpConfiguration.TimeoutSeconds);
-                httpClient.DefaultRequestVersion = options.HttpConfiguration.HttpVersion;
-                httpClient.DefaultVersionPolicy = options.HttpConfiguration.VersionPolicy;
-            })
-            .ConfigurePrimaryHttpMessageHandler((serviceProvider) =>
-            {
-                var options = serviceProvider.GetRequiredService<IOptions<MercadoBitcoinClientOptions>>().Value;
-                return options.HttpConfiguration.CreateOptimizedHandler();
-            })
-            .AddHttpMessageHandler<AuthHttpClient>() // First handler in pipeline
-            .AddHttpMessageHandler<RetryHandler>();  // Second handler in pipeline
-
-            return services;
         }
     }
 }

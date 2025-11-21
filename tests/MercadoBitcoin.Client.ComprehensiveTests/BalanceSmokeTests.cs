@@ -6,6 +6,7 @@ using MercadoBitcoin.Client;
 using MercadoBitcoin.Client.Extensions;
 using MercadoBitcoin.Client.Generated;
 using MercadoBitcoin.Client.Errors;
+using MercadoBitcoin.Client.Configuration;
 using Microsoft.Extensions.Configuration;
 using System.Net;
 
@@ -32,7 +33,14 @@ public class BalanceSmokeTests
 
         var trace = Environment.GetEnvironmentVariable("MB_TRACE_HTTP") == "1";
 
-        var client = MercadoBitcoinClientExtensions.CreateWithRetryPolicies();
+        var options = new MercadoBitcoinClientOptions
+        {
+            ApiLogin = login,
+            ApiPassword = password,
+            RetryPolicyConfig = MercadoBitcoinClientExtensions.CreateTradingRetryConfig()
+        };
+
+        var client = new MercadoBitcoinClient(options);
         try
         {
             await client.AuthenticateAsync(login!, password!);

@@ -2,7 +2,12 @@ using Microsoft.Extensions.Configuration;
 using MercadoBitcoin.Client;
 using MercadoBitcoin.Client.Http;
 using MercadoBitcoin.Client.Extensions;
+using MercadoBitcoin.Client.Configuration;
 using System.Text.Json;
+using System;
+using System.IO;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace MercadoBitcoin.Client.ComprehensiveTests;
 
@@ -26,28 +31,49 @@ public abstract class TestBase : IDisposable
             .AddEnvironmentVariables()
             .Build();
 
-        var apiKey = Configuration["MercadoBitcoin:ApiKey"] ?? throw new InvalidOperationException("API Key not configured");
-        var apiSecret = Configuration["MercadoBitcoin:ApiSecret"] ?? throw new InvalidOperationException("API Secret not configured");
+        var apiKey = Configuration["MercadoBitcoin:ApiKey"];
+        var apiSecret = Configuration["MercadoBitcoin:ApiSecret"];
         var baseUrl = Configuration["MercadoBitcoin:BaseUrl"] ?? "https://api.mercadobitcoin.net";
         var timeout = int.Parse(Configuration["MercadoBitcoin:Timeout"] ?? "30");
 
-        // Create client with retry policies using extension method
-        Client = MercadoBitcoinClientExtensions.CreateWithRetryPolicies();
         TestSymbol = Configuration["TestSettings:TestSymbol"] ?? "BTC-BRL";
         TestAccountId = Configuration["TestSettings:TestAccountId"] ?? "test-account-id";
         DelayBetweenRequests = int.Parse(Configuration["TestSettings:DelayBetweenRequests"] ?? "1000");
         MaxRetries = int.Parse(Configuration["TestSettings:MaxRetries"] ?? "3");
 
-        // Automatic authentication if environment variables are present
-        try
+        // Prepare options
+        var options = new MercadoBitcoinClientOptions
         {
-            var loginEnv = Environment.GetEnvironmentVariable("MB_LOGIN");
-            var passwordEnv = Environment.GetEnvironmentVariable("MB_PASSWORD");
-            if (!string.IsNullOrWhiteSpace(loginEnv) && !string.IsNullOrWhiteSpace(passwordEnv))
+            BaseUrl = baseUrl,
+            TimeoutSeconds = timeout,
+            RetryPolicyConfig = MercadoBitcoinClientExtensions.CreateTradingRetryConfig()
+        };
+
+        // Automatic authentication if environment variables are present
+        var loginEnv = Environment.GetEnvironmentVariable("MB_LOGIN");
+        var passwordEnv = Environment.GetEnvironmentVariable("MB_PASSWORD");
+        
+        if (!string.IsNullOrWhiteSpace(loginEnv) && !string.IsNullOrWhiteSpace(passwordEnv))
+        {
+            Console.WriteLine("[AUTH] Configuring client with MB_LOGIN/MB_PASSWORD...");
+            options.ApiLogin = loginEnv;
+            options.ApiPassword = passwordEnv;
+        }
+        else
+        {
+            Console.WriteLine("[AUTH] MB_LOGIN/MB_PASSWORD variables missing. Private endpoints may be skipped or fail.");
+        }
+
+        // Create client
+        Client = new MercadoBitcoinClient(options);
+
+        if (!string.IsNullOrWhiteSpace(options.ApiLogin))
+        {
+            try
             {
-                Console.WriteLine("[AUTH] Attempting to authenticate with MB_LOGIN/MB_PASSWORD...");
-                // Controlled synchronous usage in constructor (no async context here)
-                Client.AuthenticateAsync(loginEnv!, passwordEnv!).GetAwaiter().GetResult();
+                // Verify authentication by fetching accounts (optional, but good for setting up TestAccountId)
+                // Controlled synchronous usage in constructor
+                var accounts = Client.GetAccountsAsync().GetAwaiter().GetResult();
                 var token = Client.GetAccessToken();
                 Console.WriteLine($"[AUTH] Authenticated. Token length={token?.Length}");
 
@@ -55,34 +81,22 @@ public abstract class TestBase : IDisposable
                 var placeholder = string.IsNullOrWhiteSpace(TestAccountId) || TestAccountId.Contains("test-account", StringComparison.OrdinalIgnoreCase) || TestAccountId.Length < 10;
                 if (placeholder)
                 {
-                    try
+                    var first = accounts.FirstOrDefault();
+                    if (first?.Id != null)
                     {
-                        var accounts = Client.GetAccountsAsync().GetAwaiter().GetResult();
-                        var first = accounts.FirstOrDefault();
-                        if (first?.Id != null)
-                        {
-                            TestAccountId = first.Id;
-                            Console.WriteLine($"[AUTH] TestAccountId updated to real id: {TestAccountId}");
-                        }
-                        else
-                        {
-                            Console.WriteLine("[AUTH][WARN] No accounts returned to update TestAccountId.");
-                        }
+                        TestAccountId = first.Id;
+                        Console.WriteLine($"[AUTH] TestAccountId updated to real id: {TestAccountId}");
                     }
-                    catch (Exception exAcc)
+                    else
                     {
-                        Console.WriteLine($"[AUTH][WARN] Failed to get accounts to set TestAccountId: {exAcc.Message}");
+                        Console.WriteLine("[AUTH][WARN] No accounts returned to update TestAccountId.");
                     }
                 }
             }
-            else
+            catch (Exception ex)
             {
-                Console.WriteLine("[AUTH] MB_LOGIN/MB_PASSWORD variables missing. Private endpoints may be skipped.");
+                Console.WriteLine($"[AUTH][WARN] Failed to verify authentication or get accounts: {ex.Message}");
             }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"[AUTH][WARN] Failed to authenticate automatically: {ex.Message}");
         }
     }
 
