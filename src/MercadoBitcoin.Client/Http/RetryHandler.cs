@@ -9,6 +9,8 @@ using Polly.CircuitBreaker;
 using System.Diagnostics.Metrics;
 using System.Diagnostics;
 using MercadoBitcoin.Client.Models.Enums;
+using MercadoBitcoin.Client.Configuration;
+using Microsoft.Extensions.Options;
 using MbOutcomeType = MercadoBitcoin.Client.Models.Enums.OutcomeType;
 
 namespace MercadoBitcoin.Client.Http
@@ -48,6 +50,20 @@ namespace MercadoBitcoin.Client.Http
             _httpConfig = httpConfig ?? HttpConfiguration.CreateHttp2Default();
             _pipeline = CreateResiliencePipeline();
             InnerHandler = innerHandler;
+        }
+
+        /// <summary>
+        /// Constructor for use with IHttpClientFactory (DI) where InnerHandler is set by the factory.
+        /// </summary>
+        [Microsoft.Extensions.DependencyInjection.ActivatorUtilitiesConstructor]
+        public RetryHandler(IOptions<MercadoBitcoinClientOptions> options)
+        {
+            if (options == null || options.Value == null) throw new ArgumentNullException(nameof(options));
+            
+            _config = options.Value.RetryPolicyConfig ?? new RetryPolicyConfig();
+            _httpConfig = options.Value.HttpConfiguration ?? HttpConfiguration.CreateHttp2Default();
+            _pipeline = CreateResiliencePipeline();
+            // InnerHandler is NOT set here, it will be set by the pipeline builder
         }
 
         private static HttpMessageHandler CreateDefaultInnerHandler(HttpConfiguration httpConfig)

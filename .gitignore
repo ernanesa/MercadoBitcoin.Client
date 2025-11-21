@@ -490,3 +490,4 @@ $RECYCLE.BIN/
 .vscode/launch.json
 .vscode/tasks.json
 tests/MercadoBitcoin.Client.ComprehensiveTests/appsettings.json
+tests/AuthDiagnostic/appsettings.json

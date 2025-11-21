@@ -1,0 +1,74 @@
+========================================
+­ƒöì MercadoBitcoin Authentication Diagnostic
+========================================
+
+Ô£à Step 1: Credentials loaded from appsettings.json
+   ApiKey (first 5): 42361...
+   ApiSecret length: 64 chars
+
+========================================
+Test #1: Direct /authorize endpoint call
+========================================
+Making direct HTTP call to /authorize...
+Response status: 200 OK
+Response body: {"access_token":"eyJhbGciOiJSUzI1NiIsImtpZCI6InB1YmxpYzpoeWRyYS5qd3QuYWNjZXNzLXRva2VuIiwidHlwIjoiSldUIn0.eyJhdWQiOltdLCJjbGllbnRfaWQiOiI0MjM2MTE0MjI0Y2ExZmJkYTVhNDZiOTkyODkwZmM4YWVjMDIxZmJiZGE5YzUwMTJ...
+Ô£à Token received successfully!
+   Token (first 30): eyJhbGciOiJSUzI1NiIsImtpZCI6In...
+   Token length: 1235 chars
+
+
+========================================
+Test #2: Using MercadoBitcoinClient (DI)
+========================================
+Setting up MercadoBitcoinClient via DI...
+Ô£à Client created
+   ApiLogin set: True
+   ApiPassword set: True
+   BaseUrl: https://api.mercadobitcoin.net/api/v4
+
+Testing public endpoint (GetSymbolsAsync)...
+[AuthenticationHandler] SendAsync called for: GET https://api.mercadobitcoin.net/api/v4/symbols
+[AuthenticationHandler] Response status: 200 OK
+Ô£à Public endpoint works! Symbols count: 1115
+
+Testing authenticated endpoint (GetAccountsAsync)...
+This should trigger the lazy authentication flow:
+  1. Send request without token ÔåÆ 401
+  2. AuthenticationHandler intercepts 401
+  3. Call /authorize to get Bearer token
+  4. Retry request with token
+
+[AuthenticationHandler] SendAsync called for: GET https://api.mercadobitcoin.net/api/v4/accounts
+[AuthenticationHandler] Response status: 403 Forbidden
+[AuthenticationHandler] Got 401/403 - attempting to obtain Bearer token...
+[AuthenticationHandler] Calling https://api.mercadobitcoin.net/api/v4/authorize...
+[AuthenticationHandler] Auth response: OK
+[AuthenticationHandler] Token received! Retrying original request...
+Ô£à Authentication SUCCESS!
+   Accounts retrieved: 1
+   - main (BRL): ID=45eb3fd89244f26e696801b09ef2faa3487da99dba6435180c9ae058f4ae6981
+   Token stored: False
+
+
+========================================
+Test #3: Using MercadoBitcoinClient (Standalone)
+========================================
+Creating standalone MercadoBitcoinClient...
+Ô£à Client created
+   ApiLogin: True
+   ApiPassword: True
+
+Testing authenticated endpoint (GetAccountsAsync)...
+[AuthenticationHandler] SendAsync called for: GET https://api.mercadobitcoin.net/api/v4/accounts
+[AuthenticationHandler] Response status: 403 Forbidden
+[AuthenticationHandler] Got 401/403 - attempting to obtain Bearer token...
+[AuthenticationHandler] Calling https://api.mercadobitcoin.net/api/v4/authorize...
+[AuthenticationHandler] Auth response: OK
+[AuthenticationHandler] Token received! Retrying original request...
+Ô£à Authentication SUCCESS!
+   Accounts: 1
+   Token stored: True
+
+========================================
+Ô£à Diagnostic completed!
+========================================
