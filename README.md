@@ -32,7 +32,7 @@ A complete and modern .NET 10 library for integrating with the **Mercado Bitcoin
 - ✅ **.NET 10 + C# 14**: Latest framework and language with optimized performance
 - ✅ **System.Text.Json**: Native JSON serialization with Source Generators for maximum performance
 - ✅ **AOT Compatible**: Compatible with Native AOT compilation for ultra-fast applications
-- ✅ **Native HTTP/3**: HTTP/3 protocol by default for maximum performance
+- ✅ **Native HTTP/3**: optional HTTP/3 configuration for maximum performance (HTTP/2 by default)
 - ✅ **Async/Await**: Native asynchronous programming
 - ✅ **Strongly Typed**: Typed data models for type safety
 - ✅ **OpenAPI Integration**: Client automatically generated via NSwag
@@ -142,7 +142,7 @@ services.AddMercadoBitcoinClient(options =>
 
 ## 🔄 Retry Policies and HTTP/3
 
-The library implements robust retry policies with **Polly v8** and uses **HTTP/3** by default for maximum performance:
+The library implements robust retry policies with **Polly v8** and supports **HTTP/3** for maximum performance, while using **HTTP/2 by default** for broader compatibility:
 
 ### HTTP/3 Features
 - **QUIC Protocol**: Built on UDP for faster connection establishment
@@ -367,6 +367,21 @@ The library has been completely migrated from **Newtonsoft.Json** to **System.Te
 - **Ultra-fast applications** with minimal startup time
 - **Smaller footprint** on memory and disk
 - **Better performance** in containerized environments
+
+## 🔁 Migration and Updates
+
+- **From 2.x to 3.0.0**:
+  - Migration to `System.Text.Json` with source generators.
+  - Full AOT support and removal of `Newtonsoft.Json`.
+  - HTTP/2 and major performance/architecture improvements.
+  - See `CHANGELOG.md` and `RELEASE_NOTES_v3.0.0.md` for details.
+
+- **From 3.x to 4.0.0-alpha.1**:
+  - Target framework updated to `net10.0` and C# 14.
+  - Public convenience constructors for `MercadoBitcoinClient` removed; use extension methods (`CreateWithRetryPolicies`, `CreateWithHttp2`, `CreateForTrading`, etc.) or DI (`services.AddMercadoBitcoinClient(...)`).
+  - HTTP/2 is the default; HTTP/3 is available via `HttpConfiguration.CreateHttp3Default()`.
+  - New retry presets (`CreateTradingRetryConfig`, `CreatePublicDataRetryConfig`) and SIMD candle extensions.
+  - See `CHANGELOG.md` and `RELEASE_NOTES_v4.0.0-alpha.1.md` for migration examples.
 
 ## 🛡️ Quality and Reliability
 
