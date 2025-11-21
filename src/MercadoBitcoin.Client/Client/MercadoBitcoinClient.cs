@@ -1,4 +1,4 @@
-using MercadoBitcoin.Client.Generated;
+﻿using MercadoBitcoin.Client.Generated;
 using MercadoBitcoin.Client.Http;
 using MercadoBitcoin.Client.Internal.RateLimiting;
 using MercadoBitcoin.Client.Internal.Time;
@@ -231,14 +231,14 @@ namespace MercadoBitcoin.Client
         /// [BEAST MODE] Executa múltiplas tarefas em paralelo (HTTP/2 Multiplexing).
         /// Dispara todas as requisições simultaneamente sem aguardar sequencialmente.
         /// </summary>
-        /// <typeparam name="T">Tipo do resultado esperado</typeparam>
+        /// <typeparam name="T">Expected result type</typeparam>
         /// <param name="tasks">Coleção de tarefas a executar</param>
         /// <returns>Resultados na ordem de conclusão (ou aguarda todas)</returns>
         public async Task<IEnumerable<T>> ExecuteBatchAsync<T>(IEnumerable<Task<T>> tasks)
         {
-            // Materializa a lista para disparar as tasks imediatamente (Hot Tasks)
+            // Materialize the list to fire tasks immediately (Hot Tasks)
             var taskList = tasks.ToList();
-                        // Aguarda todas completarem (Sucesso ou Falha)
+                        // Wait for all to complete (Success or Failure)
             // Em HTTP/2, isso envia múltiplos frames na mesma conexão TCP
             await Task.WhenAll(taskList);
 
