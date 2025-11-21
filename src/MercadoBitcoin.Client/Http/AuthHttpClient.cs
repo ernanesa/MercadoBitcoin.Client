@@ -11,14 +11,20 @@ namespace MercadoBitcoin.Client
 {
     public class AuthHttpClient : DelegatingHandler
     {
-        private string? _accessToken;
+        private readonly Internal.Security.TokenStore _tokenStore;
         private readonly HttpConfiguration _httpConfig;
         private readonly bool _traceHttp;
 
         private static readonly JsonSerializerOptions JsonSerializerOptions = MercadoBitcoinJsonSerializerContext.Default.Options;
 
         public AuthHttpClient(RetryPolicyConfig? retryConfig = null, HttpConfiguration? httpConfig = null)
+            : this(new Internal.Security.TokenStore(), retryConfig, httpConfig)
         {
+        }
+
+        internal AuthHttpClient(Internal.Security.TokenStore? tokenStore, RetryPolicyConfig? retryConfig = null, HttpConfiguration? httpConfig = null)
+        {
+            _tokenStore = tokenStore ?? new Internal.Security.TokenStore();
             _httpConfig = httpConfig ?? HttpConfiguration.CreateHttp2Default();
             _traceHttp = Environment.GetEnvironmentVariable("MB_TRACE_HTTP") == "1";
 
@@ -30,7 +36,15 @@ namespace MercadoBitcoin.Client
         /// <summary>
         /// Constructor for use with IHttpClientFactory (DI)
         /// </summary>
-        public AuthHttpClient() : this(null, null)
+        public AuthHttpClient(Internal.Security.TokenStore tokenStore, Microsoft.Extensions.Options.IOptions<Configuration.MercadoBitcoinClientOptions> options)
+            : this(tokenStore, options?.Value?.RetryPolicyConfig, options?.Value?.HttpConfiguration)
+        {
+        }
+
+        /// <summary>
+        /// Default constructor
+        /// </summary>
+        public AuthHttpClient() : this(null, null, null)
         {
         }
 
@@ -40,13 +54,13 @@ namespace MercadoBitcoin.Client
         /// <param name="accessToken">Access token</param>
         public void SetAccessToken(string? accessToken)
         {
-            _accessToken = accessToken;
+            _tokenStore.AccessToken = accessToken;
         }
 
         /// <summary>
         /// Gets the current access token (for diagnostics). DO NOT expose this publicly in production logs.
         /// </summary>
-        public string? GetAccessToken() => _accessToken;
+        public string? GetAccessToken() => _tokenStore.AccessToken;
 
 
 
@@ -56,9 +70,9 @@ namespace MercadoBitcoin.Client
 
             // If the request already has an Authorization header, don't overwrite it.
             // This is useful for the initial /authorize call.
-            if (string.IsNullOrEmpty(request.Headers.Authorization?.Parameter) && !string.IsNullOrEmpty(_accessToken))
+            if (string.IsNullOrEmpty(request.Headers.Authorization?.Parameter) && !string.IsNullOrEmpty(_tokenStore.AccessToken))
             {
-                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _accessToken);
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _tokenStore.AccessToken);
             }
 
 

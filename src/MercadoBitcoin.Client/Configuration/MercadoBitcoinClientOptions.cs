@@ -117,5 +117,41 @@ namespace MercadoBitcoin.Client.Configuration
             get => RetryPolicyConfig.RetryOnServerErrors;
             set => RetryPolicyConfig.RetryOnServerErrors = value;
         }
+
+        /// <summary>
+        /// Optional JsonSerializerContext for AOT/Source Generator support.
+        /// If provided, it will be combined with the internal context.
+        /// </summary>
+        public System.Text.Json.Serialization.JsonSerializerContext? JsonSerializerContext { get; set; }
+
+        /// <summary>
+        /// Action to configure the JsonSerializerOptions used by the client.
+        /// This is called after the default configuration and before the client is initialized.
+        /// </summary>
+        public Action<System.Text.Json.JsonSerializerOptions>? ConfigureJsonOptions { get; set; }
+
+        /// <summary>
+        /// API Login (CPF/CNPJ) for automatic authentication.
+        /// </summary>
+        public string? ApiLogin { get; set; }
+
+        /// <summary>
+        /// API Password (or API Key secret) for automatic authentication.
+        /// </summary>
+        public string? ApiPassword { get; set; }
+
+        /// <summary>
+        /// Rate limiter configuration
+        /// </summary>
+        public RateLimiterConfig RateLimiterConfig { get; set; } = new RateLimiterConfig();
+    }
+
+    public class RateLimiterConfig
+    {
+        public int PermitLimit { get; set; } = 100;
+        public int QueueLimit { get; set; } = 10;
+        public TimeSpan ReplenishmentPeriod { get; set; } = TimeSpan.FromSeconds(1);
+        public int TokensPerPeriod { get; set; } = 10;
+        public bool AutoReplenishment { get; set; } = true;
     }
 }
