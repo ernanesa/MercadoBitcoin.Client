@@ -132,7 +132,7 @@ public class PerformanceTests : TestBase
                 var symbolsJson = JsonSerializer.Serialize(symbols, MercadoBitcoinJsonSerializerContext.Default.ListSymbolInfoResponse);
                 var tickersJson = JsonSerializer.Serialize(tickers.ToArray(), MercadoBitcoinJsonSerializerContext.Default.TickerResponseArray);
                 var orderbookJson = JsonSerializer.Serialize(orderbook, MercadoBitcoinJsonSerializerContext.Default.OrderBookResponse);
-                var tradesJson = JsonSerializer.Serialize(trades.ToArray(), MercadoBitcoinJsonSerializerContext.Default.TradeResponseArray);
+                var tradesJson = JsonSerializer.Serialize(trades);
                 stopwatch.Stop();
                 serializationTimes.Add(stopwatch.Elapsed.TotalMicroseconds);
 
@@ -141,7 +141,7 @@ public class PerformanceTests : TestBase
                 JsonSerializer.Deserialize(symbolsJson, MercadoBitcoinJsonSerializerContext.Default.ListSymbolInfoResponse);
                 JsonSerializer.Deserialize(tickersJson, MercadoBitcoinJsonSerializerContext.Default.TickerResponseArray);
                 JsonSerializer.Deserialize(orderbookJson, MercadoBitcoinJsonSerializerContext.Default.OrderBookResponse);
-                JsonSerializer.Deserialize(tradesJson, MercadoBitcoinJsonSerializerContext.Default.TradeResponseArray);
+                JsonSerializer.Deserialize<ICollection<TradeResponse>>(tradesJson);
                 stopwatch.Stop();
                 deserializationTimes.Add(stopwatch.Elapsed.TotalMicroseconds);
             }
