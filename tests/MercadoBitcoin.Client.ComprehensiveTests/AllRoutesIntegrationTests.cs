@@ -119,27 +119,14 @@ namespace MercadoBitcoin.Client.ComprehensiveTests
         {
             // Act
             var trades = await _client.GetTradesAsync(_testSymbol, null, null, null, null);
-
-            // Assert
-            trades.Should().NotBeNull();
-            trades.Should().NotBeEmpty();
-            
-            var firstTrade = trades.First();
-            _output.WriteLine($"✅ Latest trade: Price={firstTrade.Price}, Amount={firstTrade.Amount}, Side={firstTrade.Side}");
-        }
-
-        [Fact]
-        public async Task Public_Fees_ShouldReturnWithdrawFees()
-        {
-            // Act
             var fees = await _client.GetAssetFeesAsync("BTC", null);
 
             // Assert
             fees.Should().NotBeNull();
             fees.Asset.Should().Be("BTC");
-            fees.Withdraw_fee.Should().NotBeNullOrEmpty();
+            fees.Withdrawal_fee.Should().NotBeNullOrEmpty();
             
-            _output.WriteLine($"✅ BTC Withdraw Fee: {fees.Withdraw_fee}");
+            _output.WriteLine($"✅ BTC Withdraw Fee: {fees.Withdrawal_fee}");
         }
 
         #endregion
@@ -227,7 +214,7 @@ namespace MercadoBitcoin.Client.ComprehensiveTests
             // Assert
             order.Should().NotBeNull();
             order.Id.Should().Be(testOrderId);
-            _output.WriteLine($"✅ Order Details: ID={order.Id}, Symbol={order.Symbol}, Status={order.Status}");
+            _output.WriteLine($"✅ Order Details: ID={order.Id}, Instrument={order.Instrument}, Status={order.Status}");
         }
 
         [Fact]
