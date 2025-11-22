@@ -2,12 +2,13 @@ using System;
 using System.Net.Http;
 using MercadoBitcoin.Client;
 using MercadoBitcoin.Client.Configuration;
-using MercadoBitcoin.Client.Http;
+using MercadoBitcoin.Client.Policies;
 using MercadoBitcoin.Client.Internal.Security;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
+using MercadoBitcoin.Client.Http;
 
 namespace Microsoft.Extensions.DependencyInjection
 {
@@ -53,29 +54,19 @@ namespace Microsoft.Extensions.DependencyInjection
         private static IHttpClientBuilder AddMercadoBitcoinClientCore(IServiceCollection services)
         {
             // Register TokenStore as Singleton (assuming one client configuration per app, or at least per container)
-            // If multiple named clients are needed with different creds, this needs to be Scoped or keyed.
-            // For simplicity in v4.0, we use Singleton as the client is typically singleton.
             services.TryAddSingleton<TokenStore>();
 
             // Register Options as Singleton for injection into Client constructor
             services.TryAddSingleton(sp => sp.GetRequiredService<IOptions<MercadoBitcoinClientOptions>>().Value);
-            
+
             // Register dependencies for RetryHandler
             services.TryAddSingleton<RetryPolicyConfig>(sp => sp.GetRequiredService<IOptions<MercadoBitcoinClientOptions>>().Value.RetryPolicyConfig ?? new RetryPolicyConfig());
-            services.TryAddSingleton<HttpConfiguration>(sp => sp.GetRequiredService<IOptions<MercadoBitcoinClientOptions>>().Value.HttpConfiguration ?? HttpConfiguration.CreateHttp2Default());
+            services.TryAddSingleton<HttpConfiguration>(sp => sp.GetRequiredService<IOptions<MercadoBitcoinClientOptions>>().Value.HttpConfiguration);
 
             // Register Handlers
             services.TryAddTransient<AuthenticationHandler>();
-            // Explicitly register RetryHandler with factory to avoid constructor ambiguity
-            services.TryAddTransient<RetryHandler>(sp => new RetryHandler(
-                sp.GetRequiredService<IOptions<MercadoBitcoinClientOptions>>()
-            ));
-            
-            // AuthHttpClient needs to be Transient. Explicitly use the constructor we want.
-            services.TryAddTransient<AuthHttpClient>(sp => new AuthHttpClient(
-                sp.GetRequiredService<TokenStore>(),
-                sp.GetRequiredService<IOptions<MercadoBitcoinClientOptions>>()
-            ));
+            services.TryAddTransient(sp => new RetryHandler(sp.GetRequiredService<IOptions<MercadoBitcoinClientOptions>>()));
+            services.TryAddTransient(sp => new AuthHttpClient(sp.GetRequiredService<TokenStore>(), sp.GetRequiredService<IOptions<MercadoBitcoinClientOptions>>()));
 
             // Register the Client
             var builder = services.AddHttpClient<MercadoBitcoinClient>((sp, client) =>
@@ -84,22 +75,18 @@ namespace Microsoft.Extensions.DependencyInjection
                 client.BaseAddress = new Uri(options.BaseUrl);
                 client.Timeout = TimeSpan.FromSeconds(options.TimeoutSeconds);
             })
-            .ConfigurePrimaryHttpMessageHandler((sp) =>
+            .ConfigurePrimaryHttpMessageHandler(sp => new SocketsHttpHandler
             {
-                var options = sp.GetRequiredService<IOptions<MercadoBitcoinClientOptions>>().Value;
-                return new SocketsHttpHandler
-                {
-                    PooledConnectionLifetime = TimeSpan.FromMinutes(2),
-                    PooledConnectionIdleTimeout = TimeSpan.FromMinutes(1),
-                    MaxConnectionsPerServer = 20
-                };
+                PooledConnectionLifetime = TimeSpan.FromMinutes(2),
+                PooledConnectionIdleTimeout = TimeSpan.FromMinutes(1),
+                MaxConnectionsPerServer = 20
             })
-            // Add Handlers in order: Outer -> Inner
-            // Request flow: AuthHttpClient -> RetryHandler -> AuthenticationHandler -> Network
-            // Response flow: Network -> AuthenticationHandler (handles 401) -> RetryHandler -> AuthHttpClient (adds token) -> Client
+            // Handlers order: AuthHttpClient -> RetryHandler -> AuthenticationHandler
             .AddHttpMessageHandler<AuthHttpClient>()
             .AddHttpMessageHandler<RetryHandler>()
-            .AddHttpMessageHandler<AuthenticationHandler>();
+            .AddHttpMessageHandler<AuthenticationHandler>()
+            // Apply Polly retry policy for transient errors and 429
+            .AddPolicyHandler(MercadoBitcoinPolicy.GetRetryPolicy());
 
             return builder;
         }

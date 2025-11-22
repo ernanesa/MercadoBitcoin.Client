@@ -43,7 +43,7 @@ public class BalanceSmokeTests
         var client = new MercadoBitcoinClient(options);
         try
         {
-            await client.AuthenticateAsync(login!, password!);
+            // await client.AuthenticateAsync(login!, password!); // Authentication is automatic/lazy
             var token = client.GetAccessToken();
             Console.WriteLine($"[SMOKE BALANCE] Authenticated. Token len={token?.Length}.");
 
