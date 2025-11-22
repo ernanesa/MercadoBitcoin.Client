@@ -8,7 +8,7 @@ using Microsoft.Extensions.Logging;
 namespace MercadoBitcoin.Client.Internal.Time
 {
     /// <summary>
-    /// Responsável por estimar e corrigir o desvio de tempo (drift) entre o cliente e o servidor do Mercado Bitcoin.
+    /// Responsible for estimating and correcting time drift between the client and the Mercado Bitcoin server.
     /// </summary>
     public class ServerTimeEstimator
     {
@@ -25,7 +25,7 @@ namespace MercadoBitcoin.Client.Internal.Time
         }
 
         /// <summary>
-        /// Obtém o horário atual corrigido (Server Time estimado).
+        /// Gets the current corrected time (estimated server time).
         /// </summary>
         public DateTimeOffset GetCorrectedTime()
         {
@@ -33,7 +33,7 @@ namespace MercadoBitcoin.Client.Internal.Time
         }
 
         /// <summary>
-        /// Obtém o Unix Timestamp atual corrigido em segundos.
+        /// Gets the current corrected Unix timestamp in seconds.
         /// </summary>
         public long GetCorrectedUnixTimeSeconds()
         {
@@ -41,19 +41,19 @@ namespace MercadoBitcoin.Client.Internal.Time
         }
 
         /// <summary>
-        /// Sincroniza o relógio local com o servidor do Mercado Bitcoin.
-        /// Dispara uma requisição leve para calcular a latência e o delta do header 'Date'.
+        /// Synchronizes the local clock with the Mercado Bitcoin server.
+        /// Makes a lightweight request to compute latency and the 'Date' header delta.
         /// </summary>
         public async Task SynchronizeAsync(CancellationToken cancellationToken = default)
         {
             try
             {
-                // Usamos um endpoint leve público para "pingar" o servidor
-                // O header 'Date' é padrão HTTP e reflete o relógio do servidor
+                // Use a lightweight public endpoint to 'ping' the server
+                // The HTTP 'Date' header is standard and reflects the server time
                 var sw = Stopwatch.StartNew();
                 var request = new HttpRequestMessage(HttpMethod.Head, "https://api.mercadobitcoin.net/api/v4/symbols");
 
-                // Evita cache para garantir timestamp real
+                // Avoid caching to ensure a real timestamp
                 request.Headers.CacheControl = new System.Net.Http.Headers.CacheControlHeaderValue { NoCache = true };
 
                 using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
@@ -64,7 +64,7 @@ namespace MercadoBitcoin.Client.Internal.Time
                     var serverDate = response.Headers.Date.Value;
                     var localNow = DateTimeOffset.UtcNow;
 
-                    // O 'Date' HTTP tem precisão de segundos. Adicionamos metade do RTT (Round Trip Time) para ajustar a latência.
+                    // The HTTP 'Date' header has second precision. Add half of RTT (round-trip time) to adjust for latency.
                     var latencyAdjustment = TimeSpan.FromMilliseconds(sw.ElapsedMilliseconds / 2);
                     var estimatedServerTime = serverDate.Add(latencyAdjustment);
 
@@ -73,14 +73,14 @@ namespace MercadoBitcoin.Client.Internal.Time
                         _timeOffset = estimatedServerTime - localNow;
                     }
 
-                    _logger?.LogInformation("Relógio sincronizado. Offset: {Offset}ms. Latência: {Latency}ms",
+                    _logger?.LogInformation("Clock synchronized. Offset: {Offset}ms. Latency: {Latency}ms",
                         _timeOffset.TotalMilliseconds, sw.ElapsedMilliseconds);
                 }
             }
             catch (Exception ex)
             {
                 _logger?.LogWarning(ex, "Failed to synchronize time with server. Using local time.");
-                // Em caso de falha, mantemos o offset anterior ou Zero (fallback seguro)
+                // On failure, keep the previous offset or zero (safe fallback)
             }
         }
     }

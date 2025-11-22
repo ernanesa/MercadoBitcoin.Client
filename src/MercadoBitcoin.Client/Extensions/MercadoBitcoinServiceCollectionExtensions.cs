@@ -64,6 +64,7 @@ namespace Microsoft.Extensions.DependencyInjection
             services.TryAddSingleton<HttpConfiguration>(sp => sp.GetRequiredService<IOptions<MercadoBitcoinClientOptions>>().Value.HttpConfiguration);
 
             // Register Handlers
+            services.TryAddTransient<RateLimitingHandler>();
             services.TryAddTransient<AuthenticationHandler>();
             services.TryAddTransient(sp => new RetryHandler(sp.GetRequiredService<IOptions<MercadoBitcoinClientOptions>>()));
             services.TryAddTransient(sp => new AuthHttpClient(sp.GetRequiredService<TokenStore>(), sp.GetRequiredService<IOptions<MercadoBitcoinClientOptions>>()));
@@ -81,7 +82,8 @@ namespace Microsoft.Extensions.DependencyInjection
                 PooledConnectionIdleTimeout = TimeSpan.FromMinutes(1),
                 MaxConnectionsPerServer = 20
             })
-            // Handlers order: AuthHttpClient -> RetryHandler -> AuthenticationHandler
+            // Handlers order: RateLimitingHandler -> AuthHttpClient -> RetryHandler -> AuthenticationHandler
+            .AddHttpMessageHandler<RateLimitingHandler>()
             .AddHttpMessageHandler<AuthHttpClient>()
             .AddHttpMessageHandler<RetryHandler>()
             .AddHttpMessageHandler<AuthenticationHandler>()

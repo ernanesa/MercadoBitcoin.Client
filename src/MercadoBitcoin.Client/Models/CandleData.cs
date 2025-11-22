@@ -5,11 +5,11 @@ using System.Runtime.InteropServices;
 namespace MercadoBitcoin.Client.Models
 {
     /// <summary>
-    /// Representa uma vela (candle) OHLCV otimizada para alta performance (Beast Mode).
+    /// Represents an optimized OHLCV candle data structure for high-performance scenarios (Beast Mode).
     /// </summary>
     /// <remarks>
-    /// Transformado em 'readonly record struct' com 'StructLayout' para garantir
-    /// alocação contígua em memória e zero-overhead de classe.
+    /// Implemented as a readonly record struct with StructLayout to ensure
+    /// contiguous memory allocation and zero-class overhead.
     /// </remarks>
     [StructLayout(LayoutKind.Sequential)]
     public readonly record struct CandleData
@@ -44,7 +44,7 @@ namespace MercadoBitcoin.Client.Models
         [JsonPropertyName("volume")]
         public decimal Volume { get; init; }
 
-        // Construtor otimizado
+        // Optimized constructor
         public CandleData(string symbol, string interval, long openTime, long closeTime, long timestamp, decimal open, decimal high, decimal low, decimal close, decimal volume)
         {
             Symbol = symbol;

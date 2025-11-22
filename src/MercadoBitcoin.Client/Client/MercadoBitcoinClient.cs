@@ -116,14 +116,14 @@ namespace MercadoBitcoin.Client
 
             // Manual composition of the HTTP pipeline
             var tokenStore = new Internal.Security.TokenStore();
-            
+
             // 1. AuthenticationHandler (Inner logic handler, handles 401)
             var authenticationHandler = new AuthenticationHandler(tokenStore, clientOptions);
 
             // 2. AuthHttpClient (Outer handler, adds token, contains RetryHandler)
             // Pass true to enable embedded retry logic for standalone client
             _authHandler = new AuthHttpClient(tokenStore, clientOptions.RetryPolicyConfig, clientOptions.HttpConfiguration, true);
-            
+
             // Wire: AuthHttpClient -> RetryHandler -> AuthenticationHandler
             if (_authHandler.InnerHandler is DelegatingHandler retryHandler)
             {
@@ -141,7 +141,7 @@ namespace MercadoBitcoin.Client
                 PooledConnectionIdleTimeout = TimeSpan.FromMinutes(1),
                 MaxConnectionsPerServer = 20
             };
-            
+
             // Wire: AuthenticationHandler -> SocketsHttpHandler
             authenticationHandler.InnerHandler = socketsHandler;
 
@@ -224,33 +224,33 @@ namespace MercadoBitcoin.Client
         }
 
         /// <summary>
-        /// Força uma sincronização de relógio com o servidor do MB.
-        /// Recomendado chamar na inicialização da aplicação.
+        /// Forces a clock synchronization with the MB server.
+        /// Recommended to call at application initialization.
         /// </summary>
         public Task SynchronizeTimeAsync(CancellationToken ct = default) => _timeEstimator.SynchronizeAsync(ct);
 
         /// <summary>
-        /// [BEAST MODE] Executa múltiplas tarefas em paralelo (HTTP/2 Multiplexing).
-        /// Dispara todas as requisições simultaneamente sem aguardar sequencialmente.
+        /// [BEAST MODE] Executes multiple tasks in parallel (HTTP/2 Multiplexing).
+        /// Fires all requests simultaneously without waiting sequentially.
         /// </summary>
         /// <typeparam name="T">Expected result type</typeparam>
-        /// <param name="tasks">Coleção de tarefas a executar</param>
-        /// <returns>Resultados na ordem de conclusão (ou aguarda todas)</returns>
+        /// <param name="tasks">Collection of tasks to execute</param>
+        /// <returns>Results in completion order (or waits for all)</returns>
         public async Task<IEnumerable<T>> ExecuteBatchAsync<T>(IEnumerable<Task<T>> tasks)
         {
             // Materialize the list to fire tasks immediately (Hot Tasks)
             var taskList = tasks.ToList();
-                        // Wait for all to complete (Success or Failure)
-            // Em HTTP/2, isso envia múltiplos frames na mesma conexão TCP
+            // Wait for all to complete (Success or Failure)
+            // In HTTP/2, this sends multiple frames on the same TCP connection
             await Task.WhenAll(taskList);
 
-            // Retorna os resultados das que tiveram sucesso (ou lança a primeira exceção se preferir fail-fast)
-            // Aqui optamos por retornar tudo, assumindo que o caller tratará exceções individuais se necessário
+            // Returns the results of successful ones (or throws the first exception if fail-fast is preferred)
+            // Here we choose to return everything, assuming the caller will handle individual exceptions if needed
             return taskList.Select(t => t.Result);
         }
 
         /// <summary>
-        /// Método auxiliar para obter o timestamp corrigido para assinaturas (uso interno/avançado).
+        /// Helper method to get the corrected timestamp for signatures (internal/advanced use).
         /// </summary>
         public long GetCurrentTimestamp() => _timeEstimator.GetCorrectedUnixTimeSeconds();
     }
