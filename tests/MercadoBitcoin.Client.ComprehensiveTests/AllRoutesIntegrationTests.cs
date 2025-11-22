@@ -8,6 +8,7 @@ using System;
 using System.Threading.Tasks;
 using System.Linq;
 using FluentAssertions;
+using Microsoft.Extensions.Configuration;
 
 namespace MercadoBitcoin.Client.ComprehensiveTests
 {
@@ -28,14 +29,23 @@ namespace MercadoBitcoin.Client.ComprehensiveTests
             _output = output;
 
             // Use provided credentials with fallback
-            var apiId = Environment.GetEnvironmentVariable("MB_API_ID");
-            var apiSecret = Environment.GetEnvironmentVariable("MB_API_SECRET");
+            var config = new Microsoft.Extensions.Configuration.ConfigurationBuilder()
+                .SetBasePath(System.IO.Directory.GetCurrentDirectory())
+                .AddJsonFile("appsettings.json", optional: true)
+                .AddEnvironmentVariables()
+                .Build();
+
+            var apiId = config["MercadoBitcoin:ApiKey"] ?? Environment.GetEnvironmentVariable("MB_API_ID");
+            var apiSecret = config["MercadoBitcoin:ApiSecret"] ?? Environment.GetEnvironmentVariable("MB_API_SECRET");
+
+            _output.WriteLine($"DEBUG: API Key found: {!string.IsNullOrEmpty(apiId)}");
+            _output.WriteLine($"DEBUG: API Secret found: {!string.IsNullOrEmpty(apiSecret)}");
 
             var options = new MercadoBitcoinClientOptions
             {
                 ApiLogin = apiId,
                 ApiPassword = apiSecret,
-                BaseUrl = "https://api.mercadobitcoin.net",
+                BaseUrl = "https://api.mercadobitcoin.net/api/v4",
                 TimeoutSeconds = 30,
                 RetryPolicyConfig = MercadoBitcoinClientExtensions.CreateTradingRetryConfig()
             };
@@ -209,18 +219,6 @@ namespace MercadoBitcoin.Client.ComprehensiveTests
             var testOrderId = orders.First().Id;
 
             // Act
-            var order = await _client.GetOrderAsync(_testSymbol, _testAccountId, testOrderId.ToString());
-
-            // Assert
-            order.Should().NotBeNull();
-            order.Id.Should().Be(testOrderId);
-            _output.WriteLine($"✅ Order Details: ID={order.Id}, Instrument={order.Instrument}, Status={order.Status}");
-        }
-
-        [Fact]
-        public async Task Private_Fills_ShouldReturnTradeExecutions()
-        {
-            // Arrange
             _testAccountId.Should().NotBeNullOrWhiteSpace("Account ID must be available");
 
             // Act

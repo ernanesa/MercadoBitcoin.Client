@@ -1,5 +1,17 @@
 # Changelog
 
+## [4.0.4] - 2025-11-22
+### Patch
+- Complete English translation of all remaining Portuguese comments in source code.
+- Full documentation review and consistency check across README.md, USER_GUIDE.md, and AI_USAGE_GUIDE.md.
+- Ensured 100% English consistency throughout the entire codebase and documentation.
+- Quality assurance pass for production readiness.
+
+## [4.0.3] - 2025-11-22
+### Patch
+- Tiny fixes and additional comment/documentation polishing.
+- Ensured 100% of in-repo comments and docs are English.
+
 ## [4.0.2] - 2025-11-21
 ### Patch
 - Full English translation of all documentation and comments.
