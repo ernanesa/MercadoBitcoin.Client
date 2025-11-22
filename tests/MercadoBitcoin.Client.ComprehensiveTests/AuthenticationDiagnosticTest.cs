@@ -8,6 +8,8 @@ using MercadoBitcoin.Client.Extensions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using System.Net.Http.Json;
+using MercadoBitcoin.Client;
 using System.Linq;
 
 namespace MercadoBitcoin.Client.ComprehensiveTests
@@ -193,7 +195,7 @@ namespace MercadoBitcoin.Client.ComprehensiveTests
                 var response = await httpClient.PostAsJsonAsync(
                     "authorize", 
                     authRequest,
-                    Generated.MercadoBitcoinJsonSerializerContext.Default.AuthorizeRequest
+                    MercadoBitcoinJsonSerializerContext.Default.AuthorizeRequest
                 );
 
                 Console.WriteLine($"Status: {(int)response.StatusCode} {response.StatusCode}");
@@ -205,7 +207,7 @@ namespace MercadoBitcoin.Client.ComprehensiveTests
                 if (response.IsSuccessStatusCode)
                 {
                     var authResult = await response.Content.ReadFromJsonAsync(
-                        Generated.MercadoBitcoinJsonSerializerContext.Default.AuthorizeResponse
+                        MercadoBitcoinJsonSerializerContext.Default.AuthorizeResponse
                     );
                     
                     if (authResult != null && !string.IsNullOrEmpty(authResult.Access_token))

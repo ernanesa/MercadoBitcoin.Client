@@ -49,7 +49,7 @@ namespace MercadoBitcoin.Client.ComprehensiveTests
             // Get account ID for private tests
             try
             {
-                var accounts = _client.AccountsAsync().GetAwaiter().GetResult();
+                var accounts = _client.GetAccountsAsync().GetAwaiter().GetResult();
                 _testAccountId = accounts.FirstOrDefault()?.Id;
                 _output.WriteLine($"✅ [INIT] Account ID: {_testAccountId}");
             }
@@ -80,7 +80,7 @@ namespace MercadoBitcoin.Client.ComprehensiveTests
         {
             // Arrange
             var symbols = new[] { "BTC-BRL", "ETH-BRL", "USDT-BRL" };
-            var tasks = symbols.Select(s => _client.OrderbookAsync(s, null)).ToList();
+            var tasks = symbols.Select(s => _client.GetOrderBookAsync(s, null)).ToList();
 
             // Act
             var sw = System.Diagnostics.Stopwatch.StartNew();
@@ -101,7 +101,7 @@ namespace MercadoBitcoin.Client.ComprehensiveTests
         public async Task Public_Orderbook_ShouldReturnBidsAndAsks()
         {
             // Act
-            var orderBook = await _client.OrderbookAsync(_testSymbol, null);
+            var orderBook = await _client.GetOrderBookAsync(_testSymbol, null);
 
             // Assert
             orderBook.Should().NotBeNull();
@@ -118,7 +118,7 @@ namespace MercadoBitcoin.Client.ComprehensiveTests
         public async Task Public_Trades_ShouldReturnRecentTrades()
         {
             // Act
-            var trades = await _client.TradesAsync(_testSymbol, null, null, null, null);
+            var trades = await _client.GetTradesAsync(_testSymbol, null, null, null, null);
 
             // Assert
             trades.Should().NotBeNull();
@@ -132,7 +132,7 @@ namespace MercadoBitcoin.Client.ComprehensiveTests
         public async Task Public_Fees_ShouldReturnWithdrawFees()
         {
             // Act
-            var fees = await _client.FeesAsync("BTC", null);
+            var fees = await _client.GetAssetFeesAsync("BTC", null);
 
             // Assert
             fees.Should().NotBeNull();
@@ -150,7 +150,7 @@ namespace MercadoBitcoin.Client.ComprehensiveTests
         public async Task Private_Accounts_ShouldReturnUserAccounts()
         {
             // Act
-            var accounts = await _client.AccountsAsync();
+            var accounts = await _client.GetAccountsAsync();
 
             // Assert
             accounts.Should().NotBeNull();
@@ -169,7 +169,7 @@ namespace MercadoBitcoin.Client.ComprehensiveTests
             _testAccountId.Should().NotBeNullOrWhiteSpace("Account ID must be available");
 
             // Act
-            var balances = await _client.BalancesAsync(_testAccountId);
+            var balances = await _client.GetBalancesAsync(_testAccountId);
 
             // Assert
             balances.Should().NotBeNull();
@@ -188,16 +188,16 @@ namespace MercadoBitcoin.Client.ComprehensiveTests
             _testAccountId.Should().NotBeNullOrWhiteSpace("Account ID must be available");
 
             // Act
-            var orders = await _client.OrdersAsync(
+            var orders = await _client.ListOrdersAsync(
                 accountId: _testAccountId,
                 symbol: _testSymbol,
                 status: null,
-                id_from: null,
-                id_to: null,
-                limit: null,
-                start_date: null,
-                end_date: null,
-                has_fills: null);
+                idFrom: null,
+                idTo: null,
+                // limit: null, // ListOrdersAsync signature differs slightly, check params
+                createdAtFrom: null,
+                createdAtTo: null,
+                hasExecutions: null);
 
             // Assert
             orders.Should().NotBeNull();
@@ -211,7 +211,7 @@ namespace MercadoBitcoin.Client.ComprehensiveTests
             _testAccountId.Should().NotBeNullOrWhiteSpace("Account ID must be available");
             
             // Get any existing order first
-            var orders = await _client.OrdersAsync(_testAccountId, null, null, null, null, 1, null, null, null);
+            var orders = await _client.ListOrdersAsync(_testSymbol, _testAccountId);
             
             if (!orders.Any())
             {
@@ -222,7 +222,7 @@ namespace MercadoBitcoin.Client.ComprehensiveTests
             var testOrderId = orders.First().Id;
 
             // Act
-            var order = await _client.Order2Async(_testAccountId, testOrderId.ToString());
+            var order = await _client.GetOrderAsync(_testSymbol, _testAccountId, testOrderId.ToString());
 
             // Assert
             order.Should().NotBeNull();
@@ -237,14 +237,11 @@ namespace MercadoBitcoin.Client.ComprehensiveTests
             _testAccountId.Should().NotBeNullOrWhiteSpace("Account ID must be available");
 
             // Act
-            var fills = await _client.FillsAsync(
+            // Using ListOrdersAsync with hasExecutions=true as FillsAsync replacement
+            var fills = await _client.ListOrdersAsync(
                 accountId: _testAccountId,
                 symbol: _testSymbol,
-                id_from: null,
-                id_to: null,
-                limit: 10,
-                start_date: null,
-                end_date: null);
+                hasExecutions: "true");
 
             // Assert
             fills.Should().NotBeNull();
@@ -258,13 +255,10 @@ namespace MercadoBitcoin.Client.ComprehensiveTests
             _testAccountId.Should().NotBeNullOrWhiteSpace("Account ID must be available");
 
             // Act
-            var deposits = await _client.DepositsAsync(
+            var deposits = await _client.ListDepositsAsync(
                 accountId: _testAccountId,
-                id_from: null,
-                id_to: null,
-                limit: 10,
-                start_date: null,
-                end_date: null);
+                symbol: "BTC", // Symbol is required
+                limit: "10");
 
             // Assert
             deposits.Should().NotBeNull();
@@ -278,13 +272,10 @@ namespace MercadoBitcoin.Client.ComprehensiveTests
             _testAccountId.Should().NotBeNullOrWhiteSpace("Account ID must be available");
 
             // Act
-            var withdrawals = await _client.WithdrawalsAsync(
+            var withdrawals = await _client.ListWithdrawalsAsync(
                 accountId: _testAccountId,
-                id_from: null,
-                id_to: null,
-                limit: 10,
-                start_date: null,
-                end_date: null);
+                symbol: "BTC", // Symbol is required
+                pageSize: 10);
 
             // Assert
             withdrawals.Should().NotBeNull();
