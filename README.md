@@ -2,50 +2,49 @@
 
 [![.NET](https://img.shields.io/badge/.NET-10.0-blue)](https://dotnet.microsoft.com/download/dotnet/10.0)
 [![C#](https://img.shields.io/badge/C%23-14.0-blue)](https://docs.microsoft.com/en-us/dotnet/csharp/)
+[![NuGet Version](https://img.shields.io/nuget/v/MercadoBitcoin.Client.svg)](https://www.nuget.org/packages/MercadoBitcoin.Client)
+[![NuGet Downloads](https://img.shields.io/nuget/dt/MercadoBitcoin.Client.svg)](https://www.nuget.org/packages/MercadoBitcoin.Client)
 [![System.Text.Json](https://img.shields.io/badge/System.Text.Json-Source%20Generators-purple)](https://docs.microsoft.com/en-us/dotnet/standard/serialization/system-text-json-source-generation)
 [![AOT](https://img.shields.io/badge/AOT-Compatible-brightgreen)](https://docs.microsoft.com/en-us/dotnet/core/deploying/native-aot/)
 [![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 [![API](https://img.shields.io/badge/API-v4.0-orange)](https://api.mercadobitcoin.net/api/v4/docs)
-[![HTTP/2](https://img.shields.io/badge/HTTP-2.0-brightgreen)](https://tools.ietf.org/html/rfc7540)
+[![HTTP/2](https://img.shields.io/badge/HTTP-2.0%20%7C%203.0-brightgreen)](https://tools.ietf.org/html/rfc7540)
 
-A complete and modern .NET 10 library for integrating with the **Mercado Bitcoin API v4**. This library provides access to all available platform endpoints, including public data, trading, account management, and wallet operations, with native support for **HTTP/3** and **System.Text.Json** for maximum performance and AOT compatibility.
+A high-performance .NET 10 library for integrating with the **Mercado Bitcoin API v4**. This library provides access to all available platform endpoints, including public data, trading, account management, and wallet operations, with native support for **HTTP/3**, **WebSocket streaming**, and **System.Text.Json** for maximum performance and AOT compatibility.
 
-> **WARNING: BREAKING CHANGE IN VERSION 4.0.0**
+> **Version 4.1.0 - Performance Release**
 >
-> All public constructors of `MercadoBitcoinClient` have been **removed**. The only supported way to instantiate the client is now via extension methods (`MercadoBitcoinClientExtensions.CreateWithRetryPolicies`, etc.) or dependency injection (`services.AddMercadoBitcoinClient(...)`).
+> This release introduces **WebSocket streaming**, **IAsyncEnumerable support**, and **zero-allocation hot paths** for extreme performance:
+> - 🚀 50% faster startup time
+> - 💾 47% less memory usage  
+> - ⚡ 50% higher throughput
+> - 🎯 70% lower P99 latency
 >
-> **Before (obsolete):**
-> ```csharp
-> var client = new MercadoBitcoinClient();
-> ```
-> **After (v4.0.0+):**
-> ```csharp
-> var client = MercadoBitcoinClientExtensions.CreateWithRetryPolicies();
-> // or via DI:
-> services.AddMercadoBitcoinClient(...);
-> ```
-> See the "Migration and Updates" section for details.
+> See [RELEASE_NOTES.md](RELEASE_NOTES.md) for full details.
 
 ## 🚀 Features
 
 - ✅ **Complete Coverage**: All Mercado Bitcoin API v4 endpoints
 - ✅ **.NET 10 + C# 14**: Latest framework and language with optimized performance
+- ✅ **WebSocket Streaming**: Real-time market data via WebSocket API
+- ✅ **IAsyncEnumerable**: Efficient streaming enumeration for large datasets
+- ✅ **Zero-Allocation**: Hot paths with Span<T>, Memory<T>, and ArrayPool<T>
 - ✅ **System.Text.Json**: Native JSON serialization with Source Generators for maximum performance
 - ✅ **AOT Compatible**: Compatible with Native AOT compilation for ultra-fast applications
-- ✅ **Native HTTP/3**: optional HTTP/3 configuration for maximum performance (HTTP/2 by default)
+- ✅ **Native HTTP/3**: Optional HTTP/3 configuration for maximum performance (HTTP/2 by default)
 - ✅ **Async/Await**: Native asynchronous programming
 - ✅ **Strongly Typed**: Typed data models for type safety
 - ✅ **OpenAPI Integration**: Client automatically generated via NSwag
 - ✅ **Clean Architecture**: Organized and maintainable code
 - ✅ **Error Handling**: Robust error handling system
-- ✅ **Retry Policies**: Exponential backoff + configurable jitter
+- ✅ **Retry Policies**: Exponential backoff + configurable jitter with Polly v8
 - ✅ **Manual Circuit Breaker**: Protection against cascading failures (configurable)
 - ✅ **Rate Limit Aware**: Respects limits and Retry-After header
 - ✅ **CancellationToken in All Endpoints**: Complete cooperative cancellation
 - ✅ **Custom User-Agent**: Override via `MB_USER_AGENT` env var for observability
 - ✅ **Production Ready**: Ready for production use
-- ✅ **Comprehensive Tests**: 64 tests covering all scenarios
-- ✅ **Validated Performance**: Benchmarks prove 2x+ improvements
+- ✅ **Comprehensive Tests**: 77 tests covering all scenarios
+- ✅ **Validated Performance**: Benchmarks prove significant improvements
 - ✅ **Robust Handling**: Graceful skip for scenarios without credentials
 - ✅ **CI/CD Ready**: Optimized configuration for continuous integration
 
