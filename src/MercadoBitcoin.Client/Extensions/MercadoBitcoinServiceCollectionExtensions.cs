@@ -4,11 +4,13 @@ using MercadoBitcoin.Client;
 using MercadoBitcoin.Client.Configuration;
 using MercadoBitcoin.Client.Policies;
 using MercadoBitcoin.Client.Internal.Security;
+using MercadoBitcoin.Client.WebSocket;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 using MercadoBitcoin.Client.Http;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Extensions.DependencyInjection
 {
@@ -49,6 +51,56 @@ namespace Microsoft.Extensions.DependencyInjection
             services.Configure<MercadoBitcoinClientOptions>(configuration);
 
             return AddMercadoBitcoinClientCore(services);
+        }
+
+        /// <summary>
+        /// Adds the MercadoBitcoinWebSocketClient to the service collection for real-time data streaming.
+        /// </summary>
+        /// <param name="services">The IServiceCollection.</param>
+        /// <param name="configureOptions">Action to configure WebSocket options (optional).</param>
+        /// <returns>The IServiceCollection for chaining.</returns>
+        public static IServiceCollection AddMercadoBitcoinWebSocketClient(
+            this IServiceCollection services,
+            Action<WebSocketClientOptions>? configureOptions = null)
+        {
+            if (services == null) throw new ArgumentNullException(nameof(services));
+
+            if (configureOptions != null)
+            {
+                services.Configure(configureOptions);
+            }
+            else
+            {
+                services.TryAddSingleton(new WebSocketClientOptions());
+            }
+
+            services.TryAddSingleton<MercadoBitcoinWebSocketClient>(sp =>
+            {
+                var options = sp.GetRequiredService<IOptions<WebSocketClientOptions>>().Value;
+                var logger = sp.GetService<ILogger<MercadoBitcoinWebSocketClient>>();
+                return new MercadoBitcoinWebSocketClient(options, logger);
+            });
+
+            return services;
+        }
+
+        /// <summary>
+        /// Adds both MercadoBitcoinClient and MercadoBitcoinWebSocketClient to the service collection.
+        /// </summary>
+        /// <param name="services">The IServiceCollection.</param>
+        /// <param name="configureRestOptions">Action to configure REST client options.</param>
+        /// <param name="configureWebSocketOptions">Action to configure WebSocket options (optional).</param>
+        /// <returns>The IHttpClientBuilder for further REST client configuration.</returns>
+        public static IHttpClientBuilder AddMercadoBitcoinClients(
+            this IServiceCollection services,
+            Action<MercadoBitcoinClientOptions> configureRestOptions,
+            Action<WebSocketClientOptions>? configureWebSocketOptions = null)
+        {
+            if (services == null) throw new ArgumentNullException(nameof(services));
+            if (configureRestOptions == null) throw new ArgumentNullException(nameof(configureRestOptions));
+
+            services.AddMercadoBitcoinWebSocketClient(configureWebSocketOptions);
+            return services.AddMercadoBitcoinClient(configureRestOptions);
         }
 
         private static IHttpClientBuilder AddMercadoBitcoinClientCore(IServiceCollection services)

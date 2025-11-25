@@ -1,6 +1,8 @@
 using System.Text.Json.Serialization;
 using MercadoBitcoin.Client.Generated;
 using MercadoBitcoin.Client.Errors;
+using MercadoBitcoin.Client.WebSocket.Messages;
+using MercadoBitcoin.Client.Models;
 
 namespace MercadoBitcoin.Client;
 
@@ -10,6 +12,22 @@ namespace MercadoBitcoin.Client;
     DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
     PropertyNamingPolicy = JsonKnownNamingPolicy.SnakeCaseLower
 )]
+// WebSocket Messages
+[JsonSerializable(typeof(TickerMessage))]
+[JsonSerializable(typeof(TickerData))]
+[JsonSerializable(typeof(TradeMessage))]
+[JsonSerializable(typeof(TradeData))]
+[JsonSerializable(typeof(OrderBookMessage))]
+[JsonSerializable(typeof(OrderBookData))]
+[JsonSerializable(typeof(SubscriptionRequest))]
+[JsonSerializable(typeof(SubscriptionDetails))]
+[JsonSerializable(typeof(SubscriptionResponse))]
+[JsonSerializable(typeof(WebSocketMessageBase))]
+// High-Performance Models
+[JsonSerializable(typeof(CandleData))]
+[JsonSerializable(typeof(CandleData[]))]
+[JsonSerializable(typeof(ICollection<CandleData>))]
+// API Types
 [JsonSerializable(typeof(ErrorResponse))]
 [JsonSerializable(typeof(AccountResponse))]
 [JsonSerializable(typeof(AuthorizeRequest))]
@@ -62,6 +80,19 @@ namespace MercadoBitcoin.Client;
 public partial class MercadoBitcoinJsonSerializerContext : JsonSerializerContext
 {
     // Helps IL Trimmer/AOT preserve members accessed indirectly by generated code/NSwag
+    // WebSocket Message Types
+    [System.Diagnostics.CodeAnalysis.DynamicDependency(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.All, typeof(TickerMessage))]
+    [System.Diagnostics.CodeAnalysis.DynamicDependency(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.All, typeof(TickerData))]
+    [System.Diagnostics.CodeAnalysis.DynamicDependency(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.All, typeof(TradeMessage))]
+    [System.Diagnostics.CodeAnalysis.DynamicDependency(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.All, typeof(TradeData))]
+    [System.Diagnostics.CodeAnalysis.DynamicDependency(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.All, typeof(OrderBookMessage))]
+    [System.Diagnostics.CodeAnalysis.DynamicDependency(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.All, typeof(OrderBookData))]
+    [System.Diagnostics.CodeAnalysis.DynamicDependency(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.All, typeof(SubscriptionRequest))]
+    [System.Diagnostics.CodeAnalysis.DynamicDependency(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.All, typeof(SubscriptionDetails))]
+    [System.Diagnostics.CodeAnalysis.DynamicDependency(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.All, typeof(SubscriptionResponse))]
+    // High-Performance Models
+    [System.Diagnostics.CodeAnalysis.DynamicDependency(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.All, typeof(CandleData))]
+    // API Types
     [System.Diagnostics.CodeAnalysis.DynamicDependency(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.All, typeof(AccountResponse))]
     [System.Diagnostics.CodeAnalysis.DynamicDependency(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.All, typeof(AuthorizeResponse))]
     [System.Diagnostics.CodeAnalysis.DynamicDependency(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.All, typeof(PlaceOrderResponse))]
