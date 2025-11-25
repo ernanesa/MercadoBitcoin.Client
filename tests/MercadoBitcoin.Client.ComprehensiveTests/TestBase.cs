@@ -33,7 +33,7 @@ public abstract class TestBase : IDisposable
 
         var apiKey = Configuration["MercadoBitcoin:ApiKey"];
         var apiSecret = Configuration["MercadoBitcoin:ApiSecret"];
-        var baseUrl = Configuration["MercadoBitcoin:BaseUrl"] ?? "https://api.mercadobitcoin.net";
+        var baseUrl = Configuration["MercadoBitcoin:BaseUrl"] ?? "https://api.mercadobitcoin.net/api/v4";
         var timeout = int.Parse(Configuration["MercadoBitcoin:Timeout"] ?? "30");
 
         TestSymbol = Configuration["TestSettings:TestSymbol"] ?? "BTC-BRL";
@@ -49,19 +49,25 @@ public abstract class TestBase : IDisposable
             RetryPolicyConfig = MercadoBitcoinClientExtensions.CreateTradingRetryConfig()
         };
 
-        // Automatic authentication if environment variables are present
+        // Try environment variables first, then fall back to appsettings.json
         var loginEnv = Environment.GetEnvironmentVariable("MB_LOGIN");
         var passwordEnv = Environment.GetEnvironmentVariable("MB_PASSWORD");
-        
+
         if (!string.IsNullOrWhiteSpace(loginEnv) && !string.IsNullOrWhiteSpace(passwordEnv))
         {
-            Console.WriteLine("[AUTH] Configuring client with MB_LOGIN/MB_PASSWORD...");
+            Console.WriteLine("[AUTH] Configuring client with MB_LOGIN/MB_PASSWORD environment variables...");
             options.ApiLogin = loginEnv;
             options.ApiPassword = passwordEnv;
         }
+        else if (!string.IsNullOrWhiteSpace(apiKey) && !string.IsNullOrWhiteSpace(apiSecret))
+        {
+            Console.WriteLine("[AUTH] Configuring client with ApiKey/ApiSecret from appsettings.json...");
+            options.ApiLogin = apiKey;
+            options.ApiPassword = apiSecret;
+        }
         else
         {
-            Console.WriteLine("[AUTH] MB_LOGIN/MB_PASSWORD variables missing. Private endpoints may be skipped or fail.");
+            Console.WriteLine("[AUTH] No credentials found. Private endpoints will fail.");
         }
 
         // Create client
