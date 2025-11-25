@@ -141,21 +141,36 @@ public class ErrorHandlingTests : TestBase
     [Fact]
     public async Task NetworkTimeout_ShouldHandleGracefully()
     {
+        // This test verifies that the client correctly handles cancellation tokens,
+        // which is the mechanism used for timeouts in .NET
+        using var cancellationTokenSource = new CancellationTokenSource();
+
         try
         {
-            // Create client with default configuration (timeout will be handled by HTTP client)
+            // Create client with default configuration
             var timeoutClient = MercadoBitcoinClientExtensions.CreateWithRetryPolicies();
 
-            var result = await timeoutClient.GetSymbolsAsync();
-            LogTestResult("NetworkTimeout", false, "Should have timed out");
+            // Cancel immediately to simulate a timeout scenario
+            cancellationTokenSource.Cancel();
+
+            // Pass null for symbols and the cancelled token
+            var result = await timeoutClient.GetSymbolsAsync((string?)null, cancellationTokenSource.Token);
+
+            // If we reach here, the cancellation wasn't respected (which shouldn't happen)
+            LogTestResult("NetworkTimeout", false, "Should have been cancelled");
+        }
+        catch (OperationCanceledException ex)
+        {
+            // OperationCanceledException (and its subclass TaskCanceledException) is expected 
+            // when a CancellationToken is cancelled
+            LogTestResult("NetworkTimeout", true,
+                $"Cancellation handled correctly: {ex.GetType().Name}");
         }
         catch (Exception ex)
         {
-            // Timeout exception is expected
-            var isTimeoutError = ex.Message.Contains("timeout") ||
-                               ex.Message.Contains("Timeout") ||
-                               ex is TaskCanceledException ||
-                               ex is TimeoutException;
+            // Any other exception type means the cancellation wasn't handled properly
+            var isTimeoutError = ex.Message.Contains("timeout", StringComparison.OrdinalIgnoreCase) ||
+                                 ex is TimeoutException;
 
             LogTestResult("NetworkTimeout", isTimeoutError,
                 $"Timeout handled: {ex.GetType().Name} - {ex.Message}");
