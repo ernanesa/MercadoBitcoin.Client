@@ -245,13 +245,105 @@ namespace MercadoBitcoin.Client
         }
 
         /// <summary>
+        /// Gets the current tickers for all symbols.
+        /// <para>**Does not require authentication**</para>
+        /// </summary>
+        public Task<ICollection<TickerResponse>> GetTickersAsync(CancellationToken cancellationToken = default)
+        {
+            return GetTickersAsync(symbols: (IEnumerable<string>?)null, cancellationToken);
+        }
+
+        /// <summary>
         /// Gets the current tickers for one or more symbols (Convenience overload).
         /// <para>**Does not require authentication**</para>
         /// </summary>
-        public Task<ICollection<TickerResponse>> GetTickersAsync(IEnumerable<string> symbols, CancellationToken cancellationToken = default)
+        public async Task<ICollection<TickerResponse>> GetTickersAsync(IEnumerable<string> symbols, CancellationToken cancellationToken = default)
         {
-            var joined = string.Join(",", symbols);
-            return GetTickersAsync(joined, cancellationToken);
+            if (symbols is null)
+            {
+                var allSymbols = await GetAllSymbolsAsync(cancellationToken).ConfigureAwait(false);
+                return await GetTickersBatchedAsync(allSymbols, cancellationToken).ConfigureAwait(false);
+            }
+
+            var normalized = symbols
+                .Where(symbol => !string.IsNullOrWhiteSpace(symbol))
+                .Select(symbol => symbol.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+
+            if (normalized.Length == 0)
+            {
+                var allSymbols = await GetAllSymbolsAsync(cancellationToken).ConfigureAwait(false);
+                return await GetTickersBatchedAsync(allSymbols, cancellationToken).ConfigureAwait(false);
+            }
+
+            return await GetTickersBatchedAsync(normalized, cancellationToken).ConfigureAwait(false);
+        }
+
+        private async Task<IReadOnlyList<string>> GetAllSymbolsAsync(CancellationToken cancellationToken)
+        {
+            var response = await GetSymbolsAsync((string?)null, cancellationToken).ConfigureAwait(false);
+            if (response?.Symbol is null || response.Symbol.Count == 0)
+            {
+                return Array.Empty<string>();
+            }
+
+            return response.Symbol
+                .Where(symbol => !string.IsNullOrWhiteSpace(symbol))
+                .Select(symbol => symbol.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+        }
+
+        private async Task<ICollection<TickerResponse>> GetTickersBatchedAsync(
+            IReadOnlyCollection<string> symbols,
+            CancellationToken cancellationToken)
+        {
+            if (symbols.Count == 0)
+            {
+                return Array.Empty<TickerResponse>();
+            }
+
+            List<TickerResponse> allTickers = [];
+            const int tickerBatchSize = 100;
+
+            foreach (var batch in symbols.Chunk(tickerBatchSize))
+            {
+                var joined = string.Join(",", batch);
+                var result = await GetTickersAsync(joined, cancellationToken).ConfigureAwait(false);
+                if (result is not null)
+                {
+                    allTickers.AddRange(result);
+                }
+            }
+
+            return allTickers;
+        }
+
+        /// <summary>
+        /// [BEAST MODE] Gets tickers in parallel batches for maximum performance.
+        /// Automatically chunks large symbol lists to avoid URL length limits.
+        /// </summary>
+        public async Task<IReadOnlyList<TickerResponse>> GetTickersBatchAsync(IEnumerable<string> symbols, int batchSize = 50, CancellationToken cancellationToken = default)
+        {
+            var symbolList = symbols.ToList();
+            if (symbolList.Count == 0) return Array.Empty<TickerResponse>();
+
+            if (symbolList.Count <= batchSize)
+            {
+                var result = await GetTickersAsync(symbolList, cancellationToken).ConfigureAwait(false);
+                return result.ToList();
+            }
+
+            var tasks = new List<Task<ICollection<TickerResponse>>>();
+            for (int i = 0; i < symbolList.Count; i += batchSize)
+            {
+                var batch = symbolList.Skip(i).Take(batchSize);
+                tasks.Add(GetTickersAsync(batch, cancellationToken));
+            }
+
+            var results = await Task.WhenAll(tasks).ConfigureAwait(false);
+            return results.SelectMany(r => r).ToList();
         }
 
         /// <summary>
