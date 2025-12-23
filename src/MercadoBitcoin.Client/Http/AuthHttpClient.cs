@@ -40,7 +40,7 @@ namespace MercadoBitcoin.Client
         /// Constructor for use with IHttpClientFactory (DI)
         /// </summary>
         [Microsoft.Extensions.DependencyInjection.ActivatorUtilitiesConstructor]
-        public AuthHttpClient(Internal.Security.TokenStore tokenStore, Microsoft.Extensions.Options.IOptions<Configuration.MercadoBitcoinClientOptions> options)
+        public AuthHttpClient(Internal.Security.TokenStore tokenStore, Microsoft.Extensions.Options.IOptionsSnapshot<Configuration.MercadoBitcoinClientOptions> options)
             : this(tokenStore, options?.Value?.RetryPolicyConfig, options?.Value?.HttpConfiguration, false) // Disable embedded retry for DI
         {
         }

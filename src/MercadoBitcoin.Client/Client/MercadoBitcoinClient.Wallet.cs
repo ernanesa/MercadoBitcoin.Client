@@ -75,7 +75,14 @@ namespace MercadoBitcoin.Client
 
         public Task<Response> GetWithdrawLimitsAsync(string accountId, CancellationToken cancellationToken, string? symbols = null)
         {
-            return _generatedClient.LimitsAsync(accountId, symbols, cancellationToken);
+            try
+            {
+                return _generatedClient.LimitsAsync(accountId, symbols, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                throw MapApiException(ex);
+            }
         }
 
         public Task<BRLWithdrawConfig> GetBrlWithdrawConfigAsync(string accountId)

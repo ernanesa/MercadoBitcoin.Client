@@ -65,16 +65,34 @@ namespace MercadoBitcoin.Client
 
         public Task<ICollection<PositionResponse>> GetPositionsAsync(string accountId, string? symbols, CancellationToken cancellationToken)
         {
-            return _generatedClient.PositionsAsync(accountId, symbols, cancellationToken);
+            try
+            {
+                return _generatedClient.PositionsAsync(accountId, symbols, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                throw MapApiException(ex);
+            }
         }
 
         /// <summary>
-        /// Gets open positions for specific symbols (Convenience overload).
+        /// Gets open positions for specific symbols (Convenience overload with batching).
         /// </summary>
-        public Task<ICollection<PositionResponse>> GetPositionsAsync(string accountId, IEnumerable<string> symbols, CancellationToken cancellationToken = default)
+        public async Task<ICollection<PositionResponse>> GetPositionsAsync(string accountId, IEnumerable<string> symbols, CancellationToken cancellationToken = default)
         {
-            var joined = string.Join(",", symbols);
-            return GetPositionsAsync(accountId, joined, cancellationToken);
+            var normalized = symbols
+                .Where(s => !string.IsNullOrWhiteSpace(s))
+                .Select(s => s.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            if (normalized.Count == 0) return await GetPositionsAsync(accountId, (string?)null, cancellationToken).ConfigureAwait(false);
+
+            return (await Internal.Helpers.BatchHelper.ExecuteNativeBatchAsync<PositionResponse>(
+                normalized,
+                50,
+                async (batch, ct) => (IEnumerable<PositionResponse>)await GetPositionsAsync(accountId, batch, ct),
+                cancellationToken).ConfigureAwait(false)).ToList();
         }
 
         #endregion

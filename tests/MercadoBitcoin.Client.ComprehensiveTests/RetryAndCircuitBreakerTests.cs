@@ -113,7 +113,7 @@ namespace MercadoBitcoin.Client.ComprehensiveTests
             Assert.True(opened, "Circuit breaker should be open after 3 failures");
 
             // Next call should fail fast (HttpRequestException) because circuit is open
-            await Assert.ThrowsAsync<HttpRequestException>(() => client.GetAsync("/fast-fail"));
+            await Assert.ThrowsAsync<HttpRequestException>(() => client.GetAsync("/fail"));
         }
 
         [Fact]
@@ -147,17 +147,17 @@ namespace MercadoBitcoin.Client.ComprehensiveTests
             }
 
             // Now circuit open -> fast fail
-            await Assert.ThrowsAsync<HttpRequestException>(() => client.GetAsync("/fast-fail"));
+            await Assert.ThrowsAsync<HttpRequestException>(() => client.GetAsync("/fail"));
 
             // Wait for half-open period
             await Task.Delay(TimeSpan.FromSeconds(cfg.CircuitBreakerDurationSeconds + 0.2));
 
             // Probe (half-open) should allow passage and close on success
-            var probe = await client.GetAsync("/recover");
+            var probe = await client.GetAsync("/fail");
             Assert.Equal(HttpStatusCode.OK, probe.StatusCode);
 
             // New request should pass normally (circuit closed)
-            var second = await client.GetAsync("/after-close");
+            var second = await client.GetAsync("/fail");
             Assert.Equal(HttpStatusCode.OK, second.StatusCode);
         }
     }

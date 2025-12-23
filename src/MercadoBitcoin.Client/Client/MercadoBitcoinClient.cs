@@ -2,6 +2,7 @@
 using MercadoBitcoin.Client.Http;
 using MercadoBitcoin.Client.Internal.RateLimiting;
 using MercadoBitcoin.Client.Internal.Time;
+using MercadoBitcoin.Client.Internal.Optimization;
 using MercadoBitcoin.Client.Errors;
 using MercadoBitcoin.Client.Configuration;
 using System;
@@ -12,6 +13,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.RateLimiting;
 using Microsoft.Extensions.ObjectPool;
+using Microsoft.Extensions.Caching.Memory;
 using System.Text.Json;
 
 namespace MercadoBitcoin.Client
@@ -25,29 +27,34 @@ namespace MercadoBitcoin.Client
         private readonly MercadoBitcoin.Client.Generated.Client _generatedClient;
         private readonly MercadoBitcoin.Client.Generated.OpenClient _openClient;
         private readonly ServerTimeEstimator _timeEstimator;
+        private readonly IMemoryCache? _cache;
+        private readonly RequestCoalescer _coalescer = new();
+        private readonly MercadoBitcoinClientOptions _options;
 
         /// <summary>
         /// Constructor for use with DI, allowing real injection of configuration options.
         /// </summary>
         /// <param name="httpClient">HttpClient configured by IHttpClientFactory</param>
         /// <param name="options">Configuration options</param>
-        public MercadoBitcoinClient(HttpClient httpClient, MercadoBitcoinClientOptions options)
+        /// <param name="cache">Optional memory cache for L1 caching</param>
+        public MercadoBitcoinClient(HttpClient httpClient, MercadoBitcoinClientOptions options, IMemoryCache? cache = null)
         {
             _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
-            var clientOptions = options ?? new MercadoBitcoinClientOptions();
+            _options = options ?? new MercadoBitcoinClientOptions();
+            _cache = cache;
 
-            if (string.IsNullOrWhiteSpace(clientOptions.BaseUrl))
+            if (string.IsNullOrWhiteSpace(_options.BaseUrl))
             {
-                throw new ArgumentException("BaseUrl cannot be null or empty.", nameof(clientOptions.BaseUrl));
+                throw new ArgumentException("BaseUrl cannot be null or empty.", nameof(_options.BaseUrl));
             }
 
             _rateLimiter = new TokenBucketRateLimiter(new TokenBucketRateLimiterOptions
             {
-                TokenLimit = clientOptions.RateLimiterConfig.PermitLimit,
-                QueueLimit = clientOptions.RateLimiterConfig.QueueLimit,
-                ReplenishmentPeriod = clientOptions.RateLimiterConfig.ReplenishmentPeriod,
-                TokensPerPeriod = clientOptions.RateLimiterConfig.TokensPerPeriod,
-                AutoReplenishment = clientOptions.RateLimiterConfig.AutoReplenishment
+                TokenLimit = _options.RateLimiterConfig.PermitLimit,
+                QueueLimit = _options.RateLimiterConfig.QueueLimit,
+                ReplenishmentPeriod = _options.RateLimiterConfig.ReplenishmentPeriod,
+                TokensPerPeriod = _options.RateLimiterConfig.TokensPerPeriod,
+                AutoReplenishment = _options.RateLimiterConfig.AutoReplenishment
             });
 
             // Initialize ServerTimeEstimator
@@ -67,10 +74,10 @@ namespace MercadoBitcoin.Client
 
             // Combine internal context with user provided context if any
             var internalContext = MercadoBitcoinJsonSerializerContext.Default;
-            if (clientOptions.JsonSerializerContext != null)
+            if (_options.JsonSerializerContext != null)
             {
                 jsonOptions.TypeInfoResolver = System.Text.Json.Serialization.Metadata.JsonTypeInfoResolver.Combine(
-                    clientOptions.JsonSerializerContext,
+                    _options.JsonSerializerContext,
                     internalContext
                 );
             }
@@ -80,12 +87,12 @@ namespace MercadoBitcoin.Client
             }
 
             // Apply custom configuration
-            clientOptions.ConfigureJsonOptions?.Invoke(jsonOptions);
+            _options.ConfigureJsonOptions?.Invoke(jsonOptions);
 
-            _generatedClient = new MercadoBitcoin.Client.Generated.Client(_httpClient) { BaseUrl = clientOptions.BaseUrl };
+            _generatedClient = new MercadoBitcoin.Client.Generated.Client(_httpClient) { BaseUrl = _options.BaseUrl };
             _generatedClient.SetSerializerOptions(jsonOptions);
 
-            _openClient = new MercadoBitcoin.Client.Generated.OpenClient(_httpClient) { BaseUrl = clientOptions.BaseUrl };
+            _openClient = new MercadoBitcoin.Client.Generated.OpenClient(_httpClient) { BaseUrl = _options.BaseUrl };
             _openClient.SetSerializerOptions(jsonOptions);
         }
 
@@ -93,36 +100,35 @@ namespace MercadoBitcoin.Client
         /// Manual constructor for standalone usage (without DI).
         /// </summary>
         /// <param name="clientOptions">Configuration options</param>
-        public MercadoBitcoinClient(MercadoBitcoinClientOptions clientOptions)
+        /// <param name="cache">Optional memory cache for L1 caching</param>
+        public MercadoBitcoinClient(MercadoBitcoinClientOptions clientOptions, IMemoryCache? cache = null)
         {
-            if (clientOptions == null)
-            {
-                throw new ArgumentNullException(nameof(clientOptions));
-            }
+            _options = clientOptions ?? throw new ArgumentNullException(nameof(clientOptions));
+            _cache = cache;
 
-            if (string.IsNullOrWhiteSpace(clientOptions.BaseUrl))
+            if (string.IsNullOrWhiteSpace(_options.BaseUrl))
             {
-                throw new ArgumentException("BaseUrl cannot be null or empty.", nameof(clientOptions.BaseUrl));
+                throw new ArgumentException("BaseUrl cannot be null or empty.", nameof(_options.BaseUrl));
             }
 
             _rateLimiter = new TokenBucketRateLimiter(new TokenBucketRateLimiterOptions
             {
-                TokenLimit = clientOptions.RateLimiterConfig.PermitLimit,
-                QueueLimit = clientOptions.RateLimiterConfig.QueueLimit,
-                ReplenishmentPeriod = clientOptions.RateLimiterConfig.ReplenishmentPeriod,
-                TokensPerPeriod = clientOptions.RateLimiterConfig.TokensPerPeriod,
-                AutoReplenishment = clientOptions.RateLimiterConfig.AutoReplenishment
+                TokenLimit = _options.RateLimiterConfig.PermitLimit,
+                QueueLimit = _options.RateLimiterConfig.QueueLimit,
+                ReplenishmentPeriod = _options.RateLimiterConfig.ReplenishmentPeriod,
+                TokensPerPeriod = _options.RateLimiterConfig.TokensPerPeriod,
+                AutoReplenishment = _options.RateLimiterConfig.AutoReplenishment
             });
 
             // Manual composition of the HTTP pipeline
             var tokenStore = new Internal.Security.TokenStore();
 
             // 1. AuthenticationHandler (Inner logic handler, handles 401)
-            var authenticationHandler = new AuthenticationHandler(tokenStore, clientOptions);
+            var authenticationHandler = new AuthenticationHandler(tokenStore, _options);
 
             // 2. AuthHttpClient (Outer handler, adds token, contains RetryHandler)
             // Pass true to enable embedded retry logic for standalone client
-            _authHandler = new AuthHttpClient(tokenStore, clientOptions.RetryPolicyConfig, clientOptions.HttpConfiguration, true);
+            _authHandler = new AuthHttpClient(tokenStore, _options.RetryPolicyConfig, _options.HttpConfiguration, true);
 
             // Wire: AuthHttpClient -> RetryHandler -> AuthenticationHandler
             if (_authHandler.InnerHandler is DelegatingHandler retryHandler)
@@ -139,7 +145,12 @@ namespace MercadoBitcoin.Client
             {
                 PooledConnectionLifetime = TimeSpan.FromMinutes(2),
                 PooledConnectionIdleTimeout = TimeSpan.FromMinutes(1),
-                MaxConnectionsPerServer = 20
+                MaxConnectionsPerServer = 50,
+                EnableMultipleHttp2Connections = true,
+                ConnectTimeout = TimeSpan.FromSeconds(5),
+                KeepAlivePingDelay = TimeSpan.FromSeconds(30),
+                KeepAlivePingTimeout = TimeSpan.FromSeconds(10),
+                KeepAlivePingPolicy = HttpKeepAlivePingPolicy.WithActiveRequests
             };
 
             // Wire: AuthenticationHandler -> SocketsHttpHandler
@@ -147,8 +158,8 @@ namespace MercadoBitcoin.Client
 
             _httpClient = new HttpClient(_authHandler)
             {
-                BaseAddress = new Uri(clientOptions.BaseUrl),
-                Timeout = TimeSpan.FromSeconds(clientOptions.TimeoutSeconds)
+                BaseAddress = new Uri(_options.BaseUrl),
+                Timeout = TimeSpan.FromSeconds(_options.TimeoutSeconds)
             };
 
             // Initialize ServerTimeEstimator
@@ -168,10 +179,10 @@ namespace MercadoBitcoin.Client
 
             // Combine internal context with user provided context if any
             var internalContext = MercadoBitcoinJsonSerializerContext.Default;
-            if (clientOptions.JsonSerializerContext != null)
+            if (_options.JsonSerializerContext != null)
             {
                 jsonOptions.TypeInfoResolver = System.Text.Json.Serialization.Metadata.JsonTypeInfoResolver.Combine(
-                    clientOptions.JsonSerializerContext,
+                    _options.JsonSerializerContext,
                     internalContext
                 );
             }
@@ -181,12 +192,12 @@ namespace MercadoBitcoin.Client
             }
 
             // Apply custom configuration
-            clientOptions.ConfigureJsonOptions?.Invoke(jsonOptions);
+            _options.ConfigureJsonOptions?.Invoke(jsonOptions);
 
-            _generatedClient = new MercadoBitcoin.Client.Generated.Client(_httpClient) { BaseUrl = clientOptions.BaseUrl };
+            _generatedClient = new MercadoBitcoin.Client.Generated.Client(_httpClient) { BaseUrl = _options.BaseUrl };
             _generatedClient.SetSerializerOptions(jsonOptions);
 
-            _openClient = new MercadoBitcoin.Client.Generated.OpenClient(_httpClient) { BaseUrl = clientOptions.BaseUrl };
+            _openClient = new MercadoBitcoin.Client.Generated.OpenClient(_httpClient) { BaseUrl = _options.BaseUrl };
             _openClient.SetSerializerOptions(jsonOptions);
         }
 
@@ -195,6 +206,7 @@ namespace MercadoBitcoin.Client
             GC.SuppressFinalize(this);
             _httpClient?.Dispose();
             _rateLimiter?.Dispose();
+            _coalescer?.Dispose();
         }
 
         /// <summary>
@@ -253,5 +265,51 @@ namespace MercadoBitcoin.Client
         /// Helper method to get the corrected timestamp for signatures (internal/advanced use).
         /// </summary>
         public long GetCurrentTimestamp() => _timeEstimator.GetCorrectedUnixTimeSeconds();
+
+        private async Task<T> ExecuteCachedAsync<T>(string cacheKey, Func<CancellationToken, Task<T>> action, CancellationToken ct, TimeSpan? expiration = null)
+        {
+            if (_cache == null || !_options.CacheConfig.EnableL1Cache)
+            {
+                if (_options.CacheConfig.EnableRequestCoalescing)
+                {
+                    return await _coalescer.ExecuteAsync(cacheKey, action, ct).ConfigureAwait(false);
+                }
+                return await action(ct).ConfigureAwait(false);
+            }
+
+            if (_cache.TryGetValue(cacheKey, out T? cachedResult))
+            {
+                return cachedResult!;
+            }
+
+            T result;
+            if (_options.CacheConfig.EnableRequestCoalescing)
+            {
+                result = await _coalescer.ExecuteAsync(cacheKey, action, ct).ConfigureAwait(false);
+            }
+            else
+            {
+                result = await action(ct).ConfigureAwait(false);
+            }
+
+            if (result != null)
+            {
+                var cacheOptions = new MemoryCacheEntryOptions
+                {
+                    AbsoluteExpirationRelativeToNow = expiration ?? _options.CacheConfig.DefaultL1Expiration
+                };
+                _cache.Set(cacheKey, result, cacheOptions);
+            }
+            else if (_options.CacheConfig.EnableNegativeCaching)
+            {
+                var cacheOptions = new MemoryCacheEntryOptions
+                {
+                    AbsoluteExpirationRelativeToNow = _options.CacheConfig.NegativeCacheExpiration
+                };
+                _cache.Set(cacheKey, result, cacheOptions);
+            }
+
+            return result!;
+        }
     }
 }

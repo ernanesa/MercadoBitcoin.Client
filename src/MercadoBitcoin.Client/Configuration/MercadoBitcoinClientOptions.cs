@@ -144,6 +144,39 @@ namespace MercadoBitcoin.Client.Configuration
         /// Rate limiter configuration
         /// </summary>
         public RateLimiterConfig RateLimiterConfig { get; set; } = new RateLimiterConfig();
+
+        /// <summary>
+        /// Cache configuration
+        /// </summary>
+        public CacheConfig CacheConfig { get; set; } = new CacheConfig();
+    }
+
+    public class CacheConfig
+    {
+        /// <summary>
+        /// Whether to enable L1 (Memory) caching for public data. Default: true.
+        /// </summary>
+        public bool EnableL1Cache { get; set; } = true;
+
+        /// <summary>
+        /// Default expiration for public data in L1 cache. Default: 5 seconds.
+        /// </summary>
+        public TimeSpan DefaultL1Expiration { get; set; } = TimeSpan.FromSeconds(5);
+
+        /// <summary>
+        /// Whether to enable Request Coalescing (Singleflight). Default: true.
+        /// </summary>
+        public bool EnableRequestCoalescing { get; set; } = true;
+
+        /// <summary>
+        /// Whether to enable Negative Caching (caching 404/empty results). Default: true.
+        /// </summary>
+        public bool EnableNegativeCaching { get; set; } = true;
+
+        /// <summary>
+        /// Expiration for negative cache entries. Default: 1 hour.
+        /// </summary>
+        public TimeSpan NegativeCacheExpiration { get; set; } = TimeSpan.FromHours(1);
     }
 
     public class RateLimiterConfig

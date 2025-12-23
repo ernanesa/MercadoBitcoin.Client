@@ -13,6 +13,8 @@ using MercadoBitcoin.Client.Configuration;
 using Microsoft.Extensions.Options;
 using MbOutcomeType = MercadoBitcoin.Client.Models.Enums.OutcomeType;
 
+using MercadoBitcoin.Client.Internal.Optimization;
+
 namespace MercadoBitcoin.Client.Http
 {
     /// <summary>
@@ -20,7 +22,7 @@ namespace MercadoBitcoin.Client.Http
     /// </summary>
     public class RetryHandler : DelegatingHandler
     {
-        private readonly ResiliencePipeline<HttpResponseMessage> _pipeline;
+        private readonly ResiliencePipelineProvider _pipelineProvider;
         private readonly RetryPolicyConfig _config;
         private readonly HttpConfiguration _httpConfig;
 
@@ -48,7 +50,7 @@ namespace MercadoBitcoin.Client.Http
             if (innerHandler == null) throw new ArgumentNullException(nameof(innerHandler));
             _config = config ?? new RetryPolicyConfig();
             _httpConfig = httpConfig ?? HttpConfiguration.CreateHttp2Default();
-            _pipeline = CreateResiliencePipeline();
+            _pipelineProvider = new ResiliencePipelineProvider(_config);
             InnerHandler = innerHandler;
         }
 
@@ -56,13 +58,13 @@ namespace MercadoBitcoin.Client.Http
         /// Constructor for use with IHttpClientFactory (DI) where InnerHandler is set by the factory.
         /// </summary>
         [Microsoft.Extensions.DependencyInjection.ActivatorUtilitiesConstructor]
-        public RetryHandler(IOptions<MercadoBitcoinClientOptions> options)
+        public RetryHandler(IOptionsSnapshot<MercadoBitcoinClientOptions> options)
         {
             if (options == null || options.Value == null) throw new ArgumentNullException(nameof(options));
-            
+
             _config = options.Value.RetryPolicyConfig ?? new RetryPolicyConfig();
             _httpConfig = options.Value.HttpConfiguration ?? HttpConfiguration.CreateHttp2Default();
-            _pipeline = CreateResiliencePipeline();
+            _pipelineProvider = new ResiliencePipelineProvider(_config);
             // InnerHandler is NOT set here, it will be set by the pipeline builder
         }
 
@@ -88,9 +90,13 @@ namespace MercadoBitcoin.Client.Http
             HttpResponseMessage? finalResponse = null;
             Exception? finalException = null;
 
+            // Identify endpoint for per-endpoint circuit breaker
+            var endpoint = request.RequestUri?.AbsolutePath ?? "unknown";
+            var pipeline = _pipelineProvider.GetPipeline(endpoint);
+
             try
             {
-                finalResponse = await _pipeline.ExecuteAsync(async (ct) =>
+                finalResponse = await pipeline.ExecuteAsync(async (ct) =>
                 {
                     return await base.SendAsync(request, ct);
                 }, combinedCts.Token);
@@ -101,7 +107,7 @@ namespace MercadoBitcoin.Client.Http
             {
                 finalException = ex;
                 // Maintain backward compatibility with previous manual implementation
-                throw new HttpRequestException("Circuit breaker open", ex);
+                throw new HttpRequestException($"Circuit breaker open for {endpoint}", ex);
             }
             catch (Exception ex)
             {
@@ -118,6 +124,7 @@ namespace MercadoBitcoin.Client.Http
                     _requestDurationHistogram.Record(elapsedMs, new KeyValuePair<string, object?>[]
                     {
                         new("method", request.Method.Method),
+                        new("endpoint", endpoint),
                         new("outcome", outcome),
                         new("status_code", statusCodeObj)
                     });
@@ -159,91 +166,6 @@ namespace MercadoBitcoin.Client.Http
                 return MbOutcomeType.HttpError.ToString();
 
             return MbOutcomeType.UnknownError.ToString();
-        }
-
-        private ResiliencePipeline<HttpResponseMessage> CreateResiliencePipeline()
-        {
-            var builder = new ResiliencePipelineBuilder<HttpResponseMessage>();
-
-            // 1. Circuit Breaker (Outer layer)
-            if (_config.EnableCircuitBreaker)
-            {
-                builder.AddCircuitBreaker(new CircuitBreakerStrategyOptions<HttpResponseMessage>
-                {
-                    FailureRatio = 0.5, // 50% failure rate
-                    SamplingDuration = TimeSpan.FromSeconds(30),
-                    MinimumThroughput = _config.CircuitBreakerFailuresBeforeBreaking,
-                    BreakDuration = TimeSpan.FromSeconds(_config.CircuitBreakerDurationSeconds),
-                    ShouldHandle = new PredicateBuilder<HttpResponseMessage>()
-                        .Handle<HttpRequestException>()
-                        .Handle<TimeoutException>()
-                        .HandleResult(r => ShouldRetry(r)),
-                    OnOpened = args =>
-                    {
-                        _config.OnCircuitBreakerEvent?.Invoke(new CircuitBreakerEvent(CircuitBreakerState.Open, "CircuitBreaker", 0, args.BreakDuration));
-                        return ValueTask.CompletedTask;
-                    },
-                    OnClosed = args =>
-                    {
-                        _config.OnCircuitBreakerEvent?.Invoke(new CircuitBreakerEvent(CircuitBreakerState.Closed, "CircuitBreaker", 0, TimeSpan.Zero));
-                        return ValueTask.CompletedTask;
-                    },
-                    OnHalfOpened = args =>
-                    {
-                        _config.OnCircuitBreakerEvent?.Invoke(new CircuitBreakerEvent(CircuitBreakerState.HalfOpen, "CircuitBreaker", 0, TimeSpan.Zero));
-                        return ValueTask.CompletedTask;
-                    }
-                });
-            }
-
-            // 2. Retry (Inner layer)
-            if (_config.MaxRetryAttempts > 0)
-            {
-                builder.AddRetry(new RetryStrategyOptions<HttpResponseMessage>
-                {
-                    MaxRetryAttempts = _config.MaxRetryAttempts,
-                    BackoffType = DelayBackoffType.Exponential,
-                    Delay = TimeSpan.FromSeconds(1), // Base delay, calculated dynamically in config usually, but Polly V8 handles backoff
-                    ShouldHandle = new PredicateBuilder<HttpResponseMessage>()
-                    .Handle<HttpRequestException>()
-                    .Handle<TaskCanceledException>(ex => _config.RetryOnTimeout)
-                    .HandleResult(r => ShouldRetry(r)),
-                    OnRetry = args =>
-                    {
-                        int statusCode = args.Outcome.Result != null ? (int)args.Outcome.Result.StatusCode : 0;
-
-                        // Handle Retry-After header
-                        if (_config.RespectRetryAfterHeader && args.Outcome.Result?.StatusCode == HttpStatusCode.TooManyRequests &&
-                            args.Outcome.Result.Headers.TryGetValues("Retry-After", out var values))
-                        {
-                            // Note: Polly V8 RetryStrategyOptions doesn't support dynamic delay per retry easily in the same way as WaitAndRetryAsync
-                            // But we can log it. For true dynamic delay based on header, we'd need a custom strategy or advanced configuration.
-                            // For now, we stick to exponential backoff which is robust.
-                        }
-
-                        _config.OnRetryEvent?.Invoke(new RetryEvent(args.AttemptNumber, args.RetryDelay, null, statusCode, false));
-                        if (_config.EnableMetrics)
-                        {
-                            _retryCounter.Add(1, new KeyValuePair<string, object?>("status_code", statusCode));
-                        }
-                        return ValueTask.CompletedTask;
-                    }
-                });
-
-            }
-
-            return builder.Build();
-        }
-
-        private bool ShouldRetry(HttpResponseMessage response)
-        {
-            return (_config.RetryOnTimeout && response.StatusCode == HttpStatusCode.RequestTimeout) ||
-                   (_config.RetryOnRateLimit && response.StatusCode == HttpStatusCode.TooManyRequests) ||
-                   (_config.RetryOnServerErrors && (
-                       response.StatusCode == HttpStatusCode.InternalServerError ||
-                       response.StatusCode == HttpStatusCode.BadGateway ||
-                       response.StatusCode == HttpStatusCode.ServiceUnavailable ||
-                       response.StatusCode == HttpStatusCode.GatewayTimeout));
         }
     }
 }
