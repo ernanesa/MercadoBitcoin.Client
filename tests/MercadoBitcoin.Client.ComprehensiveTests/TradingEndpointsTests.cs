@@ -5,6 +5,7 @@ using MercadoBitcoin.Client.Errors;
 using MercadoBitcoin.Client.Models;
 using Microsoft.Extensions.Configuration;
 using System.Net;
+using System.Globalization;
 
 namespace MercadoBitcoin.Client.ComprehensiveTests;
 
@@ -25,16 +26,17 @@ public class TradingEndpointsTests : TestBase
         // This test validates the order structure without actually placing an order
         try
         {
-            // Arrange - Create a test order with very low price to avoid accidental execution
+            // Arrange - Create a test order with a price that is low but not too low (API has floors)
             var ticker = await Client.GetTickersAsync(TestSymbol);
-            var currentPrice = ticker.First().Last;
-            var testPrice = decimal.Parse(currentPrice) * 0.1m; // 90% below market price
+            var currentPriceStr = ticker.First().Last;
+            var currentPrice = decimal.Parse(currentPriceStr, CultureInfo.InvariantCulture);
+            var testPrice = Math.Floor(currentPrice * 0.7m); // 30% below market price (safer than 90% below)
 
             var orderRequest = new PlaceOrderRequest
             {
                 Side = "buy",
                 Type = "limit",
-                Qty = "0.001", // Minimum quantity
+                Qty = "0.00001", // Smaller quantity if possible
                 LimitPrice = (double)testPrice
             };
 
@@ -125,7 +127,7 @@ public class TradingEndpointsTests : TestBase
                 return;
             }
 
-            await Assert.ThrowsAsync<Exception>(async () =>
+            await Assert.ThrowsAsync<MercadoBitcoinApiException>(async () =>
             {
                 await Client.CancelOrderAsync(TestAccountId, TestSymbol, fakeOrderId);
             });
@@ -158,9 +160,9 @@ public class TradingEndpointsTests : TestBase
                 return;
             }
 
-            await Assert.ThrowsAsync<Exception>(async () =>
+            await Assert.ThrowsAsync<MercadoBitcoinApiException>(async () =>
             {
-                await Client.GetOrderAsync(TestAccountId, TestSymbol, fakeOrderId);
+                await Client.GetOrderAsync(TestSymbol, TestAccountId, fakeOrderId);
             });
 
             LogTestResult("GetOrderById_InvalidId", true, "Correctly threw exception for invalid order ID");
@@ -236,15 +238,16 @@ public class TradingEndpointsTests : TestBase
         {
             // Step 1: Get current market price
             var ticker = await Client.GetTickersAsync(TestSymbol);
-            var currentPrice = ticker.First().Last;
-            var testPrice = decimal.Parse(currentPrice) * 0.5m; // 50% below market price
+            var currentPriceStr = ticker.First().Last;
+            var currentPrice = decimal.Parse(currentPriceStr, CultureInfo.InvariantCulture);
+            var testPrice = Math.Floor(currentPrice * 0.5m); // 50% below market price
 
             // Step 2: Place a limit order
             var orderRequest = new PlaceOrderRequest
             {
                 Side = "buy",
                 Type = "limit",
-                Qty = "0.001",
+                Qty = "0.00001", // Very small quantity (~5 BRL)
                 LimitPrice = (double)testPrice
             };
 
@@ -258,7 +261,7 @@ public class TradingEndpointsTests : TestBase
             await DelayAsync();
 
             // Step 3: Verify order exists
-            var retrievedOrder = await Client.GetOrderAsync(TestAccountId, TestSymbol, orderId);
+            var retrievedOrder = await Client.GetOrderAsync(TestSymbol, TestAccountId, orderId);
             LogApiCall($"GET /orders/{orderId}", response: retrievedOrder);
 
             Assert.NotNull(retrievedOrder);
@@ -274,7 +277,7 @@ public class TradingEndpointsTests : TestBase
             await DelayAsync();
 
             // Step 5: Verify order is cancelled
-            var cancelledOrder = await Client.GetOrderAsync(TestAccountId, TestSymbol, orderId);
+            var cancelledOrder = await Client.GetOrderAsync(TestSymbol, TestAccountId, orderId);
             Assert.Contains(cancelledOrder.Status, new[] { "cancelled", "canceled" });
 
             LogTestResult("PlaceAndCancelOrder_FullWorkflow", true, $"Successfully completed full workflow for order {orderId}");
@@ -298,6 +301,88 @@ public class TradingEndpointsTests : TestBase
                 catch (Exception cleanupEx)
                 {
                     LogTestResult("PlaceAndCancelOrder_Cleanup", false, $"Cleanup failed: {cleanupEx.Message}");
+                }
+            }
+        }
+    }
+
+    [Fact]
+    public async Task PlaceAndCancelSellOrder_FullWorkflow_ShouldWork()
+    {
+        if (!_runTradingTests)
+        {
+            LogTestResult("PlaceAndCancelSellOrder_FullWorkflow", true, "Skipped - Trading tests disabled");
+            return;
+        }
+
+        string? orderId = null;
+        try
+        {
+            // Step 1: Get current market price
+            var ticker = await Client.GetTickersAsync(TestSymbol);
+            var currentPriceStr = ticker.First().Last;
+            var currentPrice = decimal.Parse(currentPriceStr, CultureInfo.InvariantCulture);
+            var testPrice = Math.Ceiling(currentPrice * 1.5m); // 50% above market price to avoid execution
+
+            // Step 2: Place a limit sell order
+            var orderRequest = new PlaceOrderRequest
+            {
+                Side = "sell",
+                Type = "limit",
+                Qty = "0.00001", // Very small quantity
+                LimitPrice = (double)testPrice
+            };
+
+            var placedOrder = await Client.PlaceOrderAsync(TestSymbol, TestAccountId, orderRequest);
+            orderId = placedOrder.OrderId;
+            LogApiCall("POST /orders (sell)", orderRequest, placedOrder);
+
+            Assert.NotNull(placedOrder);
+            Assert.NotNull(orderId);
+
+            await DelayAsync();
+
+            // Step 3: Verify order exists
+            var retrievedOrder = await Client.GetOrderAsync(TestSymbol, TestAccountId, orderId);
+            LogApiCall($"GET /orders/{orderId} (sell)", response: retrievedOrder);
+
+            Assert.NotNull(retrievedOrder);
+            Assert.Equal(orderId, retrievedOrder.Id);
+            Assert.Equal("sell", retrievedOrder.Side);
+
+            await DelayAsync();
+
+            // Step 4: Cancel the order
+            var cancelResult = await Client.CancelOrderAsync(TestAccountId, TestSymbol, orderId);
+            LogApiCall($"DELETE /orders/{orderId} (sell)", response: cancelResult);
+
+            await DelayAsync();
+
+            // Step 5: Verify order is cancelled
+            var cancelledOrder = await Client.GetOrderAsync(TestSymbol, TestAccountId, orderId);
+            Assert.Contains(cancelledOrder.Status, new[] { "cancelled", "canceled" });
+
+            LogTestResult("PlaceAndCancelSellOrder_FullWorkflow", true, $"Successfully completed full workflow for sell order {orderId}");
+            orderId = null; // Mark as handled
+        }
+        catch (Exception ex)
+        {
+            LogTestResult("PlaceAndCancelSellOrder_FullWorkflow", false, ex.Message);
+            throw;
+        }
+        finally
+        {
+            // Cleanup
+            if (orderId != null)
+            {
+                try
+                {
+                    await Client.CancelOrderAsync(TestAccountId, TestSymbol, orderId);
+                    LogTestResult("PlaceAndCancelSellOrder_Cleanup", true, "Emergency cleanup completed");
+                }
+                catch (Exception cleanupEx)
+                {
+                    LogTestResult("PlaceAndCancelSellOrder_Cleanup", false, $"Cleanup failed: {cleanupEx.Message}");
                 }
             }
         }

@@ -2,6 +2,7 @@ using Xunit;
 using Xunit.Abstractions;
 using MercadoBitcoin.Client.Generated;
 using MercadoBitcoin.Client.Errors;
+using System.Globalization;
 using Microsoft.Extensions.Configuration;
 using System.Net;
 
@@ -69,9 +70,9 @@ public class PrivateEndpointsTests : TestBase
             var brlBalance = result.FirstOrDefault(b => b.Symbol == "BRL");
             if (brlBalance != null)
             {
-                Assert.True(decimal.Parse(brlBalance.Available) >= 0);
-                Assert.True(decimal.Parse(brlBalance.Total) >= 0);
-                Assert.True(decimal.Parse(brlBalance.Total) >= decimal.Parse(brlBalance.Available));
+                Assert.True(decimal.Parse(brlBalance.Available, CultureInfo.InvariantCulture) >= 0);
+                Assert.True(decimal.Parse(brlBalance.Total, CultureInfo.InvariantCulture) >= 0);
+                Assert.True(decimal.Parse(brlBalance.Total, CultureInfo.InvariantCulture) >= decimal.Parse(brlBalance.Available, CultureInfo.InvariantCulture));
             }
 
             LogTestResult("GetBalance", true, $"Returned balances for {result.Count()} currencies");
@@ -107,7 +108,7 @@ public class PrivateEndpointsTests : TestBase
             {
                 Assert.NotNull(order.Id);
                 Assert.NotNull(order.Instrument);
-                Assert.True(decimal.Parse(order.Qty) > 0);
+                Assert.True(decimal.Parse(order.Qty, CultureInfo.InvariantCulture) > 0);
                 Assert.True(order.LimitPrice >= 0); // Price can be 0 for market orders
                 Assert.Contains(order.Side, new[] { "buy", "sell" });
                 Assert.Contains(order.Type, new[] { "limit", "market", "stop_limit" });
@@ -242,7 +243,7 @@ public class PrivateEndpointsTests : TestBase
             {
                 Assert.NotNull(position.Instrument);
                 Assert.NotNull(position.Qty);
-                Assert.True(decimal.Parse(position.Qty) != 0); // Positions should have non-zero quantity
+                Assert.True(decimal.Parse(position.Qty, CultureInfo.InvariantCulture) != 0); // Positions should have non-zero quantity
             }
 
             LogTestResult("GetPositions", true, $"Returned {result.Count()} positions");
@@ -277,8 +278,8 @@ public class PrivateEndpointsTests : TestBase
             foreach (var trade in result)
             {
                 Assert.True(trade.Tid > 0);
-                var tradePrice = decimal.Parse(trade.Price);
-                var tradeAmount = decimal.Parse(trade.Amount);
+                var tradePrice = decimal.Parse(trade.Price, CultureInfo.InvariantCulture);
+                var tradeAmount = decimal.Parse(trade.Amount, CultureInfo.InvariantCulture);
                 Assert.True(tradePrice > 0);
                 Assert.True(tradeAmount > 0);
                 Assert.Contains(trade.Type, new[] { "buy", "sell" });
@@ -403,6 +404,115 @@ public class PrivateEndpointsTests : TestBase
         catch (Exception ex)
         {
             LogTestResult("GetDeposits", false, ex.Message);
+            throw;
+        }
+
+        await DelayAsync();
+    }
+
+    [Fact]
+    public async Task GetWithdrawLimits_ShouldReturnValidLimits()
+    {
+        try
+        {
+            // Act
+            var result = await Client.GetWithdrawLimitsAsync(TestAccountId);
+            LogApiCall("GET /withdraw/config/limits", response: result);
+
+            // Assert
+            Assert.NotNull(result);
+            LogTestResult("GetWithdrawLimits", true, "Successfully retrieved withdraw limits");
+        }
+        catch (MercadoBitcoinApiException ex) when (ex.Message.Contains("You need to be authenticated"))
+        {
+            LogTestResult("GetWithdrawLimits", true, "Skipped - Authentication required");
+            return;
+        }
+        catch (Exception ex)
+        {
+            LogTestResult("GetWithdrawLimits", false, ex.Message);
+            throw;
+        }
+
+        await DelayAsync();
+    }
+
+    [Fact]
+    public async Task GetBrlWithdrawConfig_ShouldReturnValidConfig()
+    {
+        try
+        {
+            // Act
+            var result = await Client.GetBrlWithdrawConfigAsync(TestAccountId);
+            LogApiCall("GET /withdraw/config/BRL", response: result);
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.NotNull(result.Fees);
+            LogTestResult("GetBrlWithdrawConfig", true, $"Total limit: {result.Total_limit}");
+        }
+        catch (MercadoBitcoinApiException ex) when (ex.Message.Contains("You need to be authenticated"))
+        {
+            LogTestResult("GetBrlWithdrawConfig", true, "Skipped - Authentication required");
+            return;
+        }
+        catch (Exception ex)
+        {
+            LogTestResult("GetBrlWithdrawConfig", false, ex.Message);
+            throw;
+        }
+
+        await DelayAsync();
+    }
+
+    [Fact]
+    public async Task GetWithdrawCryptoWalletAddresses_ShouldReturnAddresses()
+    {
+        try
+        {
+            // Act
+            var result = await Client.GetWithdrawCryptoWalletAddressesAsync(TestAccountId);
+            LogApiCall("GET /withdraw/addresses", response: result);
+
+            // Assert
+            Assert.NotNull(result);
+            LogTestResult("GetWithdrawCryptoWalletAddresses", true, $"Returned {result.Count()} addresses");
+        }
+        catch (MercadoBitcoinApiException ex) when (ex.Message.Contains("You need to be authenticated"))
+        {
+            LogTestResult("GetWithdrawCryptoWalletAddresses", true, "Skipped - Authentication required");
+            return;
+        }
+        catch (Exception ex)
+        {
+            LogTestResult("GetWithdrawCryptoWalletAddresses", false, ex.Message);
+            throw;
+        }
+
+        await DelayAsync();
+    }
+
+    [Fact]
+    public async Task GetWithdrawBankAccounts_ShouldReturnAccounts()
+    {
+        try
+        {
+            // Act
+            var result = await Client.GetWithdrawBankAccountsAsync(TestAccountId);
+            LogApiCall("GET /withdraw/bank-accounts", response: result);
+
+            // Assert
+            Assert.NotNull(result);
+            LogTestResult("GetWithdrawBankAccounts", true, $"Returned {result.Count()} bank accounts");
+        }
+        catch (MercadoBitcoinApiException ex) when (ex.Message.Contains("You need to be authenticated"))
+        {
+            LogTestResult("GetWithdrawBankAccounts", true, "Skipped - Authentication required");
+            return;
+        }
+        catch (Exception ex)
+        {
+            LogTestResult("GetWithdrawBankAccounts", false, ex.Message);
             throw;
         }
 

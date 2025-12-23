@@ -1,6 +1,7 @@
 using Xunit;
 using Xunit.Abstractions;
 using MercadoBitcoin.Client.Generated;
+using System.Globalization;
 
 namespace MercadoBitcoin.Client.ComprehensiveTests;
 
@@ -53,12 +54,12 @@ public class PublicEndpointsTests : TestBase
 
             var ticker = result.First();
             Assert.Equal(TestSymbol, ticker.Pair);
-            Assert.True(decimal.Parse(ticker.Last) > 0);
-            Assert.True(decimal.Parse(ticker.High) > 0);
-            Assert.True(decimal.Parse(ticker.Low) > 0);
-            Assert.True(decimal.Parse(ticker.Vol) > 0);
+            Assert.True(decimal.Parse(ticker.Last, CultureInfo.InvariantCulture) > 0);
+            Assert.True(decimal.Parse(ticker.High, CultureInfo.InvariantCulture) > 0);
+            Assert.True(decimal.Parse(ticker.Low, CultureInfo.InvariantCulture) > 0);
+            Assert.True(decimal.Parse(ticker.Vol, CultureInfo.InvariantCulture) > 0);
 
-            LogTestResult("GetTickers", true, $"Last price: {ticker.Last:C}");
+            LogTestResult("GetTickers", true, $"Last price: {ticker.Last}");
         }
         catch (Exception ex)
         {
@@ -86,8 +87,8 @@ public class PublicEndpointsTests : TestBase
             Assert.NotEmpty(result.Bids);
 
             // Parse all prices to find the best bid and best ask
-            var askPrices = result.Asks.Select(ask => decimal.Parse(ask.ToArray()[0], System.Globalization.CultureInfo.InvariantCulture)).ToList();
-            var bidPrices = result.Bids.Select(bid => decimal.Parse(bid.ToArray()[0], System.Globalization.CultureInfo.InvariantCulture)).ToList();
+            var askPrices = result.Asks.Select(ask => decimal.Parse(ask.ToArray()[0], CultureInfo.InvariantCulture)).ToList();
+            var bidPrices = result.Bids.Select(bid => decimal.Parse(bid.ToArray()[0], CultureInfo.InvariantCulture)).ToList();
 
             // Best ask is the lowest ask price (sellers want to sell at this price)
             var bestAskPrice = askPrices.Min();
@@ -135,8 +136,8 @@ public class PublicEndpointsTests : TestBase
             Assert.NotEmpty(result);
 
             var trade = result.First();
-            var tradePrice = decimal.Parse(trade.Price);
-            var tradeAmount = decimal.Parse(trade.Amount);
+            var tradePrice = decimal.Parse(trade.Price, CultureInfo.InvariantCulture);
+            var tradeAmount = decimal.Parse(trade.Amount, CultureInfo.InvariantCulture);
             var tradeDate = DateTimeOffset.FromUnixTimeSeconds(trade.Date ?? 0);
 
             Assert.True(tradePrice > 0);
@@ -145,7 +146,7 @@ public class PublicEndpointsTests : TestBase
             Assert.True(tradeDate > DateTimeOffset.MinValue);
             Assert.Contains(trade.Type, new[] { "buy", "sell" });
 
-            LogTestResult("GetTrades", true, $"Returned {result.Count()} trades, Latest: {tradePrice:C} at {tradeDate}");
+            LogTestResult("GetTrades", true, $"Returned {result.Count()} trades, Latest: {tradePrice} at {tradeDate}");
         }
         catch (Exception ex)
         {
@@ -173,11 +174,11 @@ public class PublicEndpointsTests : TestBase
             Assert.NotEmpty(result.T);
 
             var firstTime = result.T.First();
-            var firstOpen = decimal.Parse(result.O.First());
-            var firstHigh = decimal.Parse(result.H.First());
-            var firstLow = decimal.Parse(result.L.First());
-            var firstClose = decimal.Parse(result.C.First());
-            var firstVolume = decimal.Parse(result.V.First());
+            var firstOpen = decimal.Parse(result.O.First(), CultureInfo.InvariantCulture);
+            var firstHigh = decimal.Parse(result.H.First(), CultureInfo.InvariantCulture);
+            var firstLow = decimal.Parse(result.L.First(), CultureInfo.InvariantCulture);
+            var firstClose = decimal.Parse(result.C.First(), CultureInfo.InvariantCulture);
+            var firstVolume = decimal.Parse(result.V.First(), CultureInfo.InvariantCulture);
 
             Assert.True(firstOpen > 0);
             Assert.True(firstHigh > 0);

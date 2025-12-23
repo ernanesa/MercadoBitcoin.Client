@@ -219,13 +219,25 @@ namespace MercadoBitcoin.Client.ComprehensiveTests
             var testOrderId = orders.First().Id;
 
             // Act
+            var order = await _client.GetOrderAsync(_testSymbol, _testAccountId, testOrderId);
+
+            // Assert
+            order.Should().NotBeNull();
+            order.Id.Should().Be(testOrderId);
+            _output.WriteLine($"✅ Order {testOrderId} retrieved successfully");
+        }
+
+        [Fact]
+        public async Task Private_Fills_ShouldReturnExecutedTrades()
+        {
+            // Arrange
             _testAccountId.Should().NotBeNullOrWhiteSpace("Account ID must be available");
 
             // Act
             // Using ListOrdersAsync with hasExecutions=true as FillsAsync replacement
             var fills = await _client.ListOrdersAsync(
-                accountId: _testAccountId,
                 symbol: _testSymbol,
+                accountId: _testAccountId,
                 hasExecutions: "true");
 
             // Assert
