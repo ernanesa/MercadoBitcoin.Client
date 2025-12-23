@@ -116,7 +116,7 @@ namespace Microsoft.Extensions.DependencyInjection
             // Register the Client
             var builder = services.AddHttpClient<MercadoBitcoinClient>((sp, client) =>
             {
-                var options = sp.GetRequiredService<IOptionsSnapshot<MercadoBitcoinClientOptions>>().Value;
+                var options = sp.GetRequiredService<IOptions<MercadoBitcoinClientOptions>>().Value;
                 client.BaseAddress = new Uri(options.BaseUrl);
                 client.Timeout = TimeSpan.FromSeconds(options.TimeoutSeconds);
             })

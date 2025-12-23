@@ -33,7 +33,7 @@ namespace MercadoBitcoin.Client
         /// <param name="cache">Optional memory cache for L1 caching</param>
         public MercadoBitcoinClient(
             HttpClient httpClient,
-            Microsoft.Extensions.Options.IOptionsSnapshot<MercadoBitcoinClientOptions> options,
+            Microsoft.Extensions.Options.IOptions<MercadoBitcoinClientOptions> options,
             IMercadoBitcoinCredentialProvider? credentialProvider = null,
             Microsoft.Extensions.Caching.Memory.IMemoryCache? cache = null)
         {

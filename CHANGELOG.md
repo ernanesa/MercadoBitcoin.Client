@@ -1,5 +1,9 @@
 # Changelog
 
+## [5.1.1] - 2025-12-23
+### Changed
+- **DI Consistency**: Refactored `MercadoBitcoinClient` and its DI extensions to use `IOptions<MercadoBitcoinClientOptions>` instead of `IOptionsSnapshot`. This improves performance and ensures consistency when the client is used in different service lifetimes.
+
 ## [5.1.0] - 2025-12-23
 ### Added
 - **Multi-User Architecture**: Introduced `IMercadoBitcoinCredentialProvider` to support scoped Dependency Injection. This allows different credentials to be used within the same application instance (e.g., in a web API where each request might belong to a different user).

@@ -12,7 +12,7 @@
 
 A high-performance .NET 10 library for integrating with the **Mercado Bitcoin API v4**. This library provides access to all available platform endpoints, including public data, trading, account management, and wallet operations, with native support for **HTTP/3**, **WebSocket streaming**, and **System.Text.Json** for maximum performance and AOT compatibility.
 
-> **Version 5.1.0 - Enterprise & Multi-User Release**
+> **Version 5.1.1 - Enterprise & Multi-User Release**
 >
 > This release introduces **Multi-User Architecture** and **Universal Filtering** for enterprise-grade applications:
 > - 🏢 **Multi-User Architecture**: Support for scoped Dependency Injection with dynamic credential resolution.
@@ -60,7 +60,7 @@ Install-Package MercadoBitcoin.Client
 dotnet add package MercadoBitcoin.Client
 
 # Via PackageReference
-<PackageReference Include="MercadoBitcoin.Client" Version="5.1.0" />
+<PackageReference Include="MercadoBitcoin.Client" Version="5.1.1" />
 ```
 
 ## ⚡️ Usage: Public vs Private Endpoints
@@ -468,7 +468,7 @@ These documents are self-contained and optimized for programmatic interpretation
 
 ---
 
-*Last update: November 2025 - Version 5.0.0 (Beast Mode Release: .NET 10, Polly v8, Batching, Coalescing, and Major Cleanup)*
+*Last update: December 2025 - Version 5.1.1 (Enterprise & Multi-User Release: Scoped DI, Universal Filtering, and DI Consistency)*
 
 [![GitHub stars](https://img.shields.io/github/stars/ernanesa/MercadoBitcoin.Client?style=social)](https://github.com/ernanesa/MercadoBitcoin.Client/stargazers)
 [![GitHub forks](https://img.shields.io/github/forks/ernanesa/MercadoBitcoin.Client?style=social)](https://github.com/ernanesa/MercadoBitcoin.Client/network/members)

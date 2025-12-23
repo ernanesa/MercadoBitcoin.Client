@@ -4,11 +4,25 @@ This document consolidates all release notes for the MercadoBitcoin.Client libra
 
 ## Table of Contents
 
-- [v5.0.0 (2025-12-23)](#v500---2025-12-23) - **LATEST STABLE**
-- [v4.1.0 (2025-11-25)](#v410---2025-11-25)
-- [v4.0.0 (2025-11-21)](#v400---2025-11-21)
+- [v5.1.1 (2025-12-23)](#v511---2025-12-23) - **LATEST STABLE**
+- [v5.1.0 (2025-12-23)](#v510---2025-12-23)
+- [v5.0.0 (2025-12-23)](#v500---2025-12-23)
 - [v3.0.0 (2025-08-27)](#v300---2025-08-27)
 - [Previous Versions](#previous-versions)
+
+---
+
+## [v5.1.1] - 2025-12-23
+
+### 🔧 DI Consistency & Performance
+
+This patch release refactors the Dependency Injection integration to ensure better consistency and performance across different service lifetimes.
+
+### 🔧 Technical Changes
+
+- **IOptions Migration**: Switched from `IOptionsSnapshot<T>` to `IOptions<T>` in the `MercadoBitcoinClient` constructor and DI registration.
+- **Performance**: `IOptions<T>` has lower overhead than `IOptionsSnapshot<T>` as it doesn't require scope-based resolution.
+- **Consistency**: Ensures the client behaves consistently whether registered as Transient, Scoped, or Singleton (though Transient/Scoped is recommended for `HttpClient` based clients).
 
 ---
 
@@ -422,4 +436,4 @@ For questions, issues or suggestions:
 
 ---
 
-**Last update:** November 2025 - Version 4.0.0 (Migration to .NET 10 & C# 14, HTTP/3, Polly v8, removal of public constructors, mandatory DI, complete AOT compatibility)
+**Last update:** December 2025 - Version 5.1.1 (Enterprise & Multi-User Release: Scoped DI, Universal Filtering, and DI Consistency)
