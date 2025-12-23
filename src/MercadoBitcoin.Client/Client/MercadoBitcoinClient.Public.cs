@@ -81,13 +81,14 @@ namespace MercadoBitcoin.Client
         }
 
         /// <summary>
-        /// Gets order books for multiple symbols in parallel (Client-side Fan-Out).
+        /// Gets order books for multiple symbols in parallel (Universal Filter).
         /// </summary>
-        public async Task<ICollection<OrderBookResponse>> GetOrderBooksAsync(IEnumerable<string> symbols, string? limit = null, int maxDegreeOfParallelism = 5, CancellationToken cancellationToken = default)
+        public async Task<ICollection<OrderBookResponse>> GetOrderBooksAsync(IEnumerable<string>? symbols = null, string? limit = null, int maxDegreeOfParallelism = 5, CancellationToken cancellationToken = default)
         {
             return (await BatchHelper.ExecuteParallelFanOutAsync(
                 symbols,
                 maxDegreeOfParallelism,
+                GetAllSymbolsAsync,
                 (symbol, ct) => GetOrderBookAsync(symbol, limit, ct),
                 cancellationToken).ConfigureAwait(false)).ToList();
         }
@@ -109,13 +110,14 @@ namespace MercadoBitcoin.Client
         }
 
         /// <summary>
-        /// Gets trades for multiple symbols in parallel (Client-side Fan-Out).
+        /// Gets trades for multiple symbols in parallel (Universal Filter).
         /// </summary>
-        public async Task<ICollection<TradeResponse>> GetTradesAsync(IEnumerable<string> symbols, int? limit = null, int maxDegreeOfParallelism = 5, CancellationToken cancellationToken = default)
+        public async Task<ICollection<TradeResponse>> GetTradesAsync(IEnumerable<string>? symbols = null, int? limit = null, int maxDegreeOfParallelism = 5, CancellationToken cancellationToken = default)
         {
             var results = await BatchHelper.ExecuteParallelFanOutAsync(
                 symbols,
                 maxDegreeOfParallelism,
+                GetAllSymbolsAsync,
                 (symbol, ct) => GetTradesAsync(symbol, limit: limit, cancellationToken: ct),
                 cancellationToken).ConfigureAwait(false);
 
@@ -164,14 +166,16 @@ namespace MercadoBitcoin.Client
         }
 
         /// <summary>
-        /// Gets candles for multiple symbols in parallel (Client-side Fan-Out).
+        /// Gets candles for multiple symbols in parallel (Universal Filter).
         /// </summary>
-        public async Task<ICollection<ListCandlesResponse>> GetCandlesAsync(IEnumerable<string> symbols, string resolution, int to, int? from = null, int? countback = null, int maxDegreeOfParallelism = 5, CancellationToken cancellationToken = default)
+        public async Task<ICollection<ListCandlesResponse>> GetCandlesAsync(IEnumerable<string>? symbols = null, string resolution = "1h", int? to = null, int? from = null, int? countback = null, int maxDegreeOfParallelism = 5, CancellationToken cancellationToken = default)
         {
+            var right = to ?? (int)DateTimeOffset.UtcNow.ToUnixTimeSeconds();
             return (await BatchHelper.ExecuteParallelFanOutAsync(
                 symbols,
                 maxDegreeOfParallelism,
-                (symbol, ct) => GetCandlesAsync(symbol, resolution, to, from, countback, ct),
+                GetAllSymbolsAsync,
+                (symbol, ct) => GetCandlesAsync(symbol, resolution, right, from, countback, ct),
                 cancellationToken).ConfigureAwait(false)).ToList();
         }
 
@@ -240,14 +244,16 @@ namespace MercadoBitcoin.Client
         }
 
         /// <summary>
-        /// Gets typed candles for multiple symbols in parallel (Client-side Fan-Out).
+        /// Gets typed candles for multiple symbols in parallel (Universal Filter).
         /// </summary>
-        public async Task<IReadOnlyList<CandleData>> GetCandlesTypedAsync(IEnumerable<string> symbols, string resolution, int to, int? from = null, int? countback = null, int maxDegreeOfParallelism = 5, CancellationToken cancellationToken = default)
+        public async Task<IReadOnlyList<CandleData>> GetCandlesTypedAsync(IEnumerable<string>? symbols = null, string resolution = "1h", int? to = null, int? from = null, int? countback = null, int maxDegreeOfParallelism = 5, CancellationToken cancellationToken = default)
         {
+            var right = to ?? (int)DateTimeOffset.UtcNow.ToUnixTimeSeconds();
             var results = await BatchHelper.ExecuteParallelFanOutAsync(
                 symbols,
                 maxDegreeOfParallelism,
-                (symbol, ct) => GetCandlesTypedAsync(symbol, resolution, to, from, countback, ct),
+                GetAllSymbolsAsync,
+                (symbol, ct) => GetCandlesTypedAsync(symbol, resolution, right, from, countback, ct),
                 cancellationToken).ConfigureAwait(false);
 
             return results.SelectMany(r => r).ToList();
@@ -271,10 +277,10 @@ namespace MercadoBitcoin.Client
         }
 
         /// <summary>
-        /// Gets the list of tradable symbols available in the public API.
+        /// Gets the list of tradable symbols available in the public API (Raw string parameter).
         /// <para>**Does not require authentication**</para>
         /// </summary>
-        public Task<ListSymbolInfoResponse> GetSymbolsAsync(string? symbols = null, CancellationToken cancellationToken = default)
+        public Task<ListSymbolInfoResponse> GetSymbolsRawAsync(string? symbols = null, CancellationToken cancellationToken = default)
         {
             var cacheKey = $"symbols:{symbols ?? "all"}";
             return ExecuteCachedAsync(cacheKey, ct =>
@@ -291,23 +297,30 @@ namespace MercadoBitcoin.Client
         }
 
         /// <summary>
-        /// Gets the list of tradable symbols available in the public API (Convenience overload).
+        /// Gets the list of tradable symbols available in the public API (string overload for backward compatibility).
         /// <para>**Does not require authentication**</para>
         /// </summary>
-        public async Task<ListSymbolInfoResponse> GetSymbolsAsync(IEnumerable<string> symbols, CancellationToken cancellationToken = default)
+        public Task<ListSymbolInfoResponse> GetSymbolsAsync(string? symbols, CancellationToken cancellationToken = default)
         {
-            var normalized = symbols
-                .Where(s => !string.IsNullOrWhiteSpace(s))
-                .Select(s => s.Trim())
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToList();
+            return GetSymbolsAsync(symbols: (IEnumerable<string>?)null, cancellationToken);
+        }
 
-            if (normalized.Count == 0) return await GetSymbolsAsync((string?)null, cancellationToken).ConfigureAwait(false);
+        /// <summary>
+        /// Gets the list of tradable symbols available in the public API (Universal Filter).
+        /// <para>**Does not require authentication**</para>
+        /// </summary>
+        public async Task<ListSymbolInfoResponse> GetSymbolsAsync(IEnumerable<string>? symbols = null, CancellationToken cancellationToken = default)
+        {
+            if (symbols is null || !symbols.Any())
+            {
+                return await GetSymbolsRawAsync(null, cancellationToken).ConfigureAwait(false);
+            }
 
-            var results = await BatchHelper.ExecuteNativeBatchSingleAsync<ListSymbolInfoResponse>(
-                normalized,
+            var results = await BatchHelper.ExecuteNativeBatchAsync<ListSymbolInfoResponse>(
+                symbols,
                 100,
-                (batch, ct) => GetSymbolsAsync(batch, ct),
+                GetAllSymbolsAsync,
+                async (batch, ct) => new[] { await GetSymbolsRawAsync(batch, ct).ConfigureAwait(false) },
                 cancellationToken).ConfigureAwait(false);
 
             var finalResponse = new ListSymbolInfoResponse
@@ -344,10 +357,10 @@ namespace MercadoBitcoin.Client
         }
 
         /// <summary>
-        /// Gets the current tickers for one or more symbols.
+        /// Gets the current tickers for one or more symbols (Raw string parameter).
         /// <para>**Does not require authentication**</para>
         /// </summary>
-        public Task<ICollection<TickerResponse>> GetTickersAsync(string? symbols, CancellationToken cancellationToken = default)
+        public Task<ICollection<TickerResponse>> GetTickersRawAsync(string? symbols, CancellationToken cancellationToken = default)
         {
             var cacheKey = $"tickers:{symbols ?? "all"}";
             return ExecuteCachedAsync(cacheKey, ct =>
@@ -364,56 +377,52 @@ namespace MercadoBitcoin.Client
         }
 
         /// <summary>
-        /// Gets the current tickers for all symbols.
+        /// Gets the current tickers for one or more symbols (string overload for backward compatibility).
         /// <para>**Does not require authentication**</para>
         /// </summary>
-        public Task<ICollection<TickerResponse>> GetTickersAsync(CancellationToken cancellationToken = default)
+        public Task<ICollection<TickerResponse>> GetTickersAsync(string symbol, CancellationToken cancellationToken = default)
         {
-            return GetTickersAsync(symbols: (string?)null, cancellationToken);
+            return GetTickersAsync(new[] { symbol }, cancellationToken);
         }
 
         /// <summary>
-        /// Gets the current tickers for one or more symbols (Convenience overload).
+        /// Gets the current tickers for all symbols (Universal Filter).
         /// <para>**Does not require authentication**</para>
         /// </summary>
-        public async Task<ICollection<TickerResponse>> GetTickersAsync(IEnumerable<string> symbols, CancellationToken cancellationToken = default)
+        public async Task<ICollection<TickerResponse>> GetTickersAsync(IEnumerable<string>? symbols = null, CancellationToken cancellationToken = default)
         {
-            if (symbols is null)
-            {
-                return await GetTickersAsync((string?)null, cancellationToken).ConfigureAwait(false);
-            }
-
-            var normalized = symbols
-                .Where(symbol => !string.IsNullOrWhiteSpace(symbol))
-                .Select(symbol => symbol.Trim())
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToArray();
-
-            if (normalized.Length == 0)
-            {
-                return await GetTickersAsync((string?)null, cancellationToken).ConfigureAwait(false);
-            }
-
             return (await BatchHelper.ExecuteNativeBatchAsync<TickerResponse>(
-                normalized,
+                symbols,
                 100,
-                async (batch, ct) => (IEnumerable<TickerResponse>)await GetTickersAsync(batch, ct),
+                GetAllSymbolsAsync,
+                async (batch, ct) => await GetTickersRawAsync(batch, ct).ConfigureAwait(false),
                 cancellationToken).ConfigureAwait(false)).ToList();
         }
 
-        private async Task<IReadOnlyList<string>> GetAllSymbolsAsync(CancellationToken cancellationToken)
+        private async Task<IEnumerable<string>> GetAllSymbolsAsync(CancellationToken cancellationToken)
         {
-            var response = await GetSymbolsAsync((string?)null, cancellationToken).ConfigureAwait(false);
+            var response = await GetSymbolsRawAsync(null, cancellationToken).ConfigureAwait(false);
             if (response?.Symbol is null || response.Symbol.Count == 0)
             {
                 return Array.Empty<string>();
             }
 
-            return response.Symbol
-                .Where(symbol => !string.IsNullOrWhiteSpace(symbol))
-                .Select(symbol => symbol.Trim())
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToList();
+            var symbols = new List<string>();
+            var symbolList = response.Symbol.ToList();
+            var tradedList = response.ExchangeTraded?.ToList();
+
+            for (int i = 0; i < symbolList.Count; i++)
+            {
+                var symbol = symbolList[i];
+                var isTraded = tradedList != null && i < tradedList.Count ? tradedList[i] : false;
+
+                if (!string.IsNullOrWhiteSpace(symbol) && isTraded)
+                {
+                    symbols.Add(symbol.Trim());
+                }
+            }
+
+            return symbols.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
         }
 
         /// <summary>

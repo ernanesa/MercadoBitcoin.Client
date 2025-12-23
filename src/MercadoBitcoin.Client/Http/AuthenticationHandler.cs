@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using MercadoBitcoin.Client.Configuration;
 using MercadoBitcoin.Client.Generated;
+using MercadoBitcoin.Client.Internal.Security;
 using Microsoft.Extensions.Options;
 
 namespace MercadoBitcoin.Client.Http
@@ -17,18 +18,20 @@ namespace MercadoBitcoin.Client.Http
     {
         private readonly Internal.Security.TokenStore _tokenStore;
         private readonly MercadoBitcoinClientOptions _options;
+        private readonly IMercadoBitcoinCredentialProvider _credentialProvider;
         private static readonly SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1);
         private readonly HttpClient _internalClient;
 
-        public AuthenticationHandler(Internal.Security.TokenStore tokenStore, IOptions<MercadoBitcoinClientOptions> options)
-            : this(tokenStore, options?.Value ?? throw new ArgumentNullException(nameof(options)))
+        public AuthenticationHandler(Internal.Security.TokenStore tokenStore, IOptions<MercadoBitcoinClientOptions> options, IMercadoBitcoinCredentialProvider credentialProvider)
+            : this(tokenStore, options?.Value ?? throw new ArgumentNullException(nameof(options)), credentialProvider)
         {
         }
 
-        internal AuthenticationHandler(Internal.Security.TokenStore tokenStore, MercadoBitcoinClientOptions options)
+        internal AuthenticationHandler(Internal.Security.TokenStore tokenStore, MercadoBitcoinClientOptions options, IMercadoBitcoinCredentialProvider? credentialProvider = null)
         {
             _tokenStore = tokenStore ?? throw new ArgumentNullException(nameof(tokenStore));
             _options = options ?? throw new ArgumentNullException(nameof(options));
+            _credentialProvider = credentialProvider ?? new DefaultMercadoBitcoinCredentialProvider(Options.Create(options));
             _internalClient = new HttpClient(); // Used for auth requests to avoid handler recursion
         }
 
@@ -36,52 +39,56 @@ namespace MercadoBitcoin.Client.Http
         {
             var response = await base.SendAsync(request, cancellationToken);
 
-            if ((response.StatusCode == HttpStatusCode.Unauthorized || response.StatusCode == HttpStatusCode.Forbidden) && !string.IsNullOrEmpty(_options.ApiLogin) && !string.IsNullOrEmpty(_options.ApiPassword))
+            if (response.StatusCode == HttpStatusCode.Unauthorized || response.StatusCode == HttpStatusCode.Forbidden)
             {
-                await _semaphore.WaitAsync(cancellationToken);
-                try
+                var credentials = await _credentialProvider.GetCredentialsAsync(cancellationToken);
+                if (credentials != null && !string.IsNullOrEmpty(credentials.Login) && !string.IsNullOrEmpty(credentials.Password))
                 {
-                    // Perform Authentication
-                    var authRequest = new AuthorizeRequest
+                    await _semaphore.WaitAsync(cancellationToken);
+                    try
                     {
-                        Login = _options.ApiLogin,
-                        Password = _options.ApiPassword
-                    };
-
-                    var baseUrl = _options.BaseUrl;
-                    if (!baseUrl.EndsWith("/")) baseUrl += "/";
-                    var authUri = new Uri(new Uri(baseUrl), "authorize");
-                    
-                    // Use a separate client to avoid infinite loops and handler recursion
-                    using var authResponse = await _internalClient.PostAsJsonAsync(authUri, authRequest, MercadoBitcoinJsonSerializerContext.Default.AuthorizeRequest, cancellationToken);
-
-                    if (authResponse.IsSuccessStatusCode)
-                    {
-                        var authResult = await authResponse.Content.ReadFromJsonAsync(MercadoBitcoinJsonSerializerContext.Default.AuthorizeResponse, cancellationToken);
-                        if (authResult != null && !string.IsNullOrEmpty(authResult.Access_token))
+                        // Perform Authentication
+                        var authRequest = new AuthorizeRequest
                         {
-                            _tokenStore.AccessToken = authResult.Access_token;
+                            Login = credentials.Login,
+                            Password = credentials.Password
+                        };
 
-                            // Release the failed response content before retrying
-                            response.Dispose();
+                        var baseUrl = _options.BaseUrl;
+                        if (!baseUrl.EndsWith("/")) baseUrl += "/";
+                        var authUri = new Uri(new Uri(baseUrl), "authorize");
 
-                            // Retry the original request
-                            var newRequest = await CloneHttpRequestMessageAsync(request);
-                            
-                            // Manually add the token because we are downstream of AuthHttpClient
-                            newRequest.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _tokenStore.AccessToken);
+                        // Use a separate client to avoid infinite loops and handler recursion
+                        using var authResponse = await _internalClient.PostAsJsonAsync(authUri, authRequest, MercadoBitcoinJsonSerializerContext.Default.AuthorizeRequest, cancellationToken);
 
-                            return await base.SendAsync(newRequest, cancellationToken);
+                        if (authResponse.IsSuccessStatusCode)
+                        {
+                            var authResult = await authResponse.Content.ReadFromJsonAsync(MercadoBitcoinJsonSerializerContext.Default.AuthorizeResponse, cancellationToken);
+                            if (authResult != null && !string.IsNullOrEmpty(authResult.Access_token))
+                            {
+                                _tokenStore.AccessToken = authResult.Access_token;
+
+                                // Release the failed response content before retrying
+                                response.Dispose();
+
+                                // Retry the original request
+                                var newRequest = await CloneHttpRequestMessageAsync(request);
+
+                                // Manually add the token because we are downstream of AuthHttpClient
+                                newRequest.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _tokenStore.AccessToken);
+
+                                return await base.SendAsync(newRequest, cancellationToken);
+                            }
                         }
                     }
-                }
-                catch
-                {
-                    // Ignore authentication exceptions to allow the original 401/403 to propagate if retry fails
-                }
-                finally
-                {
-                    _semaphore.Release();
+                    catch
+                    {
+                        // Ignore authentication exceptions to allow the original 401/403 to propagate if retry fails
+                    }
+                    finally
+                    {
+                        _semaphore.Release();
+                    }
                 }
             }
 

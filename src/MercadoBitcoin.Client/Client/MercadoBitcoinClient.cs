@@ -5,6 +5,7 @@ using MercadoBitcoin.Client.Errors;
 using MercadoBitcoin.Client.Generated;
 using MercadoBitcoin.Client.Http;
 using MercadoBitcoin.Client.Internal.Optimization;
+using MercadoBitcoin.Client.Internal.Security;
 using MercadoBitcoin.Client.Internal.Time;
 using Microsoft.Extensions.Caching.Memory;
 
@@ -21,17 +22,24 @@ namespace MercadoBitcoin.Client
         private readonly IMemoryCache? _cache;
         private readonly RequestCoalescer _coalescer = new();
         private readonly MercadoBitcoinClientOptions _options;
+        private readonly IMercadoBitcoinCredentialProvider? _credentialProvider;
 
         /// <summary>
         /// Constructor for use with DI, allowing real injection of configuration options.
         /// </summary>
         /// <param name="httpClient">HttpClient configured by IHttpClientFactory</param>
         /// <param name="options">Configuration options</param>
+        /// <param name="credentialProvider">Optional credential provider for multi-user scenarios</param>
         /// <param name="cache">Optional memory cache for L1 caching</param>
-        public MercadoBitcoinClient(HttpClient httpClient, Microsoft.Extensions.Options.IOptionsSnapshot<MercadoBitcoinClientOptions> options, Microsoft.Extensions.Caching.Memory.IMemoryCache? cache = null)
+        public MercadoBitcoinClient(
+            HttpClient httpClient,
+            Microsoft.Extensions.Options.IOptionsSnapshot<MercadoBitcoinClientOptions> options,
+            IMercadoBitcoinCredentialProvider? credentialProvider = null,
+            Microsoft.Extensions.Caching.Memory.IMemoryCache? cache = null)
         {
             _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
             _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
+            _credentialProvider = credentialProvider;
             _cache = cache;
 
             if (string.IsNullOrWhiteSpace(_options.BaseUrl))
@@ -91,10 +99,12 @@ namespace MercadoBitcoin.Client
         /// Manual constructor for standalone usage (without DI).
         /// </summary>
         /// <param name="clientOptions">Configuration options</param>
+        /// <param name="credentialProvider">Optional credential provider for multi-user scenarios</param>
         /// <param name="cache">Optional memory cache for L1 caching</param>
-        public MercadoBitcoinClient(MercadoBitcoinClientOptions clientOptions, IMemoryCache? cache = null)
+        public MercadoBitcoinClient(MercadoBitcoinClientOptions clientOptions, IMercadoBitcoinCredentialProvider? credentialProvider = null, IMemoryCache? cache = null)
         {
             _options = clientOptions ?? throw new ArgumentNullException(nameof(clientOptions));
+            _credentialProvider = credentialProvider;
             _cache = cache;
 
             if (string.IsNullOrWhiteSpace(_options.BaseUrl))
@@ -115,7 +125,7 @@ namespace MercadoBitcoin.Client
             var tokenStore = new Internal.Security.TokenStore();
 
             // 1. AuthenticationHandler (Inner logic handler, handles 401)
-            var authenticationHandler = new AuthenticationHandler(tokenStore, _options);
+            var authenticationHandler = new AuthenticationHandler(tokenStore, _options, _credentialProvider);
 
             // 2. AuthHttpClient (Outer handler, adds token, contains RetryHandler)
             // Pass true to enable embedded retry logic for standalone client

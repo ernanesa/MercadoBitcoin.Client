@@ -1,4 +1,5 @@
 using MercadoBitcoin.Client.Generated;
+using MercadoBitcoin.Client.Internal.Helpers;
 
 namespace MercadoBitcoin.Client
 {
@@ -6,7 +7,7 @@ namespace MercadoBitcoin.Client
     {
         #region Trading
 
-        public Task<ICollection<OrderResponse>> ListOrdersAsync(string symbol, string accountId, string? hasExecutions = null, string? side = null, string? status = null, string? idFrom = null, string? idTo = null, string? createdAtFrom = null, string? createdAtTo = null, string? executedAtFrom = null, string? executedAtTo = null, CancellationToken cancellationToken = default)
+        public Task<ICollection<OrderResponse>> ListOrdersRawAsync(string symbol, string accountId, string? hasExecutions = null, string? side = null, string? status = null, string? idFrom = null, string? idTo = null, string? createdAtFrom = null, string? createdAtTo = null, string? executedAtFrom = null, string? executedAtTo = null, CancellationToken cancellationToken = default)
         {
             try
             {
@@ -16,6 +17,29 @@ namespace MercadoBitcoin.Client
             {
                 throw MapApiException(ex);
             }
+        }
+
+        /// <summary>
+        /// Lists orders for a specific symbol (string overload for backward compatibility).
+        /// </summary>
+        public Task<ICollection<OrderResponse>> ListOrdersAsync(string symbol, string accountId, string? hasExecutions = null, string? side = null, string? status = null, string? idFrom = null, string? idTo = null, string? createdAtFrom = null, string? createdAtTo = null, string? executedAtFrom = null, string? executedAtTo = null, CancellationToken cancellationToken = default)
+        {
+            return ListOrdersRawAsync(symbol, accountId, hasExecutions, side, status, idFrom, idTo, createdAtFrom, createdAtTo, executedAtFrom, executedAtTo, cancellationToken);
+        }
+
+        /// <summary>
+        /// Lists orders for multiple symbols (Universal Filter).
+        /// </summary>
+        public async Task<ICollection<OrderResponse>> ListOrdersAsync(string accountId, IEnumerable<string>? symbols = null, string? hasExecutions = null, string? side = null, string? status = null, string? idFrom = null, string? idTo = null, string? createdAtFrom = null, string? createdAtTo = null, string? executedAtFrom = null, string? executedAtTo = null, int maxDegreeOfParallelism = 5, CancellationToken cancellationToken = default)
+        {
+            var results = await BatchHelper.ExecuteParallelFanOutAsync(
+                symbols,
+                maxDegreeOfParallelism,
+                GetAllSymbolsAsync,
+                (symbol, ct) => ListOrdersRawAsync(symbol, accountId, hasExecutions, side, status, idFrom, idTo, createdAtFrom, createdAtTo, executedAtFrom, executedAtTo, ct),
+                cancellationToken).ConfigureAwait(false);
+
+            return results.SelectMany(r => r).ToList();
         }
 
         public Task<PlaceOrderResponse> PlaceOrderAsync(string symbol, string accountId, PlaceOrderRequest payload, CancellationToken cancellationToken = default)
@@ -54,11 +78,11 @@ namespace MercadoBitcoin.Client
             }
         }
 
-        public Task<ListAllOrdersResponse> ListAllOrdersAsync(string accountId, string? hasExecutions = null, string? symbol = null, string? status = null, string? size = null, CancellationToken cancellationToken = default)
+        public Task<ListAllOrdersResponse> ListAllOrdersRawAsync(string accountId, string? hasExecutions = null, string? symbols = null, string? status = null, string? size = null, CancellationToken cancellationToken = default)
         {
             try
             {
-                return _generatedClient.OrdersGET2Async(accountId, hasExecutions, symbol, status, size, cancellationToken);
+                return _generatedClient.OrdersGET2Async(accountId, hasExecutions, symbols, status, size, cancellationToken);
             }
             catch (Exception ex)
             {
@@ -66,7 +90,35 @@ namespace MercadoBitcoin.Client
             }
         }
 
-        public Task<ICollection<CancelOpenOrdersResponse>> CancelAllOpenOrdersByAccountAsync(string accountId, bool? hasExecutions = null, string? symbol = null, CancellationToken cancellationToken = default)
+        /// <summary>
+        /// Lists all orders for multiple symbols (Universal Filter).
+        /// </summary>
+        public async Task<ListAllOrdersResponse> ListAllOrdersAsync(string accountId, IEnumerable<string>? symbols = null, string? hasExecutions = null, string? status = null, string? size = null, CancellationToken cancellationToken = default)
+        {
+            var results = await BatchHelper.ExecuteParallelFanOutAsync(
+                symbols,
+                5,
+                GetAllSymbolsAsync,
+                (symbol, ct) => ListAllOrdersRawAsync(accountId, hasExecutions, symbol, status, size, ct),
+                cancellationToken).ConfigureAwait(false);
+
+            // Combine all items from all responses
+            var allItems = new List<Orders>();
+            foreach (var res in results)
+            {
+                if (res.Items != null)
+                {
+                    allItems.AddRange(res.Items);
+                }
+            }
+
+            return new ListAllOrdersResponse
+            {
+                Items = allItems
+            };
+        }
+
+        public Task<ICollection<CancelOpenOrdersResponse>> CancelAllOpenOrdersByAccountRawAsync(string accountId, bool? hasExecutions = null, string? symbol = null, CancellationToken cancellationToken = default)
         {
             try
             {
@@ -77,6 +129,21 @@ namespace MercadoBitcoin.Client
             {
                 throw MapApiException(ex);
             }
+        }
+
+        /// <summary>
+        /// Cancels all open orders for multiple symbols (Universal Filter).
+        /// </summary>
+        public async Task<ICollection<CancelOpenOrdersResponse>> CancelAllOpenOrdersByAccountAsync(string accountId, IEnumerable<string>? symbols = null, bool? hasExecutions = null, int maxDegreeOfParallelism = 5, CancellationToken cancellationToken = default)
+        {
+            var results = await BatchHelper.ExecuteParallelFanOutAsync(
+                symbols,
+                maxDegreeOfParallelism,
+                GetAllSymbolsAsync,
+                (symbol, ct) => CancelAllOpenOrdersByAccountRawAsync(accountId, hasExecutions, symbol, ct),
+                cancellationToken).ConfigureAwait(false);
+
+            return results.SelectMany(r => r).ToList();
         }
 
         #endregion

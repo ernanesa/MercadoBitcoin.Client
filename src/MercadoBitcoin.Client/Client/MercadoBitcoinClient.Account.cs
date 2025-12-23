@@ -56,7 +56,7 @@ namespace MercadoBitcoin.Client
             }
         }
 
-        public Task<ICollection<PositionResponse>> GetPositionsAsync(string accountId, string? symbols = null, CancellationToken cancellationToken = default)
+        public Task<ICollection<PositionResponse>> GetPositionsRawAsync(string accountId, string? symbols = null, CancellationToken cancellationToken = default)
         {
             try
             {
@@ -69,22 +69,23 @@ namespace MercadoBitcoin.Client
         }
 
         /// <summary>
-        /// Gets open positions for specific symbols (Convenience overload with batching).
+        /// Gets open positions for specific symbols (string overload for backward compatibility).
         /// </summary>
-        public async Task<ICollection<PositionResponse>> GetPositionsAsync(string accountId, IEnumerable<string> symbols, CancellationToken cancellationToken = default)
+        public Task<ICollection<PositionResponse>> GetPositionsAsync(string accountId, string symbol, CancellationToken cancellationToken = default)
         {
-            var normalized = symbols
-                .Where(s => !string.IsNullOrWhiteSpace(s))
-                .Select(s => s.Trim())
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToList();
+            return GetPositionsAsync(accountId, new[] { symbol }, cancellationToken);
+        }
 
-            if (normalized.Count == 0) return await GetPositionsAsync(accountId, (string?)null, cancellationToken).ConfigureAwait(false);
-
+        /// <summary>
+        /// Gets open positions for specific symbols (Universal Filter).
+        /// </summary>
+        public async Task<ICollection<PositionResponse>> GetPositionsAsync(string accountId, IEnumerable<string>? symbols = null, CancellationToken cancellationToken = default)
+        {
             return (await BatchHelper.ExecuteNativeBatchAsync<PositionResponse>(
-                normalized,
+                symbols,
                 50,
-                async (batch, ct) => (IEnumerable<PositionResponse>)await GetPositionsAsync(accountId, batch, ct),
+                async ct => (await GetSymbolsRawAsync(null, ct).ConfigureAwait(false)).Symbol ?? Enumerable.Empty<string>(),
+                async (batch, ct) => await GetPositionsRawAsync(accountId, batch, ct).ConfigureAwait(false),
                 cancellationToken).ConfigureAwait(false)).ToList();
         }
 

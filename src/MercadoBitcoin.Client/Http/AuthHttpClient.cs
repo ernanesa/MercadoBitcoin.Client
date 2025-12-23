@@ -44,7 +44,7 @@ namespace MercadoBitcoin.Client
             if (useEmbeddedRetry)
             {
                 // Create the retry handler with HTTP configuration
-                var retryHandler = new RetryHandler(retryConfig, _httpConfig);
+                var retryHandler = new RetryHandler(retryConfig ?? new RetryPolicyConfig(), _httpConfig);
                 InnerHandler = retryHandler;
             }
         }

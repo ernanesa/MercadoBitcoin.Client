@@ -12,15 +12,16 @@
 
 A high-performance .NET 10 library for integrating with the **Mercado Bitcoin API v4**. This library provides access to all available platform endpoints, including public data, trading, account management, and wallet operations, with native support for **HTTP/3**, **WebSocket streaming**, and **System.Text.Json** for maximum performance and AOT compatibility.
 
-> **Version 4.1.0 - Performance Release**
+> **Version 5.0.0 - Beast Mode Release**
 >
-> This release introduces **WebSocket streaming**, **IAsyncEnumerable support**, and **zero-allocation hot paths** for extreme performance:
-> - 🚀 50% faster startup time
-> - 💾 47% less memory usage  
-> - ⚡ 50% higher throughput
-> - 🎯 70% lower P99 latency
+> This release introduces **ExecuteBatchAsync**, **Request Coalescing**, and **Polly v8 Resilience Pipelines** for extreme performance and reliability:
+> - 🚀 Native HTTP/2 Multiplexing for parallel requests
+> - 🛡️ Intelligent Request Coalescing (Thundering Herd protection)
+> - ⏱️ High-precision Server Time Estimation
+> - ⚡ Polly v8 Resilience Pipelines (Retry, Circuit Breaker, Timeout)
+> - 🧹 Scorched Earth Cleanup: Removed 2,000+ lines of legacy code
 >
-> See [RELEASE_NOTES.md](RELEASE_NOTES.md) for full details.
+> See [CHANGELOG.md](CHANGELOG.md) for full details.
 
 ## 🚀 Features
 
@@ -58,7 +59,7 @@ Install-Package MercadoBitcoin.Client
 dotnet add package MercadoBitcoin.Client
 
 # Via PackageReference
-<PackageReference Include="MercadoBitcoin.Client" Version="4.0.0-alpha.1" />
+<PackageReference Include="MercadoBitcoin.Client" Version="5.0.0" />
 ```
 
 ## ⚡️ Usage: Public vs Private Endpoints
@@ -433,7 +434,7 @@ These documents are self-contained and optimized for programmatic interpretation
 
 ---
 
-*Last update: November 2025 - Version 4.0.0-alpha.1 (Migration to .NET 10 & C# 14, HTTP/3 support, Polly v8, removal of public constructors, mandatory DI and extension methods, full AOT compatibility)*
+*Last update: November 2025 - Version 5.0.0 (Beast Mode Release: .NET 10, Polly v8, Batching, Coalescing, and Major Cleanup)*
 
 [![GitHub stars](https://img.shields.io/github/stars/ernanesa/MercadoBitcoin.Client?style=social)](https://github.com/ernanesa/MercadoBitcoin.Client/stargazers)
 [![GitHub forks](https://img.shields.io/github/forks/ernanesa/MercadoBitcoin.Client?style=social)](https://github.com/ernanesa/MercadoBitcoin.Client/network/members)

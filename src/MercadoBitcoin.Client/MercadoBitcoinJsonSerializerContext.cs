@@ -57,6 +57,8 @@ namespace MercadoBitcoin.Client;
 [JsonSerializable(typeof(ICollection<TradeResponse>))]
 [JsonSerializable(typeof(ListCandlesResponse))]
 [JsonSerializable(typeof(ListSymbolInfoResponse))]
+[JsonSerializable(typeof(ListAllOrdersResponse))]
+[JsonSerializable(typeof(Orders))]
 [JsonSerializable(typeof(PositionResponse))]
 [JsonSerializable(typeof(OrderResponse))]
 [JsonSerializable(typeof(ICollection<OrderResponse>))]

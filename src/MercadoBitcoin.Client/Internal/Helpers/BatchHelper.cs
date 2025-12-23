@@ -1,98 +1,79 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
+using System.Collections.Concurrent;
 
-namespace MercadoBitcoin.Client.Internal.Helpers
+namespace MercadoBitcoin.Client.Internal.Helpers;
+
+/// <summary>
+/// Helper for executing batched requests, both native (chunking) and client-side (parallel fan-out).
+/// </summary>
+internal static class BatchHelper
 {
     /// <summary>
-    /// Helper for executing batched requests, both native (chunking) and client-side (parallel fan-out).
+    /// Executes a batched API call for endpoints that support comma-separated symbols.
     /// </summary>
-    internal static class BatchHelper
+    public static async Task<IEnumerable<TResult>> ExecuteNativeBatchAsync<TResult>(
+        IEnumerable<string>? symbols,
+        int batchSize,
+        Func<CancellationToken, Task<IEnumerable<string>>> getAllSymbolsFunc,
+        Func<string, CancellationToken, Task<IEnumerable<TResult>>> apiCall,
+        CancellationToken ct)
     {
-        /// <summary>
-        /// Executes a batched API call for endpoints that support comma-separated symbols, where each call returns a collection of results.
-        /// </summary>
-        public static async Task<IEnumerable<TResult>> ExecuteNativeBatchAsync<TResult>(
-            IEnumerable<string> symbols,
-            int batchSize,
-            Func<string, CancellationToken, Task<IEnumerable<TResult>>> apiCall,
-            CancellationToken ct)
+        var symbolsToProcess = await GetSymbolsToProcessAsync(symbols, getAllSymbolsFunc, ct);
+        if (symbolsToProcess.Count == 0) return Enumerable.Empty<TResult>();
+
+        var tasks = symbolsToProcess
+            .Chunk(batchSize)
+            .Select(batch => apiCall(string.Join(",", batch), ct));
+
+        var results = await Task.WhenAll(tasks).ConfigureAwait(false);
+        return results.SelectMany(r => r);
+    }
+
+    /// <summary>
+    /// Executes a parallel fan-out for endpoints that do not support native batching.
+    /// </summary>
+    public static async Task<IEnumerable<TResult>> ExecuteParallelFanOutAsync<TResult>(
+        IEnumerable<string>? symbols,
+        int maxDegreeOfParallelism,
+        Func<CancellationToken, Task<IEnumerable<string>>> getAllSymbolsFunc,
+        Func<string, CancellationToken, Task<TResult>> apiCall,
+        CancellationToken ct)
+    {
+        var symbolsToProcess = await GetSymbolsToProcessAsync(symbols, getAllSymbolsFunc, ct);
+        if (symbolsToProcess.Count == 0) return Enumerable.Empty<TResult>();
+
+        var results = new ConcurrentBag<TResult>();
+
+        await Parallel.ForEachAsync(symbolsToProcess, new ParallelOptions
         {
-            var uniqueSymbols = symbols
-                .Where(s => !string.IsNullOrWhiteSpace(s))
-                .Select(s => s.Trim())
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToList();
-
-            if (uniqueSymbols.Count == 0) return Enumerable.Empty<TResult>();
-
-            var tasks = uniqueSymbols
-                .Chunk(batchSize)
-                .Select(batch => apiCall(string.Join(",", batch), ct));
-
-            var results = await Task.WhenAll(tasks).ConfigureAwait(false);
-            return results.SelectMany(r => r);
-        }
-
-        /// <summary>
-        /// Executes a batched API call for endpoints that support comma-separated symbols, where each call returns a single result object.
-        /// </summary>
-        public static async Task<IEnumerable<TResult>> ExecuteNativeBatchSingleAsync<TResult>(
-            IEnumerable<string> symbols,
-            int batchSize,
-            Func<string, CancellationToken, Task<TResult>> apiCall,
-            CancellationToken ct)
+            MaxDegreeOfParallelism = maxDegreeOfParallelism,
+            CancellationToken = ct
+        }, async (symbol, token) =>
         {
-            var uniqueSymbols = symbols
-                .Where(s => !string.IsNullOrWhiteSpace(s))
-                .Select(s => s.Trim())
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToList();
-
-            if (uniqueSymbols.Count == 0) return Enumerable.Empty<TResult>();
-
-            var tasks = uniqueSymbols
-                .Chunk(batchSize)
-                .Select(batch => apiCall(string.Join(",", batch), ct));
-
-            return await Task.WhenAll(tasks).ConfigureAwait(false);
-        }
-
-        /// <summary>
-        /// Executes a parallel fan-out for endpoints that do not support native batching.
-        /// </summary>
-        public static async Task<IEnumerable<TResult>> ExecuteParallelFanOutAsync<TResult>(
-            IEnumerable<string> symbols,
-            int maxDegreeOfParallelism,
-            Func<string, CancellationToken, Task<TResult>> apiCall,
-            CancellationToken ct)
-        {
-            var uniqueSymbols = symbols
-                .Where(s => !string.IsNullOrWhiteSpace(s))
-                .Select(s => s.Trim())
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToList();
-
-            if (uniqueSymbols.Count == 0) return Enumerable.Empty<TResult>();
-
-            var results = new System.Collections.Concurrent.ConcurrentBag<TResult>();
-
-            await Parallel.ForEachAsync(uniqueSymbols, new ParallelOptions
+            var result = await apiCall(symbol, token).ConfigureAwait(false);
+            if (result != null)
             {
-                MaxDegreeOfParallelism = maxDegreeOfParallelism,
-                CancellationToken = ct
-            }, async (symbol, token) =>
-            {
-                var result = await apiCall(symbol, token).ConfigureAwait(false);
-                if (result != null)
-                {
-                    results.Add(result);
-                }
-            }).ConfigureAwait(false);
+                results.Add(result);
+            }
+        }).ConfigureAwait(false);
 
-            return results;
+        return results;
+    }
+
+    private static async Task<List<string>> GetSymbolsToProcessAsync(
+        IEnumerable<string>? symbols,
+        Func<CancellationToken, Task<IEnumerable<string>>> getAllSymbolsFunc,
+        CancellationToken ct)
+    {
+        if (symbols is null || !symbols.Any())
+        {
+            var allSymbols = await getAllSymbolsFunc(ct).ConfigureAwait(false);
+            return allSymbols.ToList();
         }
+
+        return symbols
+            .Where(s => !string.IsNullOrWhiteSpace(s))
+            .Select(s => s.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
     }
 }

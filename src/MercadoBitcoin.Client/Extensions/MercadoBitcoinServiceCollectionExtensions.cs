@@ -104,6 +104,9 @@ namespace Microsoft.Extensions.DependencyInjection
             // Register TokenStore as Scoped to support multi-user scenarios (per-user credentials)
             services.TryAddScoped<TokenStore>();
 
+            // Register Credential Provider
+            services.TryAddScoped<IMercadoBitcoinCredentialProvider, DefaultMercadoBitcoinCredentialProvider>();
+
             // Register Handlers
             services.TryAddTransient<RateLimitingHandler>();
             services.TryAddTransient<AuthenticationHandler>();
