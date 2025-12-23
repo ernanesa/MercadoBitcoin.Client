@@ -1,6 +1,4 @@
 using MercadoBitcoin.Client.Generated;
-using System.Threading.Tasks;
-using System.Collections.Generic;
 
 namespace MercadoBitcoin.Client
 {
@@ -8,72 +6,79 @@ namespace MercadoBitcoin.Client
     {
         #region Wallet
 
-        public Task<ICollection<Deposit>> ListDepositsAsync(string accountId, string symbol, string? limit = null, string? page = null, string? from = null, string? to = null)
+        public Task<ICollection<Deposit>> ListDepositsAsync(string accountId, string symbol, string? limit = null, string? page = null, string? from = null, string? to = null, CancellationToken cancellationToken = default)
         {
-            return _generatedClient.DepositsAsync(accountId, symbol, limit, page, from, to);
+            try
+            {
+                return _generatedClient.DepositsAsync(accountId, symbol, limit, page, from, to, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                throw MapApiException(ex);
+            }
         }
 
-        public Task<ICollection<Deposit>> ListDepositsAsync(string accountId, string symbol, CancellationToken cancellationToken, string? limit = null, string? page = null, string? from = null, string? to = null)
+        public Task<DepositAddresses> GetDepositAddressesAsync(string accountId, string symbol, Network2? network = null, CancellationToken cancellationToken = default)
         {
-            return _generatedClient.DepositsAsync(accountId, symbol, limit, page, from, to, cancellationToken);
+            try
+            {
+                return _generatedClient.AddressesAsync(accountId, symbol, network, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                throw MapApiException(ex);
+            }
         }
 
-        public Task<DepositAddresses> GetDepositAddressesAsync(string accountId, string symbol, Network2? network = null)
+        public Task<ICollection<FiatDeposit>> ListFiatDepositsAsync(string accountId, string symbol, string? limit = null, string? page = null, string? from = null, string? to = null, CancellationToken cancellationToken = default)
         {
-            return _generatedClient.AddressesAsync(accountId, symbol, network);
+            try
+            {
+                return _generatedClient.Deposits2Async(accountId, symbol, limit, page, from, to, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                throw MapApiException(ex);
+            }
         }
 
-        public Task<DepositAddresses> GetDepositAddressesAsync(string accountId, string symbol, Network2? network, CancellationToken cancellationToken)
+        public Task<Withdraw> WithdrawCoinAsync(string accountId, string symbol, WithdrawCoinRequest payload, CancellationToken cancellationToken = default)
         {
-            return _generatedClient.AddressesAsync(accountId, symbol, network, cancellationToken);
+            try
+            {
+                return _generatedClient.WithdrawPOSTAsync(accountId, symbol, payload, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                throw MapApiException(ex);
+            }
         }
 
-        public Task<ICollection<FiatDeposit>> ListFiatDepositsAsync(string accountId, string symbol, string? limit = null, string? page = null, string? from = null, string? to = null)
+        public Task<ICollection<Withdraw>> ListWithdrawalsAsync(string accountId, string symbol, int? page = null, int? pageSize = null, int? from = null, CancellationToken cancellationToken = default)
         {
-            return _generatedClient.Deposits2Async(accountId, symbol, limit, page, from, to);
+            try
+            {
+                return _generatedClient.WithdrawAllAsync(accountId, symbol, page, pageSize, from, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                throw MapApiException(ex);
+            }
         }
 
-        public Task<ICollection<FiatDeposit>> ListFiatDepositsAsync(string accountId, string symbol, CancellationToken cancellationToken, string? limit = null, string? page = null, string? from = null, string? to = null)
+        public Task<Withdraw> GetWithdrawalAsync(string accountId, string symbol, string withdrawId, CancellationToken cancellationToken = default)
         {
-            return _generatedClient.Deposits2Async(accountId, symbol, limit, page, from, to, cancellationToken);
+            try
+            {
+                return _generatedClient.WithdrawGETAsync(accountId, symbol, withdrawId, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                throw MapApiException(ex);
+            }
         }
 
-        public Task<Withdraw> WithdrawCoinAsync(string accountId, string symbol, WithdrawCoinRequest payload)
-        {
-            return _generatedClient.WithdrawPOSTAsync(accountId, symbol, payload);
-        }
-
-        public Task<Withdraw> WithdrawCoinAsync(string accountId, string symbol, WithdrawCoinRequest payload, CancellationToken cancellationToken)
-        {
-            return _generatedClient.WithdrawPOSTAsync(accountId, symbol, payload, cancellationToken);
-        }
-
-        public Task<ICollection<Withdraw>> ListWithdrawalsAsync(string accountId, string symbol, int? page = null, int? pageSize = null, int? from = null)
-        {
-            return _generatedClient.WithdrawAllAsync(accountId, symbol, page, pageSize, from);
-        }
-
-        public Task<ICollection<Withdraw>> ListWithdrawalsAsync(string accountId, string symbol, CancellationToken cancellationToken, int? page = null, int? pageSize = null, int? from = null)
-        {
-            return _generatedClient.WithdrawAllAsync(accountId, symbol, page, pageSize, from, cancellationToken);
-        }
-
-        public Task<Withdraw> GetWithdrawalAsync(string accountId, string symbol, string withdrawId)
-        {
-            return _generatedClient.WithdrawGETAsync(accountId, symbol, withdrawId);
-        }
-
-        public Task<Withdraw> GetWithdrawalAsync(string accountId, string symbol, string withdrawId, CancellationToken cancellationToken)
-        {
-            return _generatedClient.WithdrawGETAsync(accountId, symbol, withdrawId, cancellationToken);
-        }
-
-        public Task<Response> GetWithdrawLimitsAsync(string accountId, string? symbols = null)
-        {
-            return _generatedClient.LimitsAsync(accountId, symbols);
-        }
-
-        public Task<Response> GetWithdrawLimitsAsync(string accountId, CancellationToken cancellationToken, string? symbols = null)
+        public Task<Response> GetWithdrawLimitsAsync(string accountId, string? symbols = null, CancellationToken cancellationToken = default)
         {
             try
             {
@@ -85,34 +90,40 @@ namespace MercadoBitcoin.Client
             }
         }
 
-        public Task<BRLWithdrawConfig> GetBrlWithdrawConfigAsync(string accountId)
+        public Task<BRLWithdrawConfig> GetBrlWithdrawConfigAsync(string accountId, CancellationToken cancellationToken = default)
         {
-            return _generatedClient.BRLAsync(accountId);
+            try
+            {
+                return _generatedClient.BRLAsync(accountId, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                throw MapApiException(ex);
+            }
         }
 
-        public Task<BRLWithdrawConfig> GetBrlWithdrawConfigAsync(string accountId, CancellationToken cancellationToken)
+        public Task<ICollection<CryptoWalletAddress>> GetWithdrawCryptoWalletAddressesAsync(string accountId, CancellationToken cancellationToken = default)
         {
-            return _generatedClient.BRLAsync(accountId, cancellationToken);
+            try
+            {
+                return _generatedClient.AddressesAllAsync(accountId, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                throw MapApiException(ex);
+            }
         }
 
-        public Task<ICollection<CryptoWalletAddress>> GetWithdrawCryptoWalletAddressesAsync(string accountId)
+        public Task<ICollection<BankAccount>> GetWithdrawBankAccountsAsync(string accountId, CancellationToken cancellationToken = default)
         {
-            return _generatedClient.AddressesAllAsync(accountId);
-        }
-
-        public Task<ICollection<CryptoWalletAddress>> GetWithdrawCryptoWalletAddressesAsync(string accountId, CancellationToken cancellationToken)
-        {
-            return _generatedClient.AddressesAllAsync(accountId, cancellationToken);
-        }
-
-        public Task<ICollection<BankAccount>> GetWithdrawBankAccountsAsync(string accountId)
-        {
-            return _generatedClient.BankAccountsAsync(accountId);
-        }
-
-        public Task<ICollection<BankAccount>> GetWithdrawBankAccountsAsync(string accountId, CancellationToken cancellationToken)
-        {
-            return _generatedClient.BankAccountsAsync(accountId, cancellationToken);
+            try
+            {
+                return _generatedClient.BankAccountsAsync(accountId, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                throw MapApiException(ex);
+            }
         }
 
         #endregion

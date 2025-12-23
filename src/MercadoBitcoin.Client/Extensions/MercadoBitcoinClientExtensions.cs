@@ -1,8 +1,5 @@
-using System;
 using MercadoBitcoin.Client.Configuration;
 using MercadoBitcoin.Client.Http;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
 
 namespace MercadoBitcoin.Client.Extensions
 {

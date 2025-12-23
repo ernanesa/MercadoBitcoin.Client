@@ -1,31 +1,22 @@
-﻿using MercadoBitcoin.Client.Generated;
-using MercadoBitcoin.Client.Http;
-using MercadoBitcoin.Client.Internal.RateLimiting;
-using MercadoBitcoin.Client.Internal.Time;
-using MercadoBitcoin.Client.Internal.Optimization;
-using MercadoBitcoin.Client.Errors;
-using MercadoBitcoin.Client.Configuration;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net.Http;
-using System.Threading;
-using System.Threading.Tasks;
+﻿using System.Text.Json;
 using System.Threading.RateLimiting;
-using Microsoft.Extensions.ObjectPool;
+using MercadoBitcoin.Client.Configuration;
+using MercadoBitcoin.Client.Errors;
+using MercadoBitcoin.Client.Generated;
+using MercadoBitcoin.Client.Http;
+using MercadoBitcoin.Client.Internal.Optimization;
+using MercadoBitcoin.Client.Internal.Time;
 using Microsoft.Extensions.Caching.Memory;
-using System.Text.Json;
 
 namespace MercadoBitcoin.Client
 {
     public partial class MercadoBitcoinClient : IDisposable
     {
-        private static readonly ObjectPool<ErrorResponse> _errorResponsePool = new DefaultObjectPoolProvider().Create<ErrorResponse>();
         private readonly TokenBucketRateLimiter _rateLimiter;
         private readonly AuthHttpClient? _authHandler;
         private readonly HttpClient _httpClient;
-        private readonly MercadoBitcoin.Client.Generated.Client _generatedClient;
-        private readonly MercadoBitcoin.Client.Generated.OpenClient _openClient;
+        private readonly Generated.Client _generatedClient;
+        private readonly Generated.OpenClient _openClient;
         private readonly ServerTimeEstimator _timeEstimator;
         private readonly IMemoryCache? _cache;
         private readonly RequestCoalescer _coalescer = new();
@@ -37,10 +28,10 @@ namespace MercadoBitcoin.Client
         /// <param name="httpClient">HttpClient configured by IHttpClientFactory</param>
         /// <param name="options">Configuration options</param>
         /// <param name="cache">Optional memory cache for L1 caching</param>
-        public MercadoBitcoinClient(HttpClient httpClient, MercadoBitcoinClientOptions options, IMemoryCache? cache = null)
+        public MercadoBitcoinClient(HttpClient httpClient, Microsoft.Extensions.Options.IOptionsSnapshot<MercadoBitcoinClientOptions> options, Microsoft.Extensions.Caching.Memory.IMemoryCache? cache = null)
         {
             _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
-            _options = options ?? new MercadoBitcoinClientOptions();
+            _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
             _cache = cache;
 
             if (string.IsNullOrWhiteSpace(_options.BaseUrl))
@@ -89,10 +80,10 @@ namespace MercadoBitcoin.Client
             // Apply custom configuration
             _options.ConfigureJsonOptions?.Invoke(jsonOptions);
 
-            _generatedClient = new MercadoBitcoin.Client.Generated.Client(_httpClient) { BaseUrl = _options.BaseUrl };
+            _generatedClient = new Generated.Client(_httpClient) { BaseUrl = _options.BaseUrl };
             _generatedClient.SetSerializerOptions(jsonOptions);
 
-            _openClient = new MercadoBitcoin.Client.Generated.OpenClient(_httpClient) { BaseUrl = _options.BaseUrl };
+            _openClient = new Generated.OpenClient(_httpClient) { BaseUrl = _options.BaseUrl };
             _openClient.SetSerializerOptions(jsonOptions);
         }
 
@@ -194,10 +185,10 @@ namespace MercadoBitcoin.Client
             // Apply custom configuration
             _options.ConfigureJsonOptions?.Invoke(jsonOptions);
 
-            _generatedClient = new MercadoBitcoin.Client.Generated.Client(_httpClient) { BaseUrl = _options.BaseUrl };
+            _generatedClient = new Generated.Client(_httpClient) { BaseUrl = _options.BaseUrl };
             _generatedClient.SetSerializerOptions(jsonOptions);
 
-            _openClient = new MercadoBitcoin.Client.Generated.OpenClient(_httpClient) { BaseUrl = _options.BaseUrl };
+            _openClient = new Generated.OpenClient(_httpClient) { BaseUrl = _options.BaseUrl };
             _openClient.SetSerializerOptions(jsonOptions);
         }
 
@@ -213,18 +204,6 @@ namespace MercadoBitcoin.Client
         /// Returns the current access token (for diagnostics / debug only).
         /// </summary>
         public string? GetAccessToken() => _authHandler?.GetAccessToken();
-
-        private static string GetLibraryVersion()
-        {
-            try
-            {
-                return typeof(MercadoBitcoinClient).Assembly.GetName().Version?.ToString() ?? "unknown";
-            }
-            catch
-            {
-                return "unknown";
-            }
-        }
 
         private Exception MapApiException(Exception ex)
         {

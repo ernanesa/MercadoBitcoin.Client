@@ -1,8 +1,8 @@
-using MercadoBitcoin.Client.Generated;
-using MercadoBitcoin.Client.Extensions;
-using MercadoBitcoin.Client.Models;
-using MercadoBitcoin.Client.Internal.Helpers;
 using MercadoBitcoin.Client.Errors;
+using MercadoBitcoin.Client.Extensions;
+using MercadoBitcoin.Client.Generated;
+using MercadoBitcoin.Client.Internal.Helpers;
+using MercadoBitcoin.Client.Models;
 
 namespace MercadoBitcoin.Client
 {

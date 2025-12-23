@@ -1,8 +1,5 @@
 using MercadoBitcoin.Client.Generated;
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
-using System.Linq;
+using MercadoBitcoin.Client.Internal.Helpers;
 
 namespace MercadoBitcoin.Client
 {
@@ -10,60 +7,56 @@ namespace MercadoBitcoin.Client
     {
         #region Account
 
-        public Task<ICollection<AccountResponse>> GetAccountsAsync()
+        public Task<ICollection<AccountResponse>> GetAccountsAsync(CancellationToken cancellationToken = default)
         {
-            return _generatedClient.AccountsAsync();
+            try
+            {
+                return _generatedClient.AccountsAsync(cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                throw MapApiException(ex);
+            }
         }
 
-        /// <summary>
-        /// Version with CancellationToken for scenarios requiring cooperative cancellation.
-        /// </summary>
-        public Task<ICollection<AccountResponse>> GetAccountsAsync(CancellationToken cancellationToken)
-        {
-            return _generatedClient.AccountsAsync(cancellationToken);
-        }
-
-        public Task<ICollection<CryptoBalanceResponse>> GetBalancesAsync(string accountId)
-        {
-            if (string.IsNullOrWhiteSpace(accountId)) throw new ArgumentException("Invalid accountId", nameof(accountId));
-            return _generatedClient.BalancesAsync(accountId.Trim());
-        }
-
-        /// <summary>
-        /// Version with CancellationToken of <see cref="GetBalancesAsync(string)"/>.
-        /// </summary>
-        public Task<ICollection<CryptoBalanceResponse>> GetBalancesAsync(string accountId, CancellationToken cancellationToken)
+        public Task<ICollection<CryptoBalanceResponse>> GetBalancesAsync(string accountId, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrWhiteSpace(accountId)) throw new ArgumentException("Invalid accountId", nameof(accountId));
-            return _generatedClient.BalancesAsync(accountId.Trim(), cancellationToken);
+            try
+            {
+                return _generatedClient.BalancesAsync(accountId.Trim(), cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                throw MapApiException(ex);
+            }
         }
 
-        public Task<ICollection<GetTierResponse>> GetTierAsync(string accountId)
+        public Task<ICollection<GetTierResponse>> GetTierAsync(string accountId, CancellationToken cancellationToken = default)
         {
-            return _generatedClient.TierAsync(accountId);
+            try
+            {
+                return _generatedClient.TierAsync(accountId, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                throw MapApiException(ex);
+            }
         }
 
-        public Task<ICollection<GetTierResponse>> GetTierAsync(string accountId, CancellationToken cancellationToken)
+        public Task<GetMarketFeesResponse> GetTradingFeesAsync(string accountId, string symbol, CancellationToken cancellationToken = default)
         {
-            return _generatedClient.TierAsync(accountId, cancellationToken);
+            try
+            {
+                return _generatedClient.Fees2Async(accountId, symbol, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                throw MapApiException(ex);
+            }
         }
 
-        public Task<GetMarketFeesResponse> GetTradingFeesAsync(string accountId, string symbol)
-        {
-            return _generatedClient.Fees2Async(accountId, symbol);
-        }
-
-        public Task<GetMarketFeesResponse> GetTradingFeesAsync(string accountId, string symbol, CancellationToken cancellationToken)
-        {
-            return _generatedClient.Fees2Async(accountId, symbol, cancellationToken);
-        }
-
-        public Task<ICollection<PositionResponse>> GetPositionsAsync(string accountId, string? symbols = null)
-        {
-            return _generatedClient.PositionsAsync(accountId, symbols);
-        }
-
-        public Task<ICollection<PositionResponse>> GetPositionsAsync(string accountId, string? symbols, CancellationToken cancellationToken)
+        public Task<ICollection<PositionResponse>> GetPositionsAsync(string accountId, string? symbols = null, CancellationToken cancellationToken = default)
         {
             try
             {
@@ -88,7 +81,7 @@ namespace MercadoBitcoin.Client
 
             if (normalized.Count == 0) return await GetPositionsAsync(accountId, (string?)null, cancellationToken).ConfigureAwait(false);
 
-            return (await Internal.Helpers.BatchHelper.ExecuteNativeBatchAsync<PositionResponse>(
+            return (await BatchHelper.ExecuteNativeBatchAsync<PositionResponse>(
                 normalized,
                 50,
                 async (batch, ct) => (IEnumerable<PositionResponse>)await GetPositionsAsync(accountId, batch, ct),

@@ -1,19 +1,12 @@
-using System;
 using System.Net;
-using System.Net.Http;
-using System.Threading;
-using System.Threading.Tasks;
-using Polly;
-using Polly.Retry;
-using Polly.CircuitBreaker;
 using System.Diagnostics.Metrics;
 using System.Diagnostics;
 using MercadoBitcoin.Client.Models.Enums;
 using MercadoBitcoin.Client.Configuration;
 using Microsoft.Extensions.Options;
 using MbOutcomeType = MercadoBitcoin.Client.Models.Enums.OutcomeType;
-
 using MercadoBitcoin.Client.Internal.Optimization;
+using Polly.CircuitBreaker;
 
 namespace MercadoBitcoin.Client.Http
 {
@@ -34,15 +27,20 @@ namespace MercadoBitcoin.Client.Http
             unit: "ms",
             description: "Duration (in ms) of HTTP requests including retries");
 
-        public RetryHandler(RetryPolicyConfig? config = null, HttpConfiguration? httpConfig = null)
-            : this(CreateDefaultInnerHandler(httpConfig ?? HttpConfiguration.CreateHttp2Default()), config, httpConfig)
+        public RetryHandler()
+            : this(new RetryPolicyConfig(), HttpConfiguration.CreateHttp2Default())
+        {
+        }
+
+        public RetryHandler(RetryPolicyConfig config, HttpConfiguration httpConfig)
+            : this(CreateDefaultInnerHandler(httpConfig), config, httpConfig)
         {
         }
 
         /// <summary>
-        /// Additional constructor that allows injecting a custom inner handler (useful for tests / mocks).
+        /// Additional constructor that allows injecting a custom inner handler.
         /// </summary>
-        /// <param name="innerHandler">Handler that will effectively execute the request (e.g., mock). Cannot be null.</param>
+        /// <param name="innerHandler">Handler that will effectively execute the request. Cannot be null.</param>
         /// <param name="config">Retry/circuit breaker configuration.</param>
         /// <param name="httpConfig">HTTP configuration (timeout, version, etc).</param>
         public RetryHandler(HttpMessageHandler innerHandler, RetryPolicyConfig? config = null, HttpConfiguration? httpConfig = null)

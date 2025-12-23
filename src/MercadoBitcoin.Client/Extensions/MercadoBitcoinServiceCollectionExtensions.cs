@@ -1,12 +1,8 @@
-using System;
-using System.Net.Http;
 using MercadoBitcoin.Client;
 using MercadoBitcoin.Client.Configuration;
-using MercadoBitcoin.Client.Policies;
 using MercadoBitcoin.Client.Internal.Security;
 using MercadoBitcoin.Client.WebSocket;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 using MercadoBitcoin.Client.Http;
@@ -108,23 +104,16 @@ namespace Microsoft.Extensions.DependencyInjection
             // Register TokenStore as Scoped to support multi-user scenarios (per-user credentials)
             services.TryAddScoped<TokenStore>();
 
-            // Register Options as Scoped using IOptionsSnapshot for per-request/per-user configuration
-            services.TryAddScoped(sp => sp.GetRequiredService<IOptionsSnapshot<MercadoBitcoinClientOptions>>().Value);
-
-            // Register dependencies for RetryHandler
-            services.TryAddScoped<RetryPolicyConfig>(sp => sp.GetRequiredService<MercadoBitcoinClientOptions>().RetryPolicyConfig ?? new RetryPolicyConfig());
-            services.TryAddScoped<HttpConfiguration>(sp => sp.GetRequiredService<MercadoBitcoinClientOptions>().HttpConfiguration);
-
             // Register Handlers
             services.TryAddTransient<RateLimitingHandler>();
             services.TryAddTransient<AuthenticationHandler>();
-            services.TryAddTransient(sp => new RetryHandler(sp.GetRequiredService<IOptionsSnapshot<MercadoBitcoinClientOptions>>()));
-            services.TryAddTransient(sp => new AuthHttpClient(sp.GetRequiredService<TokenStore>(), sp.GetRequiredService<IOptionsSnapshot<MercadoBitcoinClientOptions>>()));
+            services.TryAddTransient<RetryHandler>();
+            services.TryAddTransient<AuthHttpClient>();
 
             // Register the Client
             var builder = services.AddHttpClient<MercadoBitcoinClient>((sp, client) =>
             {
-                var options = sp.GetRequiredService<MercadoBitcoinClientOptions>();
+                var options = sp.GetRequiredService<IOptionsSnapshot<MercadoBitcoinClientOptions>>().Value;
                 client.BaseAddress = new Uri(options.BaseUrl);
                 client.Timeout = TimeSpan.FromSeconds(options.TimeoutSeconds);
             })
@@ -143,9 +132,7 @@ namespace Microsoft.Extensions.DependencyInjection
             .AddHttpMessageHandler<RateLimitingHandler>()
             .AddHttpMessageHandler<AuthHttpClient>()
             .AddHttpMessageHandler<RetryHandler>()
-            .AddHttpMessageHandler<AuthenticationHandler>()
-            // Apply Polly retry policy for transient errors and 429
-            .AddPolicyHandler(MercadoBitcoinPolicy.GetRetryPolicy());
+            .AddHttpMessageHandler<AuthenticationHandler>();
 
             return builder;
         }

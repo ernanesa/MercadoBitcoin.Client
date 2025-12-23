@@ -1,8 +1,4 @@
-using System;
 using System.Diagnostics;
-using System.Net.Http;
-using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 
 namespace MercadoBitcoin.Client.Internal.Time
@@ -51,7 +47,7 @@ namespace MercadoBitcoin.Client.Internal.Time
                 // Use a lightweight public endpoint to 'ping' the server
                 // The HTTP 'Date' header is standard and reflects the server time
                 var sw = Stopwatch.StartNew();
-                var request = new HttpRequestMessage(HttpMethod.Head, "https://api.mercadobitcoin.net/api/v4/symbols");
+                var request = new HttpRequestMessage(HttpMethod.Head, "symbols");
 
                 // Avoid caching to ensure a real timestamp
                 request.Headers.CacheControl = new System.Net.Http.Headers.CacheControlHeaderValue { NoCache = true };
