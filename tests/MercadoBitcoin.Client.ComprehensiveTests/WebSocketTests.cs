@@ -1,0 +1,132 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using FluentAssertions;
+using MercadoBitcoin.Client.WebSocket;
+using MercadoBitcoin.Client.WebSocket.Messages;
+using Microsoft.Extensions.Logging;
+using Xunit;
+using Xunit.Abstractions;
+
+namespace MercadoBitcoin.Client.ComprehensiveTests
+{
+    public class WebSocketTests : IDisposable
+    {
+        private readonly ITestOutputHelper _output;
+        private readonly MercadoBitcoinWebSocketClient _client;
+        private readonly CancellationTokenSource _cts = new(TimeSpan.FromSeconds(30));
+
+        public WebSocketTests(ITestOutputHelper output)
+        {
+            _output = output;
+            var options = new WebSocketClientOptions
+            {
+                AutoReconnect = true,
+                MaxReconnectAttempts = 3
+            };
+            _client = new MercadoBitcoinWebSocketClient(options);
+        }
+
+        [Fact]
+        public async Task ConnectAsync_ShouldEstablishConnection()
+        {
+            // Act
+            await _client.ConnectAsync(_cts.Token);
+
+            // Assert
+            _client.ConnectionState.Should().Be(WebSocketConnectionState.Connected);
+            _output.WriteLine("✅ WebSocket connected successfully");
+
+            await _client.DisconnectAsync(_cts.Token);
+            _client.ConnectionState.Should().Be(WebSocketConnectionState.Closed);
+        }
+
+        [Fact]
+        public async Task SubscribeTickerAsync_ShouldReceiveMessages()
+        {
+            // Arrange
+            var instrument = "BTC-BRL";
+            var messages = new List<TickerMessage>();
+
+            // Act
+            await _client.ConnectAsync(_cts.Token);
+
+            var subscriptionTask = Task.Run(async () =>
+            {
+                await foreach (var msg in _client.SubscribeTickerAsync(instrument, _cts.Token))
+                {
+                    messages.Add(msg);
+                    if (messages.Count >= 2) break;
+                }
+            });
+
+            // Wait for some messages or timeout
+            await Task.WhenAny(subscriptionTask, Task.Delay(TimeSpan.FromSeconds(15), _cts.Token));
+
+            // Assert
+            messages.Should().NotBeEmpty("Should have received at least one ticker message");
+            messages.First().Instrument.Should().Be(instrument);
+            _output.WriteLine($"✅ Received {messages.Count} ticker messages for {instrument}");
+        }
+
+        [Fact]
+        public async Task SubscribeTradesAsync_ShouldReceiveMessages()
+        {
+            // Arrange
+            var instrument = "BTC-BRL";
+            var messages = new List<TradeMessage>();
+
+            // Act
+            await _client.ConnectAsync(_cts.Token);
+
+            var subscriptionTask = Task.Run(async () =>
+            {
+                await foreach (var msg in _client.SubscribeTradesAsync(instrument, _cts.Token))
+                {
+                    messages.Add(msg);
+                    if (messages.Count >= 1) break;
+                }
+            });
+
+            await Task.WhenAny(subscriptionTask, Task.Delay(TimeSpan.FromSeconds(15), _cts.Token));
+
+            // Assert
+            messages.Should().NotBeEmpty("Should have received at least one trade message");
+            _output.WriteLine($"✅ Received {messages.Count} trade messages for {instrument}");
+        }
+
+        [Fact]
+        public async Task SubscribeOrderBookAsync_ShouldReceiveMessages()
+        {
+            // Arrange
+            var instrument = "BTC-BRL";
+            var messages = new List<OrderBookMessage>();
+
+            // Act
+            await _client.ConnectAsync(_cts.Token);
+
+            var subscriptionTask = Task.Run(async () =>
+            {
+                await foreach (var msg in _client.SubscribeOrderBookAsync(instrument, _cts.Token))
+                {
+                    messages.Add(msg);
+                    if (messages.Count >= 1) break;
+                }
+            });
+
+            await Task.WhenAny(subscriptionTask, Task.Delay(TimeSpan.FromSeconds(15), _cts.Token));
+
+            // Assert
+            messages.Should().NotBeEmpty("Should have received at least one order book message");
+            _output.WriteLine($"✅ Received {messages.Count} order book messages for {instrument}");
+        }
+
+        public void Dispose()
+        {
+            _client.DisposeAsync().AsTask().GetAwaiter().GetResult();
+            _cts.Dispose();
+        }
+    }
+}

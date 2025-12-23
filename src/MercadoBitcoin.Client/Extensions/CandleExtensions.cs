@@ -135,12 +135,14 @@ namespace MercadoBitcoin.Client.Extensions
             // Converts parallel arrays into CandleData objects
             for (int i = 0; i < candleCount; i++)
             {
+                var timestampSeconds = GetValueAtIndex(response.T, i);
                 var candle = new CandleData
                 {
                     Symbol = symbol,
                     Interval = interval,
-                    OpenTime = GetValueAtIndex(response.T, i) * 1000L, // Converts to milliseconds
-                    CloseTime = GetValueAtIndex(response.T, i) * 1000L + GetIntervalInMilliseconds(interval),
+                    Timestamp = timestampSeconds,
+                    OpenTime = timestampSeconds * 1000L, // Converts to milliseconds
+                    CloseTime = timestampSeconds * 1000L + GetIntervalInMilliseconds(interval),
                     Open = ParseDecimal(GetValueAtIndex(response.O, i)),
                     High = ParseDecimal(GetValueAtIndex(response.H, i)),
                     Low = ParseDecimal(GetValueAtIndex(response.L, i)),

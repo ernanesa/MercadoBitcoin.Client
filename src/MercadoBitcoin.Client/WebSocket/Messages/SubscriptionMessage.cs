@@ -32,10 +32,22 @@ public sealed class SubscriptionDetails
     public string Channel { get; init; } = string.Empty;
 
     /// <summary>
+    /// Alias for channel.
+    /// </summary>
+    [JsonPropertyName("name")]
+    public string? Name { get; init; }
+
+    /// <summary>
     /// The trading instrument (e.g., "BTC-BRL").
     /// </summary>
     [JsonPropertyName("instrument")]
     public string Instrument { get; init; } = string.Empty;
+
+    /// <summary>
+    /// Alias for instrument.
+    /// </summary>
+    [JsonPropertyName("id")]
+    public string? Id { get; init; }
 }
 
 /// <summary>

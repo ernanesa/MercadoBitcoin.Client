@@ -20,6 +20,18 @@ public abstract class WebSocketMessageBase
     public string? Instrument { get; init; }
 
     /// <summary>
+    /// Alias for instrument used in some message types.
+    /// </summary>
+    [JsonPropertyName("id")]
+    public string? Id { get; init; }
+
+    /// <summary>
+    /// Gets the effective instrument name from either Instrument or Id property.
+    /// </summary>
+    [JsonIgnore]
+    public string? EffectiveInstrument => !string.IsNullOrEmpty(Instrument) ? Instrument : Id;
+
+    /// <summary>
     /// Server timestamp in milliseconds since Unix epoch.
     /// </summary>
     [JsonPropertyName("timestamp")]

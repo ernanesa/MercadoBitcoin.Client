@@ -227,7 +227,7 @@ public partial class MercadoBitcoinClient
                     resolution,
                     to: Math.Min(to, currentFrom + GetResolutionSeconds(resolution) * batchSize),
                     from: currentFrom,
-                    countback: batchSize,
+                    countback: null, // Don't use countback for range streaming
                     cancellationToken: cancellationToken).ConfigureAwait(false);
             }
             catch (Exception ex)
@@ -252,7 +252,7 @@ public partial class MercadoBitcoinClient
             if (candles.Count > 0)
             {
                 var lastCandle = candles[^1];
-                currentFrom = (int)(lastCandle.CloseTime + 1);
+                currentFrom = (int)(lastCandle.Timestamp + GetResolutionSeconds(resolution));
             }
             else
             {

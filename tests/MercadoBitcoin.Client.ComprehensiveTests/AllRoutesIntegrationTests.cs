@@ -139,6 +139,29 @@ namespace MercadoBitcoin.Client.ComprehensiveTests
             _output.WriteLine($"✅ BTC Withdraw Fee: {fees.Withdrawal_fee}");
         }
 
+        [Fact]
+        public async Task Public_AssetNetworks_ShouldReturnNetworks()
+        {
+            // Act
+            var networks = await _client.GetAssetNetworksAsync("BTC");
+
+            // Assert
+            networks.Should().NotBeNull();
+            networks.Should().NotBeEmpty();
+            _output.WriteLine($"✅ BTC Networks: {string.Join(", ", networks.Select(n => n.Network1))}");
+        }
+
+        [Fact]
+        public async Task Public_RecentCandles_ShouldReturnCandles()
+        {
+            // Act
+            var candles = await _client.GetRecentCandlesAsync(_testSymbol, "1h", 24);
+
+            // Assert
+            candles.Should().NotBeNull();
+            _output.WriteLine($"✅ Recent Candles: {candles.C.Count} entries");
+        }
+
         #endregion
 
         #region Private Endpoints (Authenticated)
@@ -157,6 +180,48 @@ namespace MercadoBitcoin.Client.ComprehensiveTests
             firstAccount.Id.Should().NotBeNullOrWhiteSpace();
 
             _output.WriteLine($"✅ Found {accounts.Count()} account(s). First ID: {firstAccount.Id}");
+        }
+
+        [Fact]
+        public async Task Private_Tier_ShouldReturnUserTier()
+        {
+            // Arrange
+            _testAccountId.Should().NotBeNullOrWhiteSpace("Account ID must be available");
+
+            // Act
+            var tiers = await _client.GetTierAsync(_testAccountId);
+
+            // Assert
+            tiers.Should().NotBeNull();
+            _output.WriteLine($"✅ User Tier: {tiers.FirstOrDefault()?.Tier}");
+        }
+
+        [Fact]
+        public async Task Private_TradingFees_ShouldReturnFees()
+        {
+            // Arrange
+            _testAccountId.Should().NotBeNullOrWhiteSpace("Account ID must be available");
+
+            // Act
+            var fees = await _client.GetTradingFeesAsync(_testAccountId, _testSymbol);
+
+            // Assert
+            fees.Should().NotBeNull();
+            _output.WriteLine($"✅ Trading Fees for {_testSymbol}: Maker={fees.Maker_fee}, Taker={fees.Taker_fee}");
+        }
+
+        [Fact]
+        public async Task Private_Positions_ShouldReturnPositions()
+        {
+            // Arrange
+            _testAccountId.Should().NotBeNullOrWhiteSpace("Account ID must be available");
+
+            // Act
+            var positions = await _client.GetPositionsAsync(_testAccountId, _testSymbol);
+
+            // Assert
+            positions.Should().NotBeNull();
+            _output.WriteLine($"✅ Found {positions.Count()} positions for {_testSymbol}");
         }
 
         [Fact]

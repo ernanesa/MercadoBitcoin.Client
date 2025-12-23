@@ -83,10 +83,10 @@ namespace MercadoBitcoin.Client
                     catch (JsonException)
                     {
                         var errorString = System.Text.Encoding.UTF8.GetString(buffer.AsSpan(0, bytesRead));
-                        errorResponse = new ErrorResponse { Code = "UNKNOWN_ERROR", Message = errorString };
+                        errorResponse = new ErrorResponse { Code = "UNKNOWN_ERROR", Message = string.IsNullOrWhiteSpace(errorString) ? $"HTTP {(int)response.StatusCode} {response.ReasonPhrase}" : errorString };
                     }
 
-                    var finalErrorResponse = errorResponse ?? new ErrorResponse { Code = "UNKNOWN_ERROR", Message = "Unknown error" };
+                    var finalErrorResponse = errorResponse ?? new ErrorResponse { Code = "UNKNOWN_ERROR", Message = $"HTTP {(int)response.StatusCode} {response.ReasonPhrase}" };
                     throw new MercadoBitcoinApiException($"API Error: {finalErrorResponse.Message}", finalErrorResponse);
                 }
                 finally

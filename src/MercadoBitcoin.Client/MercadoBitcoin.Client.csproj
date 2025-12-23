@@ -79,9 +79,11 @@
     <None Include="..\..\docs\AI_USAGE_GUIDE.md" Pack="true" PackagePath="docs\" />
   </ItemGroup>
 
+  <!--
   <Target Name="NSwag" BeforeTargets="PrepareForBuild">
     <Message Text="Executing NSwag..." Importance="high" />
     <Exec Command="dotnet $(NuGetPackageRoot)nswag.msbuild\14.5.0\tools\Net90\dotnet-nswag.dll openapi2csclient /input:$(MSBuildProjectDirectory)\..\..\openapi\swagger.yaml /output:Generated\GeneratedClient.cs /namespace:MercadoBitcoin.Client.Generated /JsonLibrary:SystemTextJson" />
   </Target>
+  -->
 
 </Project>

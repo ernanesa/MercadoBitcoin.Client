@@ -1,4 +1,5 @@
 using System.Buffers;
+using System.Collections.Concurrent;
 using System.Net.WebSockets;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
@@ -24,13 +25,14 @@ public sealed class MercadoBitcoinWebSocketClient : IAsyncDisposable
 
     private ClientWebSocket? _webSocket;
     private Task? _receiveTask;
+    private Task? _pingTask;
     private int _reconnectAttempts;
     private WebSocketConnectionState _connectionState = WebSocketConnectionState.Disconnected;
 
-    // Channels for message distribution
-    private Channel<TickerMessage>? _tickerChannel;
-    private Channel<TradeMessage>? _tradeChannel;
-    private Channel<OrderBookMessage>? _orderBookChannel;
+    // Subscription management
+    private readonly ConcurrentDictionary<string, ConcurrentDictionary<ChannelWriter<TickerMessage>, byte>> _tickerSubscribers = new();
+    private readonly ConcurrentDictionary<string, ConcurrentDictionary<ChannelWriter<TradeMessage>, byte>> _tradeSubscribers = new();
+    private readonly ConcurrentDictionary<string, ConcurrentDictionary<ChannelWriter<OrderBookMessage>, byte>> _orderBookSubscribers = new();
 
     /// <summary>
     /// Gets the current connection state.
@@ -119,8 +121,9 @@ public sealed class MercadoBitcoinWebSocketClient : IAsyncDisposable
 
             _logger?.LogInformation("Successfully connected to WebSocket server");
 
-            // Start receive loop
+            // Start receive and ping loops
             _receiveTask = ReceiveLoopAsync(_disposeCts.Token);
+            _pingTask = PingLoopAsync(_disposeCts.Token);
 
             // Resubscribe to active channels
             await ResubscribeAsync(cancellationToken).ConfigureAwait(false);
@@ -173,20 +176,27 @@ public sealed class MercadoBitcoinWebSocketClient : IAsyncDisposable
 
         await EnsureConnectedAsync(cancellationToken).ConfigureAwait(false);
 
-        _tickerChannel ??= Channel.CreateUnbounded<TickerMessage>(new UnboundedChannelOptions
+        var channel = Channel.CreateUnbounded<TickerMessage>(new UnboundedChannelOptions
         {
-            SingleReader = false,
+            SingleReader = true,
             SingleWriter = true
         });
 
-        await SubscribeToChannelAsync(WebSocketChannel.Ticker, instrument, cancellationToken).ConfigureAwait(false);
+        var subscribers = _tickerSubscribers.GetOrAdd(instrument.ToUpperInvariant(), _ => new ConcurrentDictionary<ChannelWriter<TickerMessage>, byte>());
+        subscribers.TryAdd(channel.Writer, 0);
 
-        await foreach (var message in _tickerChannel.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
+        try
         {
-            if (string.Equals(message.Instrument, instrument, StringComparison.OrdinalIgnoreCase))
+            await SubscribeToChannelAsync(WebSocketChannel.Ticker, instrument, cancellationToken).ConfigureAwait(false);
+
+            await foreach (var message in channel.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
             {
                 yield return message;
             }
+        }
+        finally
+        {
+            subscribers.TryRemove(channel.Writer, out _);
         }
     }
 
@@ -204,20 +214,27 @@ public sealed class MercadoBitcoinWebSocketClient : IAsyncDisposable
 
         await EnsureConnectedAsync(cancellationToken).ConfigureAwait(false);
 
-        _tradeChannel ??= Channel.CreateUnbounded<TradeMessage>(new UnboundedChannelOptions
+        var channel = Channel.CreateUnbounded<TradeMessage>(new UnboundedChannelOptions
         {
-            SingleReader = false,
+            SingleReader = true,
             SingleWriter = true
         });
 
-        await SubscribeToChannelAsync(WebSocketChannel.Trades, instrument, cancellationToken).ConfigureAwait(false);
+        var subscribers = _tradeSubscribers.GetOrAdd(instrument.ToUpperInvariant(), _ => new ConcurrentDictionary<ChannelWriter<TradeMessage>, byte>());
+        subscribers.TryAdd(channel.Writer, 0);
 
-        await foreach (var message in _tradeChannel.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
+        try
         {
-            if (string.Equals(message.Instrument, instrument, StringComparison.OrdinalIgnoreCase))
+            await SubscribeToChannelAsync(WebSocketChannel.Trades, instrument, cancellationToken).ConfigureAwait(false);
+
+            await foreach (var message in channel.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
             {
                 yield return message;
             }
+        }
+        finally
+        {
+            subscribers.TryRemove(channel.Writer, out _);
         }
     }
 
@@ -235,20 +252,27 @@ public sealed class MercadoBitcoinWebSocketClient : IAsyncDisposable
 
         await EnsureConnectedAsync(cancellationToken).ConfigureAwait(false);
 
-        _orderBookChannel ??= Channel.CreateUnbounded<OrderBookMessage>(new UnboundedChannelOptions
+        var channel = Channel.CreateUnbounded<OrderBookMessage>(new UnboundedChannelOptions
         {
-            SingleReader = false,
+            SingleReader = true,
             SingleWriter = true
         });
 
-        await SubscribeToChannelAsync(WebSocketChannel.OrderBook, instrument, cancellationToken).ConfigureAwait(false);
+        var subscribers = _orderBookSubscribers.GetOrAdd(instrument.ToUpperInvariant(), _ => new ConcurrentDictionary<ChannelWriter<OrderBookMessage>, byte>());
+        subscribers.TryAdd(channel.Writer, 0);
 
-        await foreach (var message in _orderBookChannel.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
+        try
         {
-            if (string.Equals(message.Instrument, instrument, StringComparison.OrdinalIgnoreCase))
+            await SubscribeToChannelAsync(WebSocketChannel.OrderBook, instrument, cancellationToken).ConfigureAwait(false);
+
+            await foreach (var message in channel.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
             {
                 yield return message;
             }
+        }
+        finally
+        {
+            subscribers.TryRemove(channel.Writer, out _);
         }
     }
 
@@ -275,11 +299,13 @@ public sealed class MercadoBitcoinWebSocketClient : IAsyncDisposable
                 Subscription = new SubscriptionDetails
                 {
                     Channel = channel,
-                    Instrument = instrument
+                    Name = channel,
+                    Instrument = instrument,
+                    Id = instrument
                 }
             };
 
-            await SendMessageAsync(request, cancellationToken).ConfigureAwait(false);
+            await SendMessageAsync(request, MercadoBitcoinJsonSerializerContext.Default.SubscriptionRequest, cancellationToken).ConfigureAwait(false);
             _logger?.LogInformation("Unsubscribed from {Channel} for {Instrument}", channel, instrument);
         }
     }
@@ -311,65 +337,91 @@ public sealed class MercadoBitcoinWebSocketClient : IAsyncDisposable
             Subscription = new SubscriptionDetails
             {
                 Channel = channel,
-                Instrument = instrument
+                Name = channel,
+                Instrument = instrument,
+                Id = instrument
             }
         };
 
-        await SendMessageAsync(request, cancellationToken).ConfigureAwait(false);
+        await SendMessageAsync(request, MercadoBitcoinJsonSerializerContext.Default.SubscriptionRequest, cancellationToken).ConfigureAwait(false);
         _logger?.LogInformation("Subscribed to {Channel} for {Instrument}", channel, instrument);
     }
 
-    private async Task SendMessageAsync(SubscriptionRequest message, CancellationToken cancellationToken)
+    private async Task SendMessageAsync<T>(T message, System.Text.Json.Serialization.Metadata.JsonTypeInfo<T> typeInfo, CancellationToken cancellationToken)
     {
         if (_webSocket?.State != WebSocketState.Open)
         {
             throw new InvalidOperationException("WebSocket is not connected");
         }
 
-        // Use pooled buffer for serialization - AOT compatible using source generators
-        var buffer = ArrayPool<byte>.Shared.Rent(_options.SendBufferSize);
+        byte[] json = JsonSerializer.SerializeToUtf8Bytes(message, typeInfo);
+
+        await _webSocket.SendAsync(
+            new ArraySegment<byte>(json),
+            WebSocketMessageType.Text,
+            true,
+            cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task PingLoopAsync(CancellationToken cancellationToken)
+    {
         try
         {
-            byte[] json = JsonSerializer.SerializeToUtf8Bytes(message,
-                MercadoBitcoinJsonSerializerContext.Default.SubscriptionRequest);
+            while (!cancellationToken.IsCancellationRequested && _webSocket?.State == WebSocketState.Open)
+            {
+                await Task.Delay(_options.KeepAliveInterval, cancellationToken).ConfigureAwait(false);
 
-            await _webSocket.SendAsync(
-                new ArraySegment<byte>(json),
-                WebSocketMessageType.Text,
-                true,
-                cancellationToken).ConfigureAwait(false);
+                if (_webSocket?.State == WebSocketState.Open)
+                {
+                    var ping = new PingRequest { Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() };
+                    await SendMessageAsync(ping, MercadoBitcoinJsonSerializerContext.Default.PingRequest, cancellationToken).ConfigureAwait(false);
+                    _logger?.LogTrace("Sent ping");
+                }
+            }
         }
-        finally
+        catch (OperationCanceledException)
         {
-            ArrayPool<byte>.Shared.Return(buffer);
+            // Normal shutdown
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "Error in ping loop");
         }
     }
 
     private async Task ReceiveLoopAsync(CancellationToken cancellationToken)
     {
         var buffer = ArrayPool<byte>.Shared.Rent(_options.ReceiveBufferSize);
+        using var ms = new MemoryStream();
         try
         {
             while (!cancellationToken.IsCancellationRequested && _webSocket?.State == WebSocketState.Open)
             {
                 try
                 {
-                    var result = await _webSocket.ReceiveAsync(
-                        new ArraySegment<byte>(buffer),
-                        cancellationToken).ConfigureAwait(false);
-
-                    if (result.MessageType == WebSocketMessageType.Close)
+                    ValueWebSocketReceiveResult result;
+                    do
                     {
-                        _logger?.LogInformation("Server initiated close: {Status} - {Description}",
-                            result.CloseStatus, result.CloseStatusDescription);
+                        result = await _webSocket.ReceiveAsync(
+                            new Memory<byte>(buffer),
+                            cancellationToken).ConfigureAwait(false);
 
-                        await HandleDisconnectionAsync(cancellationToken).ConfigureAwait(false);
-                        break;
-                    }
+                        if (result.MessageType == WebSocketMessageType.Close)
+                        {
+                            _logger?.LogInformation("Server initiated close: {Status} - {Description}",
+                                _webSocket.CloseStatus, _webSocket.CloseStatusDescription);
 
-                    if (result.MessageType == WebSocketMessageType.Text && result.Count > 0)
+                            await HandleDisconnectionAsync(cancellationToken).ConfigureAwait(false);
+                            return;
+                        }
+
+                        ms.Write(buffer, 0, result.Count);
+                    } while (!result.EndOfMessage);
+
+                    if (ms.Length > 0)
                     {
-                        await ProcessMessageAsync(buffer.AsMemory(0, result.Count)).ConfigureAwait(false);
+                        await ProcessMessageAsync(ms.ToArray()).ConfigureAwait(false);
+                        ms.SetLength(0);
                     }
                 }
                 catch (WebSocketException ex) when (!cancellationToken.IsCancellationRequested)
@@ -407,9 +459,15 @@ public sealed class MercadoBitcoinWebSocketClient : IAsyncDisposable
                 case "ticker":
                     var ticker = JsonSerializer.Deserialize(messageData.Span,
                         MercadoBitcoinJsonSerializerContext.Default.TickerMessage);
-                    if (ticker != null)
+                    if (ticker != null && !string.IsNullOrEmpty(ticker.EffectiveInstrument))
                     {
-                        _tickerChannel?.Writer.TryWrite(ticker);
+                        if (_tickerSubscribers.TryGetValue(ticker.EffectiveInstrument.ToUpperInvariant(), out var subscribers))
+                        {
+                            foreach (var subscriber in subscribers.Keys)
+                            {
+                                subscriber.TryWrite(ticker);
+                            }
+                        }
                     }
                     break;
 
@@ -417,18 +475,30 @@ public sealed class MercadoBitcoinWebSocketClient : IAsyncDisposable
                 case "trade":
                     var trade = JsonSerializer.Deserialize(messageData.Span,
                         MercadoBitcoinJsonSerializerContext.Default.TradeMessage);
-                    if (trade != null)
+                    if (trade != null && !string.IsNullOrEmpty(trade.EffectiveInstrument))
                     {
-                        _tradeChannel?.Writer.TryWrite(trade);
+                        if (_tradeSubscribers.TryGetValue(trade.EffectiveInstrument.ToUpperInvariant(), out var subscribers))
+                        {
+                            foreach (var subscriber in subscribers.Keys)
+                            {
+                                subscriber.TryWrite(trade);
+                            }
+                        }
                     }
                     break;
 
                 case "orderbook":
                     var orderBook = JsonSerializer.Deserialize(messageData.Span,
                         MercadoBitcoinJsonSerializerContext.Default.OrderBookMessage);
-                    if (orderBook != null)
+                    if (orderBook != null && !string.IsNullOrEmpty(orderBook.EffectiveInstrument))
                     {
-                        _orderBookChannel?.Writer.TryWrite(orderBook);
+                        if (_orderBookSubscribers.TryGetValue(orderBook.EffectiveInstrument.ToUpperInvariant(), out var subscribers))
+                        {
+                            foreach (var subscriber in subscribers.Keys)
+                            {
+                                subscriber.TryWrite(orderBook);
+                            }
+                        }
                     }
                     break;
 
@@ -513,11 +583,13 @@ public sealed class MercadoBitcoinWebSocketClient : IAsyncDisposable
                     Subscription = new SubscriptionDetails
                     {
                         Channel = parts[0],
-                        Instrument = parts[1]
+                        Name = parts[0],
+                        Instrument = parts[1],
+                        Id = parts[1]
                     }
                 };
 
-                await SendMessageAsync(request, cancellationToken).ConfigureAwait(false);
+                await SendMessageAsync(request, MercadoBitcoinJsonSerializerContext.Default.SubscriptionRequest, cancellationToken).ConfigureAwait(false);
                 _logger?.LogDebug("Resubscribed to {Channel} for {Instrument}", parts[0], parts[1]);
             }
         }
@@ -559,16 +631,46 @@ public sealed class MercadoBitcoinWebSocketClient : IAsyncDisposable
         _disposeCts.Cancel();
 
         // Complete all channels
-        _tickerChannel?.Writer.TryComplete();
-        _tradeChannel?.Writer.TryComplete();
-        _orderBookChannel?.Writer.TryComplete();
+        foreach (var instrumentSubscribers in _tickerSubscribers.Values)
+        {
+            foreach (var subscriber in instrumentSubscribers.Keys)
+            {
+                subscriber.TryComplete();
+            }
+        }
+        foreach (var instrumentSubscribers in _tradeSubscribers.Values)
+        {
+            foreach (var subscriber in instrumentSubscribers.Keys)
+            {
+                subscriber.TryComplete();
+            }
+        }
+        foreach (var instrumentSubscribers in _orderBookSubscribers.Values)
+        {
+            foreach (var subscriber in instrumentSubscribers.Keys)
+            {
+                subscriber.TryComplete();
+            }
+        }
 
-        // Wait for receive task
+        // Wait for receive and ping tasks
         if (_receiveTask != null)
         {
             try
             {
                 await _receiveTask.ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                // Expected
+            }
+        }
+
+        if (_pingTask != null)
+        {
+            try
+            {
+                await _pingTask.ConfigureAwait(false);
             }
             catch (OperationCanceledException)
             {
