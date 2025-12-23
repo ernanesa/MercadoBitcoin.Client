@@ -51,7 +51,7 @@ namespace MercadoBitcoin.Client.ComprehensiveTests
             };
 
             _client = new MercadoBitcoinClient(options);
-            
+
             // Synchronize time immediately
             _client.SynchronizeTimeAsync().GetAwaiter().GetResult();
             _output.WriteLine($"✅ [INIT] Time synchronized. Timestamp: {_client.GetCurrentTimestamp()}");
@@ -117,10 +117,10 @@ namespace MercadoBitcoin.Client.ComprehensiveTests
             orderBook.Should().NotBeNull();
             orderBook.Bids.Should().NotBeEmpty();
             orderBook.Asks.Should().NotBeEmpty();
-            
+
             var bestBid = orderBook.Bids.First();
             var bestAsk = orderBook.Asks.First();
-            
+
             _output.WriteLine($"✅ OrderBook: Best Bid={bestBid.FirstOrDefault()}, Best Ask={bestAsk.FirstOrDefault()}");
         }
 
@@ -135,7 +135,7 @@ namespace MercadoBitcoin.Client.ComprehensiveTests
             fees.Should().NotBeNull();
             fees.Asset.Should().Be("BTC");
             fees.Withdrawal_fee.Should().NotBeNullOrEmpty();
-            
+
             _output.WriteLine($"✅ BTC Withdraw Fee: {fees.Withdrawal_fee}");
         }
 
@@ -152,10 +152,10 @@ namespace MercadoBitcoin.Client.ComprehensiveTests
             // Assert
             accounts.Should().NotBeNull();
             accounts.Should().NotBeEmpty();
-            
+
             var firstAccount = accounts.First();
             firstAccount.Id.Should().NotBeNullOrWhiteSpace();
-            
+
             _output.WriteLine($"✅ Found {accounts.Count()} account(s). First ID: {firstAccount.Id}");
         }
 
@@ -171,7 +171,7 @@ namespace MercadoBitcoin.Client.ComprehensiveTests
             // Assert
             balances.Should().NotBeNull();
             _output.WriteLine($"✅ Found {balances.Count()} balance entries");
-            
+
             foreach (var balance in balances.Take(5))
             {
                 _output.WriteLine($"   {balance.Symbol}: Available={balance.Available}, Total={balance.Total}");
@@ -206,10 +206,10 @@ namespace MercadoBitcoin.Client.ComprehensiveTests
         {
             // Arrange
             _testAccountId.Should().NotBeNullOrWhiteSpace("Account ID must be available");
-            
+
             // Get any existing order first
             var orders = await _client.ListOrdersAsync(_testSymbol, _testAccountId);
-            
+
             if (!orders.Any())
             {
                 _output.WriteLine("⚠️ No orders found to test OrderById. Skipping.");
