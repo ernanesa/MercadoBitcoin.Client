@@ -4,138 +4,122 @@ This document consolidates all release notes for the MercadoBitcoin.Client libra
 
 ## Table of Contents
 
-- [v4.1.0 (2025-11-25)](#v410---2025-11-25) - **LATEST STABLE**
+- [v5.0.0 (2025-12-23)](#v500---2025-12-23) - **LATEST STABLE**
+- [v4.1.0 (2025-11-25)](#v410---2025-11-25)
 - [v4.0.0 (2025-11-21)](#v400---2025-11-21)
 - [v3.0.0 (2025-08-27)](#v300---2025-08-27)
 - [Previous Versions](#previous-versions)
 
 ---
 
-## [v4.1.0] - 2025-11-25
+## [v5.1.0] - 2025-12-23
 
-### 🎉 Performance Release
+### 🎉 Enterprise & Multi-User Release
 
-This release focuses on **extreme performance optimizations** and introduces **WebSocket streaming support** for real-time market data.
+This release introduces a major architectural shift to support **Enterprise-grade multi-user applications** and **Universal Filtering** across the entire API surface.
 
 ### 🚀 New Features
 
-#### WebSocket Streaming API
+#### Multi-User Architecture (Scoped DI)
 
-Real-time market data streaming via WebSocket:
-
-```csharp
-using MercadoBitcoin.Client.WebSocket;
-
-await using var webSocketClient = new MercadoBitcoinWebSocketClient();
-await webSocketClient.ConnectAsync();
-
-// Subscribe to ticker updates
-await webSocketClient.SubscribeTickerAsync("BTC-BRL", ticker =>
-{
-    Console.WriteLine($"BTC: R$ {ticker.Last}");
-});
-```
-
-#### IAsyncEnumerable Support
-
-Efficient streaming enumeration for large datasets:
+The client now supports dynamic credential resolution via `IMercadoBitcoinCredentialProvider`. This is ideal for Web APIs where each request might belong to a different user:
 
 ```csharp
-await foreach (var trade in client.GetTradesStreamAsync("BTC-BRL"))
+// 1. Implement the provider
+public class MyUserCredentialProvider : IMercadoBitcoinCredentialProvider
 {
-    ProcessTrade(trade);
+    public Task<MercadoBitcoinCredentials?> GetCredentialsAsync(CancellationToken cancellationToken)
+    {
+        // Fetch credentials from your database, vault, or request context
+        return Task.FromResult(new MercadoBitcoinCredentials("KEY", "SECRET"));
+    }
+}
+
+// 2. Register in DI
+services.AddScoped<IMercadoBitcoinCredentialProvider, MyUserCredentialProvider>();
+services.AddMercadoBitcoinClient();
+
+// 3. Use the client normally - it will automatically use the scoped credentials
+public class MyService(IMercadoBitcoinClient client)
+{
+    public async Task GetBalance() => await client.GetAccountBalanceAsync();
 }
 ```
 
-#### Zero-Allocation Hot Paths
+#### Universal Filtering (Fetch All)
 
-New infrastructure for high-performance scenarios:
+All methods that previously required a symbol now support fetching data for **all tradable assets** by passing `null` or an empty list:
 
 ```csharp
-// ValueStringBuilder for stack-allocated string operations
-using var builder = new ValueStringBuilder(stackalloc char[256]);
-builder.Append("symbol=");
-builder.Append(symbol);
+// Fetch tickers for ALL symbols
+var allTickers = await client.GetTickersAsync();
 
-// JsonOptionsCache for singleton options
-var options = JsonOptionsCache.Default;
+// Fetch balance for ALL assets
+var allBalances = await client.GetAccountBalanceAsync();
 
-// ObjectPoolManager for reusable resources
-var buffer = ObjectPoolManager.RentBuffer<byte>(4096);
-try
-{
-    // Use buffer...
-}
-finally
-{
-    ObjectPoolManager.ReturnBuffer(buffer);
-}
+// List orders for ALL symbols in parallel
+var allOrders = await client.ListAllOrdersAsync();
 ```
 
-#### C# 14 Language Features
+#### Backward Compatibility
 
-Leveraging the latest C# 14 features:
+Existing code using string-based symbols continues to work without changes:
 
-- **Field keyword**: Cleaner property backing field access
-- **Extension members**: More intuitive extension methods
+```csharp
+// Still works perfectly
+var ticker = await client.GetTickerAsync("BTC-BRL");
+```
 
-### ⚡ Performance Improvements
+### 🔧 Technical Improvements
 
-| Metric | Before (v4.0.x) | After (v4.1.0) | Improvement |
-|--------|-----------------|----------------|-------------|
-| Startup Time | 800ms | 400ms | -50% |
-| Memory Usage | 150MB | 80MB | -47% |
-| Throughput | 10k req/s | 15k req/s | +50% |
-| Latency P99 | 100ms | 30ms | -70% |
-| Heap Allocations | 100MB/s | 30MB/s | -70% |
-| GC Pauses | 50ms | 10ms | -80% |
-
-### 🔧 Technical Changes
-
-#### Memory Optimization
-
-- `ArrayPool<T>.Shared` for buffer rentals in HTTP operations
-- `Span<T>` and `Memory<T>` for zero-copy data processing
-- `ObjectPool<T>` for reusable StringBuilder instances
-- `readonly struct` for small data carriers
-
-#### HTTP/3 Enhancements
-
-- Improved `SocketsHttpHandler` configuration
-- Better connection pooling and keep-alive settings
-- Enhanced HTTP/3 negotiation
-
-#### Rate Limiting
-
-- Migrated to `System.Threading.RateLimiting`
-- `TokenBucketRateLimiter` for efficient request throttling
-- Better integration with Polly resilience policies
+- **Parallel Fan-out**: Endpoints that don't support native batching (like `ListAllOrders`) now use high-performance parallel execution to aggregate results.
+- **AOT Readiness**: Expanded Source Generation support for all new response types.
+- **Resilient Symbol Discovery**: `GetAllSymbolsAsync` now filters for `ExchangeTraded` assets to ensure reliability in private endpoints.
 
 ### ✅ Test Suite
 
-- **77 integration tests** covering all API routes
-- All public endpoints validated
-- All authenticated endpoints tested with real credentials
-- Error handling scenarios covered
-- Performance benchmarks included
-
-### 📦 Installation
-
-```bash
-dotnet add package MercadoBitcoin.Client --version 4.1.0
-```
-
-### 🔄 Migration from v4.0.x
-
-This is a **minor release** with no breaking changes. Simply update the package version:
-
-```xml
-<PackageReference Include="MercadoBitcoin.Client" Version="4.1.0" />
-```
+- **94 integration tests** passing (100% success rate).
+- Validated multi-user credential resolution.
+- Validated universal filtering across Public, Trading, Wallet, and Account categories.
 
 ---
 
-## [v4.0.0] - 2025-11-21
+## [v5.0.0] - 2025-12-23
+
+### 🎉 Performance & Modernization Release
+
+This release marks a significant cleanup and modernization of the library, focusing on **Polly v8**, **HTTP/2 Multiplexing**, and **Request Coalescing**.
+
+### 🚀 New Features
+
+#### Polly v8 Resilience Pipelines
+
+Complete migration to the modern Polly v8 API for better performance and cleaner configuration:
+
+```csharp
+builder.Services.AddMercadoBitcoinClient(options =>
+{
+    options.RetryPolicyConfig = MercadoBitcoinClientExtensions.CreateTradingRetryConfig();
+});
+```
+
+#### Request Coalescing
+
+Prevents "thundering herd" problems by coalescing multiple concurrent requests for the same resource into a single API call.
+
+#### Server Time Estimation
+
+High-precision clock synchronization to prevent "Request out of time" errors in high-frequency trading scenarios.
+
+### ⚡ Performance Improvements
+
+- **HTTP/2 Multiplexing**: Native support for parallel requests over a single connection.
+- **Scorched Earth Cleanup**: Removed ~2,000 lines of legacy code.
+- **L1 Cache**: Integrated memory caching for static/semi-static data.
+
+---
+
+## [v4.1.0] - 2025-11-25
 
 ### 🎉 Stable Release
 

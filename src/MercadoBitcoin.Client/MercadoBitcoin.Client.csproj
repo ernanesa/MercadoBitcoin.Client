@@ -9,10 +9,10 @@
     
     <!-- NuGet Package Metadata -->
     <PackageId>MercadoBitcoin.Client</PackageId>
-    <Version>5.0.0</Version>
+    <Version>5.1.0</Version>
     <Authors>Ernane Sa</Authors>
     <Company>Open Source</Company>
-    <Description>High-performance .NET 10 client library for MercadoBitcoin API v4. Features: native HTTP/2 with optional HTTP/3 (QUIC), System.Text.Json with Source Generators for AOT compatibility, WebSocket streaming API, IAsyncEnumerable support, zero-allocation hot paths with Span/Memory, ObjectPool for resource reuse, Polly v8 resilience policies, comprehensive metrics (System.Diagnostics.Metrics), 77+ integration tests, and clean architecture. Optimized for high-throughput trading systems with sub-millisecond latency targets.</Description>
+    <Description>High-performance .NET 10 client library for MercadoBitcoin API v4. Features: native HTTP/2 with optional HTTP/3 (QUIC), System.Text.Json with Source Generators for AOT compatibility, Multi-User support (Scoped DI), Universal Filtering, WebSocket streaming API, IAsyncEnumerable support, zero-allocation hot paths with Span/Memory, ObjectPool for resource reuse, Polly v8 resilience policies, comprehensive metrics (System.Diagnostics.Metrics), 94+ integration tests, and clean architecture. Optimized for high-throughput trading systems with sub-millisecond latency targets.</Description>
     <PackageTags>mercadobitcoin;bitcoin;cryptocurrency;trading;api;client;dotnet;http2;http3;websocket;streaming;iasyncenumerable;performance;polly;systemtextjson;aot;sourcegenerators;net10;csharp14;zero-allocation;span;memory;objectpool;simd</PackageTags>
     <PackageProjectUrl>https://github.com/ernanesa/MercadoBitcoin.Client</PackageProjectUrl>
     <RepositoryUrl>https://github.com/ernanesa/MercadoBitcoin.Client</RepositoryUrl>

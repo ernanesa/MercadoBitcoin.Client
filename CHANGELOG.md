@@ -1,5 +1,18 @@
 # Changelog
 
+## [5.1.0] - 2025-12-23
+### Added
+- **Multi-User Architecture**: Introduced `IMercadoBitcoinCredentialProvider` to support scoped Dependency Injection. This allows different credentials to be used within the same application instance (e.g., in a web API where each request might belong to a different user).
+- **Universal Filtering**: All data retrieval methods (Public, Trading, Wallet, Account) now support a "Universal Filter". Passing `null` or an empty list to the `symbols` parameter will automatically fetch data for all tradable assets.
+- **Backward Compatibility**: Added string-based overloads for all major methods to ensure existing code continues to work without modification.
+- **Parallel Fan-out**: Enhanced `BatchHelper` to handle parallel execution for endpoints that do not support native API batching (e.g., `ListAllOrders`).
+- **AOT Serialization**: Expanded `MercadoBitcoinJsonSerializerContext` with `ListAllOrdersResponse` and `Orders` types for full AOT/Source Generation support.
+
+### Fixed
+- **ListAllOrdersAsync**: Fixed aggregation logic to correctly merge items from multiple symbols and handle JSON serialization via Source Generators.
+- **GetWithdrawLimitsAsync**: Fixed handling of empty API responses (Status 200 with no body) to prevent deserialization errors.
+- **GetAllSymbolsAsync**: Improved reliability by filtering for `ExchangeTraded` symbols, preventing errors when using the results in private endpoints.
+
 ## [5.0.0] - 2025-12-23
 ### Added
 - **ExecuteBatchAsync**: Native support for parallel request execution using HTTP/2 multiplexing.

@@ -12,19 +12,20 @@
 
 A high-performance .NET 10 library for integrating with the **Mercado Bitcoin API v4**. This library provides access to all available platform endpoints, including public data, trading, account management, and wallet operations, with native support for **HTTP/3**, **WebSocket streaming**, and **System.Text.Json** for maximum performance and AOT compatibility.
 
-> **Version 5.0.0 - Beast Mode Release**
+> **Version 5.1.0 - Enterprise & Multi-User Release**
 >
-> This release introduces **ExecuteBatchAsync**, **Request Coalescing**, and **Polly v8 Resilience Pipelines** for extreme performance and reliability:
-> - 🚀 Native HTTP/2 Multiplexing for parallel requests
-> - 🛡️ Intelligent Request Coalescing (Thundering Herd protection)
-> - ⏱️ High-precision Server Time Estimation
-> - ⚡ Polly v8 Resilience Pipelines (Retry, Circuit Breaker, Timeout)
-> - 🧹 Scorched Earth Cleanup: Removed 2,000+ lines of legacy code
+> This release introduces **Multi-User Architecture** and **Universal Filtering** for enterprise-grade applications:
+> - 🏢 **Multi-User Architecture**: Support for scoped Dependency Injection with dynamic credential resolution.
+> - 🔍 **Universal Filtering**: Automatically fetch data for all tradable assets by passing `null` to symbol parameters.
+> - 🚀 **Parallel Fan-out**: High-performance aggregation for endpoints without native batching support.
+> - 🛡️ **Backward Compatibility**: Full support for existing string-based method signatures.
 >
 > See [CHANGELOG.md](CHANGELOG.md) for full details.
 
 ## 🚀 Features
 
+- ✅ **Multi-User Support**: Dynamic credential resolution via `IMercadoBitcoinCredentialProvider` (Scoped DI)
+- ✅ **Universal Filtering**: Fetch data for all symbols automatically by passing `null`
 - ✅ **Complete Coverage**: All Mercado Bitcoin API v4 endpoints
 - ✅ **.NET 10 + C# 14**: Latest framework and language with optimized performance
 - ✅ **WebSocket Streaming**: Real-time market data via WebSocket API
@@ -44,7 +45,7 @@ A high-performance .NET 10 library for integrating with the **Mercado Bitcoin AP
 - ✅ **CancellationToken in All Endpoints**: Complete cooperative cancellation
 - ✅ **Custom User-Agent**: Override via `MB_USER_AGENT` env var for observability
 - ✅ **Production Ready**: Ready for production use
-- ✅ **Comprehensive Tests**: 77 tests covering all scenarios
+- ✅ **Comprehensive Tests**: 94 tests covering all scenarios
 - ✅ **Validated Performance**: Benchmarks prove significant improvements
 - ✅ **Robust Handling**: Graceful skip for scenarios without credentials
 - ✅ **CI/CD Ready**: Optimized configuration for continuous integration
@@ -59,7 +60,7 @@ Install-Package MercadoBitcoin.Client
 dotnet add package MercadoBitcoin.Client
 
 # Via PackageReference
-<PackageReference Include="MercadoBitcoin.Client" Version="5.0.0" />
+<PackageReference Include="MercadoBitcoin.Client" Version="5.1.0" />
 ```
 
 ## ⚡️ Usage: Public vs Private Endpoints
@@ -77,12 +78,45 @@ var tickers = await client.GetTickersAsync("BTC-BRL");
 var candles = await client.GetCandlesAsync("BTC-BRL", "1h", to: (int)DateTimeOffset.UtcNow.ToUnixTimeSeconds(), countback: 24);
 ```
 
+**Universal Filtering (Fetch All):**
+```csharp
+// Fetch tickers for ALL tradable symbols automatically
+var allTickers = await client.GetTickersAsync(); 
+```
+
 **Private Data (Authentication needed):**
 ```csharp
 var client = MercadoBitcoinClientExtensions.CreateWithRetryPolicies();
 await client.AuthenticateAsync("your_login", "your_password");
 var accounts = await client.GetAccountsAsync();
 var balances = await client.GetBalancesAsync(accounts.First().Id);
+```
+
+## 🏢 Multi-User Architecture (Scoped DI)
+
+For enterprise applications where each request might belong to a different user, implement `IMercadoBitcoinCredentialProvider`:
+
+```csharp
+public class MyUserCredentialProvider : IMercadoBitcoinCredentialProvider
+{
+    private readonly IHttpContextAccessor _httpContextAccessor;
+    
+    public MyUserCredentialProvider(IHttpContextAccessor httpContextAccessor)
+    {
+        _httpContextAccessor = httpContextAccessor;
+    }
+
+    public async Task<MercadoBitcoinCredentials?> GetCredentialsAsync(CancellationToken ct)
+    {
+        // Resolve user from context and fetch credentials from a secure vault
+        var userId = _httpContextAccessor.HttpContext?.User.Identity?.Name;
+        return await _vault.GetCredentialsForUserAsync(userId, ct);
+    }
+}
+
+// Register in Program.cs
+builder.Services.AddScoped<IMercadoBitcoinCredentialProvider, MyUserCredentialProvider>();
+builder.Services.AddMercadoBitcoinClient();
 ```
 
 ## 🔧 Configuration
