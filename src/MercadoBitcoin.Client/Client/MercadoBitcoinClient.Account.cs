@@ -1,5 +1,6 @@
 using MercadoBitcoin.Client.Generated;
 using MercadoBitcoin.Client.Internal.Helpers;
+using MercadoBitcoin.Client.Models;
 
 namespace MercadoBitcoin.Client
 {
@@ -9,27 +10,35 @@ namespace MercadoBitcoin.Client
 
         public Task<ICollection<AccountResponse>> GetAccountsAsync(CancellationToken cancellationToken = default)
         {
-            try
+            var cacheKey = "accounts";
+            return ExecuteCoalescedAsync(cacheKey, ct =>
             {
-                return _generatedClient.AccountsAsync(cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                throw MapApiException(ex);
-            }
+                try
+                {
+                    return _generatedClient.AccountsAsync(ct);
+                }
+                catch (Exception ex)
+                {
+                    throw MapApiException(ex);
+                }
+            }, cancellationToken);
         }
 
         public Task<ICollection<CryptoBalanceResponse>> GetBalancesAsync(string accountId, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrWhiteSpace(accountId)) throw new ArgumentException("Invalid accountId", nameof(accountId));
-            try
+            var cacheKey = $"balances:{accountId}";
+            return ExecuteCoalescedAsync(cacheKey, ct =>
             {
-                return _generatedClient.BalancesAsync(accountId.Trim(), cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                throw MapApiException(ex);
-            }
+                try
+                {
+                    return _generatedClient.BalancesAsync(accountId.Trim(), ct);
+                }
+                catch (Exception ex)
+                {
+                    throw MapApiException(ex);
+                }
+            }, cancellationToken);
         }
 
         public Task<ICollection<GetTierResponse>> GetTierAsync(string accountId, CancellationToken cancellationToken = default)
@@ -87,6 +96,14 @@ namespace MercadoBitcoin.Client
                 async ct => (await GetSymbolsRawAsync(null, ct).ConfigureAwait(false)).Symbol ?? Enumerable.Empty<string>(),
                 async (batch, ct) => await GetPositionsRawAsync(accountId, batch, ct).ConfigureAwait(false),
                 cancellationToken).ConfigureAwait(false)).ToList();
+        }
+
+        /// <summary>
+        /// Gets open positions using a universal filter.
+        /// </summary>
+        public Task<ICollection<PositionResponse>> GetPositionsAsync(string accountId, UniversalFilter filter, CancellationToken cancellationToken = default)
+        {
+            return GetPositionsAsync(accountId, filter.Symbols, cancellationToken);
         }
 
         #endregion

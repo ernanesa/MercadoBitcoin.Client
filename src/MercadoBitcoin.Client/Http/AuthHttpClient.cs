@@ -1,4 +1,5 @@
 using System.Buffers;
+using System.IO.Pipelines;
 using System.Net.Http.Headers;
 using System.Text.Json;
 using MercadoBitcoin.Client.Errors;
@@ -54,8 +55,6 @@ namespace MercadoBitcoin.Client
         /// </summary>
         public string? GetAccessToken() => _tokenStore.AccessToken;
 
-
-
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             // If the request already has an Authorization header, don't overwrite it.
@@ -69,30 +68,49 @@ namespace MercadoBitcoin.Client
 
             if (!response.IsSuccessStatusCode)
             {
-                var buffer = ArrayPool<byte>.Shared.Rent(4096);
+                // Beast Mode v5.0: Zero-allocation error parsing using PipeReader
+                var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+                var reader = PipeReader.Create(stream);
+
                 try
                 {
-                    await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
-                    int bytesRead = await stream.ReadAsync(buffer, cancellationToken);
-
-                    ErrorResponse? errorResponse = null;
-                    try
+                    while (true)
                     {
-                        errorResponse = JsonSerializer.Deserialize(buffer.AsSpan(0, bytesRead), MercadoBitcoinJsonSerializerContext.Default.ErrorResponse);
-                    }
-                    catch (JsonException)
-                    {
-                        var errorString = System.Text.Encoding.UTF8.GetString(buffer.AsSpan(0, bytesRead));
-                        errorResponse = new ErrorResponse { Code = "UNKNOWN_ERROR", Message = string.IsNullOrWhiteSpace(errorString) ? $"HTTP {(int)response.StatusCode} {response.ReasonPhrase}" : errorString };
-                    }
+                        ReadResult result = await reader.ReadAsync(cancellationToken);
+                        ReadOnlySequence<byte> buffer = result.Buffer;
 
-                    var finalErrorResponse = errorResponse ?? new ErrorResponse { Code = "UNKNOWN_ERROR", Message = $"HTTP {(int)response.StatusCode} {response.ReasonPhrase}" };
-                    throw new MercadoBitcoinApiException($"API Error: {finalErrorResponse.Message}", finalErrorResponse);
+                        if (result.IsCompleted)
+                        {
+                            if (!buffer.IsEmpty)
+                            {
+                                var jsonReader = new Utf8JsonReader(buffer);
+                                var errorResponse = JsonSerializer.Deserialize(ref jsonReader, MercadoBitcoinJsonSerializerContext.Default.ErrorResponse);
+
+                                var statusMsg = $"HTTP {(int)response.StatusCode} {response.ReasonPhrase ?? "Unknown"}";
+                                var finalErrorResponse = errorResponse ?? new ErrorResponse { Code = "UNKNOWN_ERROR", Message = statusMsg };
+
+                                if (string.IsNullOrWhiteSpace(finalErrorResponse.Message))
+                                {
+                                    finalErrorResponse.Message = statusMsg;
+                                }
+
+                                throw new MercadoBitcoinApiException($"API Error: {finalErrorResponse.Message}", finalErrorResponse);
+                            }
+                            break;
+                        }
+
+                        // We only need the first chunk for most error responses, but we could buffer more if needed.
+                        // For simplicity and performance, we assume the error fits in the first read or we wait for completion.
+                        reader.AdvanceTo(buffer.Start, buffer.End);
+                    }
                 }
                 finally
                 {
-                    ArrayPool<byte>.Shared.Return(buffer);
+                    await reader.CompleteAsync();
                 }
+
+                // Fallback if pipe was empty
+                throw new MercadoBitcoinApiException($"API Error: HTTP {(int)response.StatusCode} {response.ReasonPhrase}", new ErrorResponse { Code = "UNKNOWN_ERROR", Message = response.ReasonPhrase ?? "Unknown" });
             }
 
             return response;

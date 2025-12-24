@@ -1,5 +1,6 @@
 using MercadoBitcoin.Client.Generated;
 using MercadoBitcoin.Client.Internal.Helpers;
+using MercadoBitcoin.Client.Models;
 
 namespace MercadoBitcoin.Client
 {
@@ -40,6 +41,27 @@ namespace MercadoBitcoin.Client
                 cancellationToken).ConfigureAwait(false);
 
             return results.SelectMany(r => r).ToList();
+        }
+
+        /// <summary>
+        /// Lists orders using a universal filter.
+        /// </summary>
+        public Task<ICollection<OrderResponse>> ListOrdersAsync(string accountId, UniversalFilter filter, string? hasExecutions = null, string? side = null, string? status = null, int maxDegreeOfParallelism = 5, CancellationToken cancellationToken = default)
+        {
+            return ListOrdersAsync(
+                accountId,
+                filter.Symbols,
+                hasExecutions,
+                side,
+                status,
+                idFrom: null,
+                idTo: null,
+                createdAtFrom: filter.From?.ToString(),
+                createdAtTo: filter.To?.ToString(),
+                executedAtFrom: null,
+                executedAtTo: null,
+                maxDegreeOfParallelism,
+                cancellationToken);
         }
 
         public Task<PlaceOrderResponse> PlaceOrderAsync(string symbol, string accountId, PlaceOrderRequest payload, CancellationToken cancellationToken = default)
@@ -118,6 +140,14 @@ namespace MercadoBitcoin.Client
             };
         }
 
+        /// <summary>
+        /// Lists all orders using a universal filter.
+        /// </summary>
+        public Task<ListAllOrdersResponse> ListAllOrdersAsync(string accountId, UniversalFilter filter, string? hasExecutions = null, string? status = null, CancellationToken cancellationToken = default)
+        {
+            return ListAllOrdersAsync(accountId, filter.Symbols, hasExecutions, status, filter.Limit?.ToString(), cancellationToken);
+        }
+
         public Task<ICollection<CancelOpenOrdersResponse>> CancelAllOpenOrdersByAccountRawAsync(string accountId, bool? hasExecutions = null, string? symbol = null, CancellationToken cancellationToken = default)
         {
             try
@@ -144,6 +174,14 @@ namespace MercadoBitcoin.Client
                 cancellationToken).ConfigureAwait(false);
 
             return results.SelectMany(r => r).ToList();
+        }
+
+        /// <summary>
+        /// Cancels all open orders using a universal filter.
+        /// </summary>
+        public Task<ICollection<CancelOpenOrdersResponse>> CancelAllOpenOrdersByAccountAsync(string accountId, UniversalFilter filter, bool? hasExecutions = null, int maxDegreeOfParallelism = 5, CancellationToken cancellationToken = default)
+        {
+            return CancelAllOpenOrdersByAccountAsync(accountId, filter.Symbols, hasExecutions, maxDegreeOfParallelism, cancellationToken);
         }
 
         #endregion

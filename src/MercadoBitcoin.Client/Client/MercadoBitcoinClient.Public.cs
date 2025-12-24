@@ -93,6 +93,14 @@ namespace MercadoBitcoin.Client
                 cancellationToken).ConfigureAwait(false)).ToList();
         }
 
+        /// <summary>
+        /// Gets order books using a universal filter.
+        /// </summary>
+        public Task<ICollection<OrderBookResponse>> GetOrderBooksAsync(UniversalFilter filter, int maxDegreeOfParallelism = 5, CancellationToken cancellationToken = default)
+        {
+            return GetOrderBooksAsync(filter.Symbols, filter.Limit?.ToString(), maxDegreeOfParallelism, cancellationToken);
+        }
+
         public Task<ICollection<TradeResponse>> GetTradesAsync(string symbol, int? tid = null, int? since = null, int? from = null, int? to = null, int? limit = null, CancellationToken cancellationToken = default)
         {
             var cacheKey = $"trades:{symbol}:{tid}:{since}:{from}:{to}:{limit}";
@@ -397,6 +405,14 @@ namespace MercadoBitcoin.Client
                 GetAllSymbolsAsync,
                 async (batch, ct) => await GetTickersRawAsync(batch, ct).ConfigureAwait(false),
                 cancellationToken).ConfigureAwait(false)).ToList();
+        }
+
+        /// <summary>
+        /// Gets tickers using a universal filter.
+        /// </summary>
+        public Task<ICollection<TickerResponse>> GetTickersAsync(UniversalFilter filter, CancellationToken cancellationToken = default)
+        {
+            return GetTickersAsync(filter.Symbols, cancellationToken);
         }
 
         private async Task<IEnumerable<string>> GetAllSymbolsAsync(CancellationToken cancellationToken)

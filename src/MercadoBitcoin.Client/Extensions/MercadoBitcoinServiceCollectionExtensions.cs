@@ -1,6 +1,7 @@
 using MercadoBitcoin.Client;
 using MercadoBitcoin.Client.Configuration;
 using MercadoBitcoin.Client.Internal.Security;
+using MercadoBitcoin.Client.Models;
 using MercadoBitcoin.Client.WebSocket;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection.Extensions;

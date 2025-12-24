@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using MercadoBitcoin.Client.Configuration;
 using MercadoBitcoin.Client.Generated;
 using MercadoBitcoin.Client.Internal.Security;
+using MercadoBitcoin.Client.Models;
 using Microsoft.Extensions.Options;
 
 namespace MercadoBitcoin.Client.Http

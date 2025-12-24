@@ -7,6 +7,7 @@ using MercadoBitcoin.Client.Http;
 using MercadoBitcoin.Client.Internal.Optimization;
 using MercadoBitcoin.Client.Internal.Security;
 using MercadoBitcoin.Client.Internal.Time;
+using MercadoBitcoin.Client.Models;
 using Microsoft.Extensions.Caching.Memory;
 
 namespace MercadoBitcoin.Client
@@ -23,6 +24,14 @@ namespace MercadoBitcoin.Client
         private readonly RequestCoalescer _coalescer = new();
         private readonly MercadoBitcoinClientOptions _options;
         private readonly IMercadoBitcoinCredentialProvider? _credentialProvider;
+
+        /// <summary>
+        /// Executes a task with request coalescing (Singleflight pattern).
+        /// </summary>
+        private Task<T> ExecuteCoalescedAsync<T>(string key, Func<CancellationToken, Task<T>> action, CancellationToken ct)
+        {
+            return _coalescer.ExecuteAsync(key, action, ct);
+        }
 
         /// <summary>
         /// Constructor for use with DI, allowing real injection of configuration options.
@@ -88,10 +97,10 @@ namespace MercadoBitcoin.Client
             // Apply custom configuration
             _options.ConfigureJsonOptions?.Invoke(jsonOptions);
 
-            _generatedClient = new Generated.Client(_httpClient) { BaseUrl = _options.BaseUrl };
+            _generatedClient = new OptimizedGeneratedClient(_httpClient) { BaseUrl = _options.BaseUrl };
             _generatedClient.SetSerializerOptions(jsonOptions);
 
-            _openClient = new Generated.OpenClient(_httpClient) { BaseUrl = _options.BaseUrl };
+            _openClient = new OptimizedOpenClient(_httpClient) { BaseUrl = _options.BaseUrl };
             _openClient.SetSerializerOptions(jsonOptions);
         }
 
@@ -195,10 +204,10 @@ namespace MercadoBitcoin.Client
             // Apply custom configuration
             _options.ConfigureJsonOptions?.Invoke(jsonOptions);
 
-            _generatedClient = new Generated.Client(_httpClient) { BaseUrl = _options.BaseUrl };
+            _generatedClient = new OptimizedGeneratedClient(_httpClient) { BaseUrl = _options.BaseUrl };
             _generatedClient.SetSerializerOptions(jsonOptions);
 
-            _openClient = new Generated.OpenClient(_httpClient) { BaseUrl = _options.BaseUrl };
+            _openClient = new OptimizedOpenClient(_httpClient) { BaseUrl = _options.BaseUrl };
             _openClient.SetSerializerOptions(jsonOptions);
         }
 
