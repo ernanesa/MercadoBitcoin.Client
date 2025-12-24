@@ -56,6 +56,11 @@ namespace MercadoBitcoin.Client
                 throw new ArgumentException("BaseUrl cannot be null or empty.", nameof(_options.BaseUrl));
             }
 
+            if (!_options.BaseUrl.EndsWith('/'))
+            {
+                _options.BaseUrl += "/";
+            }
+
             _rateLimiter = new TokenBucketRateLimiter(new TokenBucketRateLimiterOptions
             {
                 TokenLimit = _options.RateLimiterConfig.PermitLimit,
@@ -119,6 +124,11 @@ namespace MercadoBitcoin.Client
             if (string.IsNullOrWhiteSpace(_options.BaseUrl))
             {
                 throw new ArgumentException("BaseUrl cannot be null or empty.", nameof(_options.BaseUrl));
+            }
+
+            if (!_options.BaseUrl.EndsWith('/'))
+            {
+                _options.BaseUrl += "/";
             }
 
             _rateLimiter = new TokenBucketRateLimiter(new TokenBucketRateLimiterOptions

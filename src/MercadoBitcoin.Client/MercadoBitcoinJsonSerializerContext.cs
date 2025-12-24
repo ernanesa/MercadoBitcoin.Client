@@ -11,7 +11,8 @@ namespace MercadoBitcoin.Client;
     PropertyNameCaseInsensitive = true,
     WriteIndented = false,
     DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-    PropertyNamingPolicy = JsonKnownNamingPolicy.SnakeCaseLower
+    PropertyNamingPolicy = JsonKnownNamingPolicy.SnakeCaseLower,
+    NumberHandling = JsonNumberHandling.AllowReadingFromString
 )]
 // WebSocket Messages
 [JsonSerializable(typeof(TickerMessage))]

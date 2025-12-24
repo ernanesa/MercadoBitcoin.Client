@@ -36,4 +36,16 @@ public abstract class WebSocketMessageBase
     /// </summary>
     [JsonPropertyName("timestamp")]
     public long Timestamp { get; init; }
+
+    /// <summary>
+    /// Alias for timestamp used in some message types (e.g. ticker).
+    /// </summary>
+    [JsonPropertyName("ts")]
+    public long Ts { get; init; }
+
+    /// <summary>
+    /// Gets the effective timestamp from either Timestamp or Ts property.
+    /// </summary>
+    [JsonIgnore]
+    public long EffectiveTimestamp => Timestamp > 0 ? Timestamp : Ts;
 }

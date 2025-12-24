@@ -36,7 +36,7 @@ namespace MercadoBitcoin.Client.ComprehensiveTests
 
             var apiId = config["MercadoBitcoin:ApiKey"];
             var apiSecret = config["MercadoBitcoin:ApiSecret"];
-            _testAccountId = config["MercadoBitcoin:TestAccountId"] ?? string.Empty;
+            _testAccountId = config["TestSettings:TestAccountId"] ?? string.Empty;
 
             _output.WriteLine($"[INIT] Using Account ID: {_testAccountId}");
 
@@ -306,12 +306,15 @@ namespace MercadoBitcoin.Client.ComprehensiveTests
         public async Task AssetFees_WithNetwork_ShouldReturnNetworkFee()
         {
             // Act
-            var fees = await _client.GetAssetFeesAsync("USDC", "ERC20");
+            var networks = await _client.GetAssetNetworksAsync("BTC");
+            var network = networks.First().Network1;
+
+            var fees = await _client.GetAssetFeesAsync("BTC", network);
 
             // Assert
             fees.Should().NotBeNull();
-            fees.Asset.Should().Be("USDC");
-            _output.WriteLine($"✅ Asset Fees (USDC-ERC20): {fees.Withdrawal_fee}");
+            fees.Asset.Should().Be("BTC");
+            _output.WriteLine($"✅ Asset Fees (BTC-{network}): {fees.Withdrawal_fee}");
         }
 
         [Fact]
@@ -608,7 +611,7 @@ namespace MercadoBitcoin.Client.ComprehensiveTests
 
             // Assert
             withdrawal.Should().NotBeNull();
-            _output.WriteLine($"✅ Withdrawal by ID: {withdrawal.Id} ({withdrawal.Qty ?? "0"} {withdrawal.Symbol})");
+            _output.WriteLine($"✅ Withdrawal by ID: {withdrawal.Id} ({withdrawal.Quantity ?? "0"} {withdrawal.Coin})");
         }
 
         [Fact]

@@ -1,0 +1,13 @@
+  Determinando os projetos a serem restaurados...
+  Todos os projetos est├úo atualizados para restaura├º├úo.
+  MercadoBitcoin.Client -> C:\Users\Ernane\Personal\CryptoTrading\MercadoBitcoin.Client\src\MercadoBitcoin.Client\bin\Release\net10.0\MercadoBitcoin.Client.dll
+C:\Users\Ernane\Personal\CryptoTrading\MercadoBitcoin.Client\tests\MercadoBitcoin.Client.ComprehensiveTests\PerformanceTests.cs(354,43): warning CS8604: Poss├¡vel argumento de refer├¬ncia nula para o par├ómetro 'json' em 'ListSymbolInfoResponse? JsonSerializer.Deserialize<ListSymbolInfoResponse>(string json, JsonTypeInfo<ListSymbolInfoResponse> jsonTypeInfo)'. [C:\Users\Ernane\Personal\CryptoTrading\MercadoBitcoin.Client\tests\MercadoBitcoin.Client.ComprehensiveTests\MercadoBitcoin.Client.ComprehensiveTests.csproj]
+C:\Users\Ernane\Personal\CryptoTrading\MercadoBitcoin.Client\tests\MercadoBitcoin.Client.ComprehensiveTests\PerformanceTests.cs(366,43): warning CS8604: Poss├¡vel argumento de refer├¬ncia nula para o par├ómetro 'json' em 'TickerResponse[]? JsonSerializer.Deserialize<TickerResponse[]>(string json, JsonTypeInfo<TickerResponse[]> jsonTypeInfo)'. [C:\Users\Ernane\Personal\CryptoTrading\MercadoBitcoin.Client\tests\MercadoBitcoin.Client.ComprehensiveTests\MercadoBitcoin.Client.ComprehensiveTests.csproj]
+C:\Users\Ernane\Personal\CryptoTrading\MercadoBitcoin.Client\tests\MercadoBitcoin.Client.ComprehensiveTests\ExhaustiveApiCoverageTests.cs(104,57): warning CS8600: Convers├úo de literal nula ou poss├¡vel valor nulo em tipo n├úo anul├ível. [C:\Users\Ernane\Personal\CryptoTrading\MercadoBitcoin.Client\tests\MercadoBitcoin.Client.ComprehensiveTests\MercadoBitcoin.Client.ComprehensiveTests.csproj]
+  MercadoBitcoin.Client.ComprehensiveTests -> C:\Users\Ernane\Personal\CryptoTrading\MercadoBitcoin.Client\tests\MercadoBitcoin.Client.ComprehensiveTests\bin\Release\net10.0\MercadoBitcoin.Client.ComprehensiveTests.dll
+Execu├º├úo de teste para C:\Users\Ernane\Personal\CryptoTrading\MercadoBitcoin.Client\tests\MercadoBitcoin.Client.ComprehensiveTests\bin\Release\net10.0\MercadoBitcoin.Client.ComprehensiveTests.dll (.NETCoreApp,Version=v10.0)
+Vers├úo do VSTest 18.0.1 (x64)
+
+Iniciando execu├º├úo de teste, espere...
+1 arquivos de teste no total corresponderam ao padr├úo especificado.
+Tentando cancelar a compila├º├úo...

@@ -28,6 +28,11 @@ namespace MercadoBitcoin.Client.Http
         public double MaxDelaySeconds { get; set; } = 30.0;
 
         /// <summary>
+        /// Timeout in seconds for each request (default: 30)
+        /// </summary>
+        public double TimeoutSeconds { get; set; } = 30.0;
+
+        /// <summary>
         /// Whether to retry on timeout errors (default: true)
         /// </summary>
         public bool RetryOnTimeout { get; set; } = true;

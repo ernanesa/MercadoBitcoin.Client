@@ -89,10 +89,9 @@ namespace MercadoBitcoin.Client.Internal.Optimization
 
             // ============ LAYER 2: TIMEOUT POLICY ============
             // Prevent unbounded waits. Fail fast if response takes too long.
-            builder.AddTimeout(new TimeoutStrategyOptions<HttpResponseMessage>
+            builder.AddTimeout(new TimeoutStrategyOptions
             {
-                TimeoutDuration = TimeSpan.FromSeconds(_config.TimeoutSeconds),
-                TimeoutRejectedException = false, // Don't throw; instead, propagate timeout as failed result
+                Timeout = TimeSpan.FromSeconds(_config.TimeoutSeconds)
             });
 
             // ============ LAYER 3: RETRY POLICY ============
@@ -110,7 +109,7 @@ namespace MercadoBitcoin.Client.Internal.Optimization
                     // Determine which outcomes warrant a retry
                     ShouldHandle = new PredicateBuilder<HttpResponseMessage>()
                         .Handle<HttpRequestException>()
-                        .Handle<TaskCanceledException>(ex => _config.RetryOnTimeout)
+                        .Handle<TaskCanceledException>(_ => _config.RetryOnTimeout)
                         .HandleResult(r => ShouldRetry(r)),
 
                     // Custom delay calculator that respects Retry-After header for 429s
@@ -151,7 +150,7 @@ namespace MercadoBitcoin.Client.Internal.Optimization
         /// Respects the Retry-After header if present (especially critical for 429s).
         /// Otherwise, uses exponential backoff with jitter.
         /// </summary>
-        private static ValueTask<TimeSpan> GetDelayForAttempt(
+        private static ValueTask<TimeSpan?> GetDelayForAttempt(
             RetryDelayGeneratorArguments<HttpResponseMessage> args)
         {
             var response = args.Outcome.Result;
@@ -163,7 +162,7 @@ namespace MercadoBitcoin.Client.Internal.Optimization
                     if (response.Headers.RetryAfter.Delta.HasValue)
                     {
                         // Retry-After: <seconds>
-                        return new ValueTask<TimeSpan>(response.Headers.RetryAfter.Delta.Value);
+                        return new ValueTask<TimeSpan?>(response.Headers.RetryAfter.Delta.Value);
                     }
                     else if (response.Headers.RetryAfter.Date.HasValue)
                     {
@@ -171,7 +170,7 @@ namespace MercadoBitcoin.Client.Internal.Optimization
                         var delay = response.Headers.RetryAfter.Date.Value - DateTimeOffset.UtcNow;
                         if (delay.TotalSeconds > 0)
                         {
-                            return new ValueTask<TimeSpan>(delay);
+                            return new ValueTask<TimeSpan?>(delay);
                         }
                     }
                 }
@@ -186,7 +185,7 @@ namespace MercadoBitcoin.Client.Internal.Optimization
 
             // Cap at 30 seconds to prevent excessive waiting
             var capped = Math.Min(totalDelay, 30000);
-            return new ValueTask<TimeSpan>(TimeSpan.FromMilliseconds(capped));
+            return new ValueTask<TimeSpan?>(TimeSpan.FromMilliseconds(capped));
         }
 
         /// <summary>

@@ -182,7 +182,9 @@ public sealed class MercadoBitcoinWebSocketClient : IAsyncDisposable
             SingleWriter = true
         });
 
-        var subscribers = _tickerSubscribers.GetOrAdd(instrument.ToUpperInvariant(), _ => new ConcurrentDictionary<ChannelWriter<TickerMessage>, byte>());
+        // Use WebSocket market ID format for subscriber lookup (matches incoming messages)
+        var marketId = ConvertToWebSocketMarketId(instrument);
+        var subscribers = _tickerSubscribers.GetOrAdd(marketId, _ => new ConcurrentDictionary<ChannelWriter<TickerMessage>, byte>());
         subscribers.TryAdd(channel.Writer, 0);
 
         try
@@ -220,7 +222,9 @@ public sealed class MercadoBitcoinWebSocketClient : IAsyncDisposable
             SingleWriter = true
         });
 
-        var subscribers = _tradeSubscribers.GetOrAdd(instrument.ToUpperInvariant(), _ => new ConcurrentDictionary<ChannelWriter<TradeMessage>, byte>());
+        // Use WebSocket market ID format for subscriber lookup (matches incoming messages)
+        var marketId = ConvertToWebSocketMarketId(instrument);
+        var subscribers = _tradeSubscribers.GetOrAdd(marketId, _ => new ConcurrentDictionary<ChannelWriter<TradeMessage>, byte>());
         subscribers.TryAdd(channel.Writer, 0);
 
         try
@@ -258,7 +262,9 @@ public sealed class MercadoBitcoinWebSocketClient : IAsyncDisposable
             SingleWriter = true
         });
 
-        var subscribers = _orderBookSubscribers.GetOrAdd(instrument.ToUpperInvariant(), _ => new ConcurrentDictionary<ChannelWriter<OrderBookMessage>, byte>());
+        // Use WebSocket market ID format for subscriber lookup (matches incoming messages)
+        var marketId = ConvertToWebSocketMarketId(instrument);
+        var subscribers = _orderBookSubscribers.GetOrAdd(marketId, _ => new ConcurrentDictionary<ChannelWriter<OrderBookMessage>, byte>());
         subscribers.TryAdd(channel.Writer, 0);
 
         try
@@ -284,7 +290,8 @@ public sealed class MercadoBitcoinWebSocketClient : IAsyncDisposable
         ArgumentException.ThrowIfNullOrWhiteSpace(channel);
         ArgumentException.ThrowIfNullOrWhiteSpace(instrument);
 
-        var subscriptionKey = $"{channel}:{instrument}";
+        var marketId = ConvertToWebSocketMarketId(instrument);
+        var subscriptionKey = $"{channel}:{marketId}";
 
         lock (_subscriptionLock)
         {
@@ -298,15 +305,13 @@ public sealed class MercadoBitcoinWebSocketClient : IAsyncDisposable
                 Type = "unsubscribe",
                 Subscription = new SubscriptionDetails
                 {
-                    Channel = channel,
-                    Name = channel,
-                    Instrument = instrument,
-                    Id = instrument
+                    Id = marketId,
+                    Name = channel
                 }
             };
 
             await SendMessageAsync(request, MercadoBitcoinJsonSerializerContext.Default.SubscriptionRequest, cancellationToken).ConfigureAwait(false);
-            _logger?.LogInformation("Unsubscribed from {Channel} for {Instrument}", channel, instrument);
+            _logger?.LogInformation("Unsubscribed from {Channel} for {MarketId}", channel, marketId);
         }
     }
 
@@ -320,7 +325,9 @@ public sealed class MercadoBitcoinWebSocketClient : IAsyncDisposable
 
     private async Task SubscribeToChannelAsync(string channel, string instrument, CancellationToken cancellationToken)
     {
-        var subscriptionKey = $"{channel}:{instrument}";
+        // Convert instrument format: "BTC-BRL" -> "BRLBTC" (WebSocket API format)
+        var marketId = ConvertToWebSocketMarketId(instrument);
+        var subscriptionKey = $"{channel}:{marketId}";
 
         lock (_subscriptionLock)
         {
@@ -336,15 +343,35 @@ public sealed class MercadoBitcoinWebSocketClient : IAsyncDisposable
             Type = "subscribe",
             Subscription = new SubscriptionDetails
             {
-                Channel = channel,
+                Id = marketId,
                 Name = channel,
-                Instrument = instrument,
-                Id = instrument
+                Limit = channel == WebSocketChannel.OrderBook ? 10 : null
             }
         };
 
         await SendMessageAsync(request, MercadoBitcoinJsonSerializerContext.Default.SubscriptionRequest, cancellationToken).ConfigureAwait(false);
-        _logger?.LogInformation("Subscribed to {Channel} for {Instrument}", channel, instrument);
+        _logger?.LogInformation("Subscribed to {Channel} for {MarketId}", channel, marketId);
+    }
+
+    /// <summary>
+    /// Converts REST API symbol format (BTC-BRL) to WebSocket market ID format (BRLBTC).
+    /// </summary>
+    private static string ConvertToWebSocketMarketId(string instrument)
+    {
+        // If already in QUOTEBASE format (no hyphen), return as-is
+        if (!instrument.Contains('-'))
+        {
+            return instrument.ToUpperInvariant();
+        }
+
+        // Convert BASE-QUOTE to QUOTEBASE
+        var parts = instrument.Split('-');
+        if (parts.Length == 2)
+        {
+            return $"{parts[1]}{parts[0]}".ToUpperInvariant();
+        }
+
+        return instrument.ToUpperInvariant();
     }
 
     private async Task SendMessageAsync<T>(T message, System.Text.Json.Serialization.Metadata.JsonTypeInfo<T> typeInfo, CancellationToken cancellationToken)
@@ -440,14 +467,32 @@ public sealed class MercadoBitcoinWebSocketClient : IAsyncDisposable
 
     private async Task ProcessMessageAsync(ReadOnlyMemory<byte> messageData)
     {
+        // DEBUG: Print raw JSON to understand structure
+        try
+        {
+            var rawJson = System.Text.Encoding.UTF8.GetString(messageData.Span);
+            _logger?.LogDebug("Received WebSocket Message: {RawJson}", rawJson);
+            Console.WriteLine($"[DEBUG] WS Message: {rawJson}");
+        }
+        catch { }
+
         try
         {
             // First, determine the message type by parsing just the "type" field
             using var document = JsonDocument.Parse(messageData);
             var root = document.RootElement;
 
+            // Check for subscription confirmation (has "id" and "name" but no "type")
             if (!root.TryGetProperty("type", out var typeElement))
             {
+                // This might be a subscription confirmation like {"id":"BRLBTC","name":"ticker"}
+                if (root.TryGetProperty("id", out var idElement) && root.TryGetProperty("name", out var nameElement))
+                {
+                    _logger?.LogDebug("Subscription confirmed: {Channel} for {MarketId}",
+                        nameElement.GetString(), idElement.GetString());
+                    return;
+                }
+
                 _logger?.LogWarning("Received message without type field");
                 return;
             }
@@ -577,20 +622,22 @@ public sealed class MercadoBitcoinWebSocketClient : IAsyncDisposable
             var parts = subscription.Split(':');
             if (parts.Length == 2)
             {
+                var channelName = parts[0];
+                var marketId = parts[1]; // Already in WebSocket format (BRLBTC)
+
                 var request = new SubscriptionRequest
                 {
                     Type = "subscribe",
                     Subscription = new SubscriptionDetails
                     {
-                        Channel = parts[0],
-                        Name = parts[0],
-                        Instrument = parts[1],
-                        Id = parts[1]
+                        Id = marketId,
+                        Name = channelName,
+                        Limit = channelName == WebSocketChannel.OrderBook ? 10 : null
                     }
                 };
 
                 await SendMessageAsync(request, MercadoBitcoinJsonSerializerContext.Default.SubscriptionRequest, cancellationToken).ConfigureAwait(false);
-                _logger?.LogDebug("Resubscribed to {Channel} for {Instrument}", parts[0], parts[1]);
+                _logger?.LogDebug("Resubscribed to {Channel} for {MarketId}", channelName, marketId);
             }
         }
     }

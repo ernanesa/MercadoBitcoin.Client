@@ -1,4 +1,5 @@
 using System.Net;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace MercadoBitcoin.Client.Http
 {
@@ -69,16 +70,7 @@ namespace MercadoBitcoin.Client.Http
             };
 
             // HTTP/3 (QUIC) configuration - eliminates Head-of-Line Blocking
-            if (enableHttp3)
-            {
-                handler.HttpVersion = new Version(3, 0); // HTTP/3
-                handler.VersionPolicy = HttpVersionPolicy.RequestVersionOrHigher; // Allow downgrade if server doesn't support
-            }
-            else
-            {
-                handler.HttpVersion = new Version(2, 0); // HTTP/2
-                handler.VersionPolicy = HttpVersionPolicy.RequestVersionOrHigher; // Allow downgrade to 1.1 if necessary
-            }
+            // Note: Version and VersionPolicy are set on the HttpClient or HttpRequestMessage, not SocketsHttpHandler.
 
             return handler;
         }
@@ -98,7 +90,9 @@ namespace MercadoBitcoin.Client.Http
             var handler = CreateBeastModeHttpHandler(enableHttp3, enableCompression);
             var client = new HttpClient(handler, disposeHandler: true)
             {
-                Timeout = timeout ?? TimeSpan.FromSeconds(30)
+                Timeout = timeout ?? TimeSpan.FromSeconds(30),
+                DefaultRequestVersion = enableHttp3 ? HttpVersion.Version30 : HttpVersion.Version20,
+                DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrHigher
             };
 
             // Set sensible default headers
@@ -120,6 +114,8 @@ namespace MercadoBitcoin.Client.Http
             builder.ConfigureHttpClient(client =>
             {
                 client.Timeout = TimeSpan.FromSeconds(30);
+                client.DefaultRequestVersion = enableHttp3 ? HttpVersion.Version30 : HttpVersion.Version20;
+                client.DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrHigher;
                 client.DefaultRequestHeaders.Add("User-Agent", "MercadoBitcoin.Client/5.0 (Beast Mode; .NET 10)");
             });
 

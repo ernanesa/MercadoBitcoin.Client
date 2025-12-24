@@ -13,7 +13,7 @@ public static class WebSocketChannel
     /// <summary>
     /// Real-time trade execution updates.
     /// </summary>
-    public const string Trades = "trades";
+    public const string Trades = "trade";
 
     /// <summary>
     /// Real-time order book updates with bids and asks.
