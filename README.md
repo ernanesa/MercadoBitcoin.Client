@@ -24,12 +24,12 @@ A high-performance .NET 10 library for integrating with the **Mercado Bitcoin AP
 
 ## 🚀 Features
 
+- ✅ **WebSocket Streaming**: Real-time market data (tickers, trades, orderbook) via WebSocket API
 - ✅ **Multi-User Support**: Dynamic credential resolution via `IMercadoBitcoinCredentialProvider` (Scoped DI)
 - ✅ **Universal Filtering**: Fetch data for all symbols automatically by passing `null`
 - ✅ **Complete Coverage**: All Mercado Bitcoin API v4 endpoints
 - ✅ **.NET 10 + C# 14**: Latest framework and language with optimized performance
-- ✅ **WebSocket Streaming**: Real-time market data via WebSocket API
-- ✅ **IAsyncEnumerable**: Efficient streaming enumeration for large datasets
+- ✅ **IAsyncEnumerable**: Efficient streaming enumeration for large datasets (trades, orders, deposits)
 - ✅ **Zero-Allocation**: Hot paths with Span<T>, Memory<T>, and ArrayPool<T>
 - ✅ **System.Text.Json**: Native JSON serialization with Source Generators for maximum performance
 - ✅ **AOT Compatible**: Compatible with Native AOT compilation for ultra-fast applications
@@ -45,9 +45,8 @@ A high-performance .NET 10 library for integrating with the **Mercado Bitcoin AP
 - ✅ **CancellationToken in All Endpoints**: Complete cooperative cancellation
 - ✅ **Custom User-Agent**: Override via `MB_USER_AGENT` env var for observability
 - ✅ **Production Ready**: Ready for production use
-- ✅ **Comprehensive Tests**: 94 tests covering all scenarios
-- ✅ **Validated Performance**: Benchmarks prove significant improvements
-- ✅ **Robust Handling**: Graceful skip for scenarios without credentials
+- ✅ **Comprehensive Tests**: 94+ tests covering all scenarios including WebSocket
+- ✅ **Performance Benchmarks**: BenchmarkDotNet tests for continuous performance validation
 - ✅ **CI/CD Ready**: Optimized configuration for continuous integration
 
 ## 📦 Installation
@@ -82,6 +81,49 @@ var candles = await client.GetCandlesAsync("BTC-BRL", "1h", to: (int)DateTimeOff
 ```csharp
 // Fetch tickers for ALL tradable symbols automatically
 var allTickers = await client.GetTickersAsync(); 
+```
+
+**WebSocket Real-Time Streaming:**
+```csharp
+using MercadoBitcoin.Client.WebSocket;
+
+// Create WebSocket client
+await using var wsClient = new MercadoBitcoinWebSocketClient();
+await wsClient.ConnectAsync();
+
+// Subscribe to real-time ticker updates
+await foreach (var ticker in wsClient.SubscribeTickerAsync("BTC-BRL", cancellationToken))
+{
+    Console.WriteLine($"BTC-BRL: Last={ticker.Last}, Volume={ticker.Vol}");
+}
+
+// Subscribe to trade executions
+await foreach (var trade in wsClient.SubscribeTradesAsync("BTC-BRL", cancellationToken))
+{
+    Console.WriteLine($"Trade: {trade.Type} {trade.Amount} @ {trade.Price}");
+}
+
+// Subscribe to orderbook updates
+await foreach (var orderBook in wsClient.SubscribeOrderBookAsync("BTC-BRL", cancellationToken))
+{
+    Console.WriteLine($"OrderBook: {orderBook.Bids.Length} bids, {orderBook.Asks.Length} asks");
+}
+```
+
+**IAsyncEnumerable Streaming (Large Datasets):**
+```csharp
+// Stream thousands of trades without buffering entire response in memory
+await foreach (var trade in client.StreamTradesAsync("BTC-BRL", limit: 1000, cancellationToken))
+{
+    ProcessTrade(trade);
+    // Each trade is processed immediately, minimal memory usage
+}
+
+// Stream historical candles for backtesting
+await foreach (var candle in client.StreamCandlesAsync("BTC-BRL", "1h", from: yesterday, to: today, cancellationToken))
+{
+    RunBacktestStrategy(candle);
+}
 ```
 
 **Private Data (Authentication needed):**

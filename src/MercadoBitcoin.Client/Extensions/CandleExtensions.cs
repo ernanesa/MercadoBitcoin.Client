@@ -233,9 +233,11 @@ namespace MercadoBitcoin.Client.Extensions
                 return false;
 
             var normalizedSymbol = NormalizeSymbol(symbol);
+            ReadOnlySpan<char> span = normalizedSymbol.AsSpan();
 
-            // Checks if it has BASE-QUOTE format
-            return normalizedSymbol.Contains("-") && normalizedSymbol.Split('-').Length == 2;
+            // Checks if it has BASE-QUOTE format - using Span to avoid allocation
+            int dashIndex = span.IndexOf('-');
+            return dashIndex > 0 && dashIndex < span.Length - 1;
         }
     }
 }

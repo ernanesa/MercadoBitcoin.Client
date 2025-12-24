@@ -24,7 +24,7 @@ namespace MercadoBitcoin.Client;
 [JsonSerializable(typeof(PingRequest))]
 [JsonSerializable(typeof(SubscriptionDetails))]
 [JsonSerializable(typeof(SubscriptionResponse))]
-[JsonSerializable(typeof(PingRequest))]
+[JsonSerializable(typeof(WebSocketSubscriptionRequest))]
 [JsonSerializable(typeof(WebSocketMessageBase))]
 // High-Performance Models
 [JsonSerializable(typeof(CandleData))]
