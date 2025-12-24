@@ -44,6 +44,7 @@ namespace MercadoBitcoin.Client.Http
                 var credentials = await _credentialProvider.GetCredentialsAsync(cancellationToken);
                 if (credentials != null && !string.IsNullOrEmpty(credentials.Login) && !string.IsNullOrEmpty(credentials.Password))
                 {
+                    bool authenticated = false;
                     await _semaphore.WaitAsync(cancellationToken);
                     try
                     {
@@ -67,17 +68,7 @@ namespace MercadoBitcoin.Client.Http
                             if (authResult != null && !string.IsNullOrEmpty(authResult.Access_token))
                             {
                                 _tokenStore.AccessToken = authResult.Access_token;
-
-                                // Release the failed response content before retrying
-                                response.Dispose();
-
-                                // Retry the original request
-                                var newRequest = await CloneHttpRequestMessageAsync(request);
-
-                                // Manually add the token because we are downstream of AuthHttpClient
-                                newRequest.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _tokenStore.AccessToken);
-
-                                return await base.SendAsync(newRequest, cancellationToken);
+                                authenticated = true;
                             }
                         }
                     }
@@ -88,6 +79,20 @@ namespace MercadoBitcoin.Client.Http
                     finally
                     {
                         _semaphore.Release();
+                    }
+
+                    if (authenticated)
+                    {
+                        // Release the failed response content before retrying
+                        response.Dispose();
+
+                        // Retry the original request
+                        var newRequest = await CloneHttpRequestMessageAsync(request);
+
+                        // Manually add the token because we are downstream of AuthHttpClient
+                        newRequest.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _tokenStore.AccessToken);
+
+                        return await base.SendAsync(newRequest, cancellationToken);
                     }
                 }
             }

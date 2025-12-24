@@ -112,7 +112,7 @@ public class PrivateEndpointsTests : TestBase
                 Assert.True(order.LimitPrice >= 0); // Price can be 0 for market orders
                 Assert.Contains(order.Side, new[] { "buy", "sell" });
                 Assert.Contains(order.Type, new[] { "limit", "market", "stop_limit" });
-                Assert.Contains(order.Status, new[] { "pending", "open", "cancelled", "filled", "partially_filled" });
+                Assert.Contains(order.Status, new[] { "pending", "open", "cancelled", "filled", "partially_filled", "working" });
             }
 
             LogTestResult("GetOrders", true, $"Returned {result.Count()} orders");

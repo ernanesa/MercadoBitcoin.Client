@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using System.Collections.Generic;
 using MercadoBitcoin.Client.Generated;
 using MercadoBitcoin.Client.Errors;
 using MercadoBitcoin.Client.WebSocket.Messages;
@@ -23,6 +24,7 @@ namespace MercadoBitcoin.Client;
 [JsonSerializable(typeof(PingRequest))]
 [JsonSerializable(typeof(SubscriptionDetails))]
 [JsonSerializable(typeof(SubscriptionResponse))]
+[JsonSerializable(typeof(PingRequest))]
 [JsonSerializable(typeof(WebSocketMessageBase))]
 // High-Performance Models
 [JsonSerializable(typeof(CandleData))]
@@ -34,6 +36,8 @@ namespace MercadoBitcoin.Client;
 [JsonSerializable(typeof(AuthorizeRequest))]
 [JsonSerializable(typeof(AuthorizeResponse))]
 [JsonSerializable(typeof(CancelOpenOrdersResponse))]
+[JsonSerializable(typeof(ICollection<CancelOpenOrdersResponse>))]
+[JsonSerializable(typeof(List<CancelOpenOrdersResponse>))]
 [JsonSerializable(typeof(GetTierResponse))]
 [JsonSerializable(typeof(GetMarketFeesResponse))]
 [JsonSerializable(typeof(CryptoBalanceResponse))]

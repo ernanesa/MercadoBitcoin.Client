@@ -114,10 +114,23 @@ public abstract class TestBase : IDisposable
     protected void LogTestResult(string testName, bool success, string? details = null)
     {
         var status = success ? "✅ PASS" : "❌ FAIL";
-        Console.WriteLine($"[{DateTime.Now:HH:mm:ss}] {status} - {testName}");
+        var message = $"[{DateTime.Now:HH:mm:ss}] {status} - {testName}";
+        Console.WriteLine(message);
         if (!string.IsNullOrEmpty(details))
         {
             Console.WriteLine($"    Details: {details}");
+            message += $" ({details})";
+        }
+
+        try
+        {
+            var rootPath = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), "../../../../../"));
+            var summaryPath = Path.Combine(rootPath, "TEST_SUMMARY.md");
+            File.AppendAllText(summaryPath, message + Environment.NewLine);
+        }
+        catch
+        {
+            // Ignore file errors during test execution
         }
     }
 
