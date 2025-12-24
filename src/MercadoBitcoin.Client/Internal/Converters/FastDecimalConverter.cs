@@ -15,40 +15,71 @@ namespace MercadoBitcoin.Client.Internal.Converters
     {
         public override decimal Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         {
+            // Fast path: numeric token already parsed by Utf8JsonReader
             if (reader.TokenType == JsonTokenType.Number)
             {
-                return reader.GetDecimal();
+                if (reader.TryGetDecimal(out var numeric))
+                {
+                    return numeric;
+                }
+
+                // Fallback to span parsing when TryGetDecimal fails (rare edge cases)
+                var span = reader.HasValueSequence
+                    ? reader.ValueSequence.ToArray().AsSpan()
+                    : reader.ValueSpan;
+
+                if (TryParseDecimal(span, out var parsedFromNumber))
+                {
+                    return parsedFromNumber;
+                }
+
+                throw new JsonException("Unable to parse numeric token as decimal.");
             }
 
+            // String token: parse directly from UTF-8 bytes to avoid allocating a string
             if (reader.TokenType == JsonTokenType.String)
             {
-                // Try to parse from the internal span of the reader if possible
-                if (reader.HasValueSequence)
+                if (!reader.HasValueSequence)
                 {
-                    // Fallback for sequences (rare for simple strings)
-                    // We can use a stack buffer if small enough
-                    long length = reader.ValueSequence.Length;
-                    if (length < 64)
-                    {
-                        Span<byte> buffer = stackalloc byte[(int)length];
-                        reader.ValueSequence.CopyTo(buffer);
-                        if (Utf8Parser.TryParse(buffer, out decimal value, out _, 'G'))
-                        {
-                            return value;
-                        }
-                    }
-                }
-                else
-                {
-                    // Zero-allocation path
                     var span = reader.ValueSpan;
-                    if (Utf8Parser.TryParse(span, out decimal value, out _, 'G'))
+                    if (TryParseDecimal(span, out var value))
                     {
                         return value;
                     }
                 }
+                else
+                {
+                    // Handle segmented value using a pooled buffer when necessary
+                    var length = (int)reader.ValueSequence.Length;
+                    if (length <= 256)
+                    {
+                        Span<byte> buffer = stackalloc byte[length];
+                        reader.ValueSequence.CopyTo(buffer);
+                        if (TryParseDecimal(buffer, out var value))
+                        {
+                            return value;
+                        }
+                    }
+                    else
+                    {
+                        var rented = ArrayPool<byte>.Shared.Rent(length);
+                        try
+                        {
+                            var span = rented.AsSpan(0, length);
+                            reader.ValueSequence.CopyTo(span);
+                            if (TryParseDecimal(span, out var value))
+                            {
+                                return value;
+                            }
+                        }
+                        finally
+                        {
+                            ArrayPool<byte>.Shared.Return(rented);
+                        }
+                    }
+                }
 
-                // Fallback to string allocation if Utf8Parser fails (e.g. custom format)
+                // Last-resort fallback: allocate string for unusual formats
                 var stringValue = reader.GetString();
                 if (decimal.TryParse(stringValue, NumberStyles.Any, CultureInfo.InvariantCulture, out var result))
                 {
@@ -61,8 +92,12 @@ namespace MercadoBitcoin.Client.Internal.Converters
 
         public override void Write(Utf8JsonWriter writer, decimal value, JsonSerializerOptions options)
         {
-            // Write as number
             writer.WriteNumberValue(value);
+        }
+
+        private static bool TryParseDecimal(ReadOnlySpan<byte> span, out decimal value)
+        {
+            return Utf8Parser.TryParse(span, out value, out _, standardFormat: 'G');
         }
     }
 }
