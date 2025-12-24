@@ -1,5 +1,20 @@
 # Changelog
 
+## [5.2.0] - 2025-12-24
+### Added
+- **Robust WebSocket Client**: Major overhaul of `MercadoBitcoinWebSocketClient` with production-grade features:
+    - **Auto-Reconnection**: Automatic reconnection with exponential backoff and jitter.
+    - **Keep-Alive**: Dedicated Ping/Pong loop to maintain connection stability.
+    - **Unsubscribe**: New `UnsubscribeAsync` method to stop receiving updates for specific channels.
+    - **Connection State**: Public `ConnectionState` property and events (`ConnectionStateChanged`, `ErrorOccurred`) for monitoring.
+    - **Concurrent Subscriptions**: Improved thread safety allowing multiple concurrent subscriptions to the same or different channels.
+- **Stress Testing Suite**: Added `StressTests` to validate library behavior under high concurrency (REST and WebSocket).
+- **Full API Coverage**: Added `FullApiCoverageTests` ensuring 100% sequential validation of all public and private endpoints.
+
+### Changed
+- **WebSocket Architecture**: Refactored internal message processing to use `Channel<T>` for efficient, non-blocking streaming.
+- **Test Infrastructure**: Enhanced test logging and reliability for integration tests.
+
 ## [5.1.1] - 2025-12-23
 ### Changed
 - **DI Consistency**: Refactored `MercadoBitcoinClient` and its DI extensions to use `IOptions<MercadoBitcoinClientOptions>` instead of `IOptionsSnapshot`. This improves performance and ensures consistency when the client is used in different service lifetimes.
