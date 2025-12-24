@@ -181,7 +181,7 @@ public class WebSocketStreamingTests : IAsyncLifetime
         _output.WriteLine($"[Summary] Ticker1 count: {ticker1Count}, Ticker2 count: {ticker2Count}");
         var totalMessages = ticker1Count + ticker2Count;
         totalMessages.Should().BeGreaterThan(0, "At least one of the subscriptions should receive messages");
-        
+
         // If we got messages from BTC, validate it
         if (ticker1Count > 0)
         {
@@ -191,7 +191,7 @@ public class WebSocketStreamingTests : IAsyncLifetime
         {
             _output.WriteLine($"[Warning] No messages received from {symbol1} within timeout");
         }
-        
+
         if (ticker2Count > 0)
         {
             _output.WriteLine($"[Ticker2] Successfully received {ticker2Count} messages from {symbol2}");
