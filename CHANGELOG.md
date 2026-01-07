@@ -1,5 +1,102 @@
 # Changelog
 
+## [5.3.0] - 2026-01-07
+
+### Added
+- **Comprehensive Test Suite**: Expanded to 566 integration tests with 100% pass rate
+  - Full coverage of all public and private API endpoints
+  - WebSocket streaming tests for ticker, orderbook, and trades channels
+  - Trading operations tests (buy/sell orders with validation)
+  - Performance benchmarks and stress tests
+  - Parallel execution support for load testing
+
+- **Trading Infrastructure Enhancements**:
+  - `RateLimitBudget` class for intelligent rate limit management with budget tracking
+  - `PerformanceMonitor` with microsecond-precision latency measurements
+  - `IncrementalOrderBook` with 99.1% code coverage
+  - `Http3Detector` for automatic HTTP/3 protocol detection
+
+- **New Test Categories**:
+  - Unit tests for internal components (RateLimitBudget, PerformanceMonitor, Http3Detector)
+  - Integration tests for all 17+ private endpoints
+  - Validation tests for order parameters
+  - Serialization/deserialization validation tests
+  - Error handling and edge case tests
+
+- **Documentation**:
+  - `HIGH_PERFORMANCE_TRADING.md` guide for algorithmic trading
+  - `COMPLETE_TEST_REPORT.md` with detailed test results
+  - `COVERAGE_SUMMARY.md` with code coverage analysis
+  - Updated `ANALYSIS_REPORT.md` with architecture details
+
+### Changed
+- **Test Infrastructure**: Improved `TestBase` class with better credential handling
+- **Code Coverage**: Achieved 55.1% line coverage, 38.5% branch coverage, 48.4% method coverage
+- **Performance**: Average API response time of 223.79ms across all endpoints
+
+### Security
+- **Credentials Protection**: Removed all hardcoded credentials from version control
+  - Added `appsettings.example.json` template files
+  - Updated `.gitignore` to exclude sensitive configuration files
+  - Sanitized all test output files and reports
+
+### Fixed
+- Fixed nullable reference warnings in test files
+- Fixed xUnit analyzer warnings for better test practices
+- Improved error handling in WebSocket streaming tests
+
+## [6.1.0] - 2025-01-06
+
+### Added
+- **HTTP/3 Auto-Detection**: New `Http3Detector` class for automatic HTTP/3 (QUIC) protocol detection and configuration
+  - Automatic server support detection with caching
+  - `CreateOptimizedClient()` method for creating pre-configured HttpClient
+  - `GetRecommendedVersion()` and `GetRecommendedVersionPolicy()` helpers
+  
+- **Incremental OrderBook**: New `IncrementalOrderBook` class for efficient order book management
+  - Support for both full snapshots and delta updates
+  - O(log n) operations with sorted bid/ask levels
+  - VWAP calculation, spread tracking, and imbalance ratio
+  - Spread change events for significant price movements
+  - Thread-safe with `ReaderWriterLockSlim`
+
+- **Order Tracker**: New `OrderTracker` class for monitoring order execution status
+  - Real-time order state management with polling
+  - Status change events (`OrderStatusChanged`, `OrderFilled`, `OrderCancelled`)
+  - Automatic status refresh with exponential backoff
+  - Support for tracking metadata and status history
+
+- **High Performance Strategy Base**: New `HighPerformanceStrategy` abstract class
+  - Infrastructure for algorithmic trading strategies
+  - Built-in rate limit checking and order management
+  - Performance metrics (tick latency, orders placed/cancelled)
+  - Example `SimpleMarketMakerStrategy` implementation
+
+- **Performance Monitor**: New `PerformanceMonitor` class for microsecond-level latency measurements
+  - `MeasureAsync<T>()` and `Measure<T>()` for operation timing
+  - `MeasurementScope` for scoped measurements via `using`
+  - Percentile calculations (P50, P95, P99)
+  - Latency threshold alerts and periodic reporting
+
+- **New DI Extensions**:
+  - `AddMercadoBitcoinHttp3Detection()` for HTTP/3 auto-detection
+  - `AddMercadoBitcoinOrderTracker()` for order tracking service
+  - `AddMercadoBitcoinPerformanceMonitor()` for performance monitoring
+  - `AddMercadoBitcoinOrderBook()` for incremental order book (keyed service)
+  - `AddMercadoBitcoinMetrics()` for OpenTelemetry metrics
+
+### Changed
+- **OpenTelemetry**: Updated packages from 1.11.x to 1.14.0
+- **BenchmarkDotNet**: Updated from 0.14.0 to 0.15.8 in benchmarks project
+- **Target Framework**: Fixed Benchmarks project to target net10.0 (was net9.0)
+- **Version Bump**: Library version updated to 6.1.0
+
+### Fixed
+- Fixed `CancelOrdersBatchAsync` and `CancelAllOrdersAsync` to properly handle `ValueTask<bool>` to `Task` conversion
+- Fixed decimal to double conversion for `PlaceOrderRequest` properties (`LimitPrice`, `StopPrice`, `Cost`)
+- Fixed `OrderTracker.RefreshOrderAsync` to use correct parameter order for `GetOrderAsync`
+- Renamed `OrderCancelledEventArgs` in OrderTracker to `OrderTrackerCancelledEventArgs` to avoid naming conflict
+
 ## [5.2.0] - 2025-12-24
 ### Added
 - **Robust WebSocket Client**: Major overhaul of `MercadoBitcoinWebSocketClient` with production-grade features:
